@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/binary"
+	"encoding/json"
 	"io"
 	"io/fs"
 	"math"
@@ -256,6 +257,25 @@ var _ = Describe("Demo", func() {
 			_, err := demo.ReadFile(filePath)
 
 			Expect(err).To(MatchError(ContainSubstring("decompressing demo")))
+		})
+	})
+
+	Context("MarshalJSON", func() {
+		It("writes the winning allyteams as an array of numbers", func() {
+			testDemo := newTestDemo()
+			testDemo.winningAllyTeams = []uint8{0, 1}
+
+			data, err := json.Marshal(demo.Demo{WinningAllyTeams: testDemo.winningAllyTeams})
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(data).To(ContainSubstring(`"winningAllyTeams":[0,1]`))
+		})
+
+		It("writes missing winning allyteams as null", func() {
+			data, err := json.Marshal(demo.Demo{})
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(data).To(ContainSubstring(`"winningAllyTeams":null`))
 		})
 	})
 })

@@ -3,6 +3,8 @@ package demo
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -15,58 +17,58 @@ import (
 // See rts/System/LoadSave/demofile.h.
 type DemoFileHeader struct {
 	// Magic is DemofileMagic.
-	Magic [16]byte
+	Magic [16]byte `json:"magic"`
 
 	// Version is DemofileVersion, the major version of the file format.
-	Version int32
+	Version int32 `json:"version"`
 
 	// HeaderSize is the size of the DemoFileHeader, the minor version of the file format.
-	HeaderSize int32
+	HeaderSize int32 `json:"headerSize"`
 
 	// VersionString is the engine version, NUL-terminated, e.g. "2026.07.04".
-	VersionString [256]byte
+	VersionString [256]byte `json:"versionString"`
 
 	// GameID is the unique game identifier. Identical for each player of the game.
-	GameID [16]byte
+	GameID [16]byte `json:"gameId"`
 
 	// UnixTime is the Unix time when the game was started.
-	UnixTime uint64
+	UnixTime uint64 `json:"unixTime"`
 
 	// ScriptSize is the size of the start script.
-	ScriptSize int32
+	ScriptSize int32 `json:"scriptSize"`
 
 	// DemoStreamSize is the size of the demo stream; 0 if the engine crashed while recording.
-	DemoStreamSize int32
+	DemoStreamSize int32 `json:"demoStreamSize"`
 
 	// GameTime is the total number of seconds game time.
-	GameTime int32
+	GameTime int32 `json:"gameTime"`
 
 	// WallclockTime is the total number of seconds wallclock time.
-	WallclockTime int32
+	WallclockTime int32 `json:"wallclockTime"`
 
 	// NumPlayers is the number of players for which stats are saved, spectators included.
-	NumPlayers int32
+	NumPlayers int32 `json:"numPlayers"`
 
 	// PlayerStatSize is the size of the entire player statistics chunk.
-	PlayerStatSize int32
+	PlayerStatSize int32 `json:"playerStatSize"`
 
 	// PlayerStatElemSize is sizeof(PlayerStatistics).
-	PlayerStatElemSize int32
+	PlayerStatElemSize int32 `json:"playerStatElemSize"`
 
 	// NumTeams is the number of teams for which stats are saved.
-	NumTeams int32
+	NumTeams int32 `json:"numTeams"`
 
 	// TeamStatSize is the size of the entire team statistics chunk.
-	TeamStatSize int32
+	TeamStatSize int32 `json:"teamStatSize"`
 
 	// TeamStatElemSize is sizeof(TeamStatistics).
-	TeamStatElemSize int32
+	TeamStatElemSize int32 `json:"teamStatElemSize"`
 
 	// TeamStatPeriod is the interval (in seconds) between team stats.
-	TeamStatPeriod int32
+	TeamStatPeriod int32 `json:"teamStatPeriod"`
 
 	// WinningAllyTeamsSize is the size of the list of winning allyteams.
-	WinningAllyTeamsSize int32
+	WinningAllyTeamsSize int32 `json:"winningAllyTeamsSize"`
 }
 
 // ReadDemoFileHeader reads and validates a DemoFileHeader from the start of data.
@@ -81,9 +83,66 @@ func ReadDemoFileHeader(data []byte) (DemoFileHeader, error) {
 	return header, nil
 }
 
-// VersionStringAsString returns VersionString up to its terminating NUL.
+// MagicAsString returns Magic up to its terminating NUL, or an empty string if it has none.
+func (h *DemoFileHeader) MagicAsString() string {
+	magic, _, found := bytes.Cut(h.Magic[:], []byte{0})
+	if !found {
+		return ""
+	}
+	return string(magic)
+}
+
+// VersionStringAsString returns VersionString up to its terminating NUL, or an empty string if it has none.
 func (h *DemoFileHeader) VersionStringAsString() string {
-	return string(h.VersionString[:bytes.IndexByte(h.VersionString[:], 0)])
+	versionString, _, found := bytes.Cut(h.VersionString[:], []byte{0})
+	if !found {
+		return ""
+	}
+	return string(versionString)
+}
+
+// MarshalJSON writes Magic and VersionString as strings without their NUL bytes and GameID as a hex string. Go would
+// write the byte arrays as arrays of numbers.
+func (h DemoFileHeader) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Magic                string `json:"magic"`
+		Version              int32  `json:"version"`
+		HeaderSize           int32  `json:"headerSize"`
+		VersionString        string `json:"versionString"`
+		GameID               string `json:"gameId"`
+		UnixTime             uint64 `json:"unixTime"`
+		ScriptSize           int32  `json:"scriptSize"`
+		DemoStreamSize       int32  `json:"demoStreamSize"`
+		GameTime             int32  `json:"gameTime"`
+		WallclockTime        int32  `json:"wallclockTime"`
+		NumPlayers           int32  `json:"numPlayers"`
+		PlayerStatSize       int32  `json:"playerStatSize"`
+		PlayerStatElemSize   int32  `json:"playerStatElemSize"`
+		NumTeams             int32  `json:"numTeams"`
+		TeamStatSize         int32  `json:"teamStatSize"`
+		TeamStatElemSize     int32  `json:"teamStatElemSize"`
+		TeamStatPeriod       int32  `json:"teamStatPeriod"`
+		WinningAllyTeamsSize int32  `json:"winningAllyTeamsSize"`
+	}{
+		Magic:                h.MagicAsString(),
+		Version:              h.Version,
+		HeaderSize:           h.HeaderSize,
+		VersionString:        h.VersionStringAsString(),
+		GameID:               hex.EncodeToString(h.GameID[:]),
+		UnixTime:             h.UnixTime,
+		ScriptSize:           h.ScriptSize,
+		DemoStreamSize:       h.DemoStreamSize,
+		GameTime:             h.GameTime,
+		WallclockTime:        h.WallclockTime,
+		NumPlayers:           h.NumPlayers,
+		PlayerStatSize:       h.PlayerStatSize,
+		PlayerStatElemSize:   h.PlayerStatElemSize,
+		NumTeams:             h.NumTeams,
+		TeamStatSize:         h.TeamStatSize,
+		TeamStatElemSize:     h.TeamStatElemSize,
+		TeamStatPeriod:       h.TeamStatPeriod,
+		WinningAllyTeamsSize: h.WinningAllyTeamsSize,
+	})
 }
 
 // validate checks every field on its own. Whether the sizes fit the file is checked while reading the sections.

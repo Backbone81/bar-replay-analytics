@@ -12,66 +12,66 @@ import (
 // Defined in the Recoil engine source: rts/Sim/Misc/TeamStatistics.h.
 type TeamStatistics struct {
 	// Frame is the game frame this entry was recorded at (GAME_SPEED is 30 frames per second).
-	Frame int32
+	Frame int32 `json:"frame"`
 
 	// MetalUsed is the metal this team has spent.
-	MetalUsed float32
+	MetalUsed float32 `json:"metalUsed"`
 
 	// EnergyUsed is the energy this team has spent.
-	EnergyUsed float32
+	EnergyUsed float32 `json:"energyUsed"`
 
 	// MetalProduced is this team's metal income.
-	MetalProduced float32
+	MetalProduced float32 `json:"metalProduced"`
 
 	// EnergyProduced is this team's energy income.
-	EnergyProduced float32
+	EnergyProduced float32 `json:"energyProduced"`
 
 	// MetalExcess is the metal lost because this team's storage was full, after sharing to allies.
-	MetalExcess float32
+	MetalExcess float32 `json:"metalExcess"`
 
 	// EnergyExcess is the energy lost because this team's storage was full, after sharing to allies.
-	EnergyExcess float32
+	EnergyExcess float32 `json:"energyExcess"`
 
 	// MetalReceived is the metal received from allies, given or shared automatically.
-	MetalReceived float32
+	MetalReceived float32 `json:"metalReceived"`
 
 	// EnergyReceived is the energy received from allies, given or shared automatically.
-	EnergyReceived float32
+	EnergyReceived float32 `json:"energyReceived"`
 
 	// MetalSent is the metal sent to allies, given or shared automatically.
-	MetalSent float32
+	MetalSent float32 `json:"metalSent"`
 
 	// EnergySent is the energy sent to allies, given or shared automatically.
-	EnergySent float32
+	EnergySent float32 `json:"energySent"`
 
 	// DamageDealt is the damage this team's units dealt, to any unit, friendly fire included. Each hit counts at most
 	// the health its target had already lost, so a hit on a full-health unit counts 0.
-	DamageDealt float32
+	DamageDealt float32 `json:"damageDealt"`
 
 	// DamageReceived is the damage this team's units took, counted like DamageDealt, also from hits without an
 	// attacker.
-	DamageReceived float32
+	DamageReceived float32 `json:"damageReceived"`
 
 	// UnitsProduced is the number of units, buildings included, this team has built.
-	UnitsProduced int32
+	UnitsProduced int32 `json:"unitsProduced"`
 
 	// UnitsDied is the number of this team's units that died, for any reason.
-	UnitsDied int32
+	UnitsDied int32 `json:"unitsDied"`
 
 	// UnitsReceived is the number of units other teams gave to this team.
-	UnitsReceived int32
+	UnitsReceived int32 `json:"unitsReceived"`
 
 	// UnitsSent is the number of units this team gave to other teams.
-	UnitsSent int32
+	UnitsSent int32 `json:"unitsSent"`
 
 	// UnitsCaptured is the number of units this team captured from enemies.
-	UnitsCaptured int32
+	UnitsCaptured int32 `json:"unitsCaptured"`
 
 	// UnitsOutCaptured is the number of this team's units captured by enemies.
-	UnitsOutCaptured int32
+	UnitsOutCaptured int32 `json:"unitsOutCaptured"`
 
 	// UnitsKilled is the number of finished enemy units this team's units have killed, collisions not included.
-	UnitsKilled int32
+	UnitsKilled int32 `json:"unitsKilled"`
 }
 
 // ReadTeamStatistics reads and validates a TeamStatistics from the start of data.

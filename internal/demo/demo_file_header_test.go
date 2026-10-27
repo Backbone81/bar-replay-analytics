@@ -2,6 +2,7 @@ package demo_test
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"math"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -143,11 +144,67 @@ var _ = Describe("DemoFileHeader", func() {
 		)
 	})
 
+	Context("MagicAsString", func() {
+		It("returns the magic without the NUL", func() {
+			header := newTestDemo().header
+
+			Expect(header.MagicAsString()).To(Equal("spring demofile"))
+		})
+
+		It("returns an empty string if the field has no NUL", func() {
+			var header demo.DemoFileHeader
+			for i := range header.Magic {
+				header.Magic[i] = 'a'
+			}
+
+			Expect(header.MagicAsString()).To(BeEmpty())
+		})
+	})
+
 	Context("VersionStringAsString", func() {
 		It("returns the version string without the NUL padding", func() {
 			header := newTestDemo().header
 
 			Expect(header.VersionStringAsString()).To(Equal("2026.07.04"))
+		})
+
+		It("returns an empty string if the field has no NUL", func() {
+			var header demo.DemoFileHeader
+			for i := range header.VersionString {
+				header.VersionString[i] = 'a'
+			}
+
+			Expect(header.VersionStringAsString()).To(BeEmpty())
+		})
+	})
+
+	Context("MarshalJSON", func() {
+		It("writes the byte arrays as strings and the other fields as numbers", func() {
+			header := newTestDemo().header
+
+			data, err := json.Marshal(header)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(data).To(MatchJSON(`{
+				"magic": "spring demofile",
+				"versionString": "2026.07.04",
+				"gameId": "0102030405060708090a0b0c0d0e0f10",
+				"version": 5,
+				"headerSize": 352,
+				"unixTime": 1792849701,
+				"scriptSize": 39,
+				"demoStreamSize": 11,
+				"gameTime": 1607,
+				"wallclockTime": 1759,
+				"numPlayers": 1,
+				"playerStatSize": 20,
+				"playerStatElemSize": 20,
+				"numTeams": 2,
+				"teamStatSize": 328,
+				"teamStatElemSize": 80,
+				"teamStatPeriod": 15,
+				"winningAllyTeamsSize": 1
+			}`))
 		})
 	})
 })

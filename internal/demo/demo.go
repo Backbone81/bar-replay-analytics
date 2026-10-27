@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -17,22 +18,46 @@ import (
 // The fields are named after the members of CDemoReader in the Recoil engine source: rts/System/LoadSave/DemoReader.h.
 type Demo struct {
 	// FileHeader provides metadata about this file.
-	FileHeader DemoFileHeader
+	FileHeader DemoFileHeader `json:"fileHeader"`
 
 	// SetupScript provides the start script: map, game, players, teams, allyteams and AIs.
-	SetupScript string
+	SetupScript string `json:"setupScript"`
 
 	// WinningAllyTeams provides the teams which have won.
 	// Is nil if the engine crashed while recording the demo.
-	WinningAllyTeams []uint8
+	WinningAllyTeams []uint8 `json:"winningAllyTeams"`
 
 	// PlayerStats provides statistics per player.
 	// Is nil if the engine crashed while recording the demo.
-	PlayerStats []PlayerStatistics
+	PlayerStats []PlayerStatistics `json:"playerStats"`
 
 	// TeamStats provides statistics per team.
 	// Is nil if the engine crashed while recording the demo.
-	TeamStats [][]TeamStatistics
+	TeamStats [][]TeamStatistics `json:"teamStats"`
+}
+
+// MarshalJSON writes WinningAllyTeams as an array of numbers. Go would write a []uint8 as a base64 string.
+func (d Demo) MarshalJSON() ([]byte, error) {
+	var winningAllyTeams []int
+	if d.WinningAllyTeams != nil {
+		winningAllyTeams = make([]int, len(d.WinningAllyTeams))
+		for i, allyTeam := range d.WinningAllyTeams {
+			winningAllyTeams[i] = int(allyTeam)
+		}
+	}
+	return json.Marshal(struct {
+		FileHeader       DemoFileHeader     `json:"fileHeader"`
+		SetupScript      string             `json:"setupScript"`
+		WinningAllyTeams []int              `json:"winningAllyTeams"`
+		PlayerStats      []PlayerStatistics `json:"playerStats"`
+		TeamStats        [][]TeamStatistics `json:"teamStats"`
+	}{
+		FileHeader:       d.FileHeader,
+		SetupScript:      d.SetupScript,
+		WinningAllyTeams: winningAllyTeams,
+		PlayerStats:      d.PlayerStats,
+		TeamStats:        d.TeamStats,
+	})
 }
 
 // Read decompresses a demo file from reader into memory, parses and validates it.

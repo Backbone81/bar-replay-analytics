@@ -12,13 +12,13 @@ type PlayerStatistics struct {
 	TeamControllerStatistics
 
 	// MousePixels reports how many pixels the mouse has traversed in total.
-	MousePixels int32
+	MousePixels int32 `json:"mousePixels"`
 
 	// MouseClicks reports how many mouse clicks happened in total.
-	MouseClicks int32
+	MouseClicks int32 `json:"mouseClicks"`
 
 	// KeyPresses reports how many keyboard presses happened in total.
-	KeyPresses int32
+	KeyPresses int32 `json:"keyPresses"`
 }
 
 // ReadPlayerStatistics reads and validates a PlayerStatistics from the start of data.
