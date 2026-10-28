@@ -1,4 +1,4 @@
-// Package tdf reads start scripts (script.txt, and the start script in a demo file) in the TDF format, as the Recoil
+// Package tdf reads setup scripts (script.txt, and the setup script in a demo file) in the TDF format, as the Recoil
 // engine does in rts/System/TdfParser.cpp. The engine leaves the grammar to the Lua parser
 // cont/base/springcontent/gamedata/parse_tdf.lua; Parse accepts and rejects the same scripts and produces the same
 // names and values.

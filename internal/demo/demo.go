@@ -20,7 +20,7 @@ type Demo struct {
 	// FileHeader provides metadata about this file.
 	FileHeader DemoFileHeader `json:"fileHeader"`
 
-	// SetupScript provides the start script: map, game, players, teams, allyteams and AIs.
+	// SetupScript provides the setup script: map, game, players, teams, allyteams and AIs.
 	SetupScript string `json:"setupScript"`
 
 	// WinningAllyTeams provides the allyteams which have won, as the game's Lua passed them to Spring.GameOver: an
@@ -114,7 +114,7 @@ func parse(data []byte) (*Demo, error) {
 		return nil, err
 	}
 
-	setupScriptData, err := nextSection(buffer, "start script", fileHeader.ScriptSize)
+	setupScriptData, err := nextSection(buffer, "setup script", fileHeader.ScriptSize)
 	if err != nil {
 		return nil, err
 	}
@@ -182,13 +182,13 @@ func nextSection(buffer *bytes.Buffer, name string, size int32) ([]byte, error) 
 	return section, nil
 }
 
-// readSetupScript validates the start script. The engine strips trailing NULs before writing it.
+// readSetupScript validates the setup script. The engine strips trailing NULs before writing it.
 func readSetupScript(setupScriptData []byte) (string, error) {
 	if i := bytes.IndexByte(setupScriptData, 0); i >= 0 {
-		return "", fmt.Errorf("start script: NUL byte at offset %d", i)
+		return "", fmt.Errorf("setup script: NUL byte at offset %d", i)
 	}
 	if !utf8.Valid(setupScriptData) {
-		return "", errors.New("start script: not valid UTF-8")
+		return "", errors.New("setup script: not valid UTF-8")
 	}
 	return string(setupScriptData), nil
 }

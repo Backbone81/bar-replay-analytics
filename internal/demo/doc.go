@@ -4,7 +4,7 @@
 // A demo file is gzip-compressed. Decompressed, it holds these sections in this order:
 //
 //   - DemoFileHeader: the format version and the size of every following section.
-//   - Start script (scriptSize bytes): map, game, players, teams, allyteams and AIs.
+//   - Setup script (scriptSize bytes): map, game, players, teams, allyteams and AIs.
 //   - Demo stream (demoStreamSize bytes): the recorded network messages. This package skips it.
 //   - Winning allyteams (winningAllyTeamsSize bytes): one allyteam ID per byte.
 //   - Player statistics: numPlayers PlayerStatistics, indexed by player ID, spectators included.

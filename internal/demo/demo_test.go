@@ -110,7 +110,7 @@ var _ = Describe("Demo", func() {
 			Expect(result.TeamStats).To(Equal(testDemo.teamStats))
 		})
 
-		It("reads only header and start script if the engine crashed while recording", func() {
+		It("reads only header and setup script if the engine crashed while recording", func() {
 			testDemo := newTestDemo()
 			testDemo.winningAllyTeams = nil
 			testDemo.playerStats = nil
@@ -177,21 +177,21 @@ var _ = Describe("Demo", func() {
 			Entry("with a header size beyond the end of the file",
 				func(testDemo *testDemo) { testDemo.header.HeaderSize = math.MaxInt32 },
 				"DemoFileHeader: 2147483647 bytes"),
-			Entry("with a start script beyond the end of the file",
+			Entry("with a setup script beyond the end of the file",
 				func(testDemo *testDemo) { testDemo.header.ScriptSize = math.MaxInt32 },
-				"start script: 2147483647 bytes"),
-			Entry("with a NUL byte in the start script",
+				"setup script: 2147483647 bytes"),
+			Entry("with a NUL byte in the setup script",
 				func(testDemo *testDemo) {
 					testDemo.setupScript = "[game]\x00{}"
 					testDemo.updateSizes()
 				},
-				"start script: NUL byte at offset 6"),
-			Entry("with a start script that is not UTF-8",
+				"setup script: NUL byte at offset 6"),
+			Entry("with a setup script that is not UTF-8",
 				func(testDemo *testDemo) {
 					testDemo.setupScript = "[game]\xff{}"
 					testDemo.updateSizes()
 				},
-				"start script: not valid UTF-8"),
+				"setup script: not valid UTF-8"),
 			Entry("with a demo stream beyond the end of the file",
 				func(testDemo *testDemo) { testDemo.header.DemoStreamSize = math.MaxInt32 },
 				"demo stream: 2147483647 bytes"),

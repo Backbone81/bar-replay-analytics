@@ -76,13 +76,13 @@ func checkConsistent(t *testing.T, result *demo.Demo) {
 	t.Helper()
 	header := result.FileHeader
 	if len(result.SetupScript) != int(header.ScriptSize) {
-		t.Fatalf("start script: %d bytes, want scriptSize %d", len(result.SetupScript), header.ScriptSize)
+		t.Fatalf("setup script: %d bytes, want scriptSize %d", len(result.SetupScript), header.ScriptSize)
 	}
 	if strings.Contains(result.SetupScript, "\x00") {
-		t.Fatal("start script: contains a NUL byte")
+		t.Fatal("setup script: contains a NUL byte")
 	}
 	if !utf8.ValidString(result.SetupScript) {
-		t.Fatal("start script: not valid UTF-8")
+		t.Fatal("setup script: not valid UTF-8")
 	}
 
 	if header.DemoStreamSize == 0 {
@@ -127,7 +127,7 @@ func checkJSON(t *testing.T, result *demo.Demo) {
 }
 
 // checkRoundTrip checks that an accepted demo encodes back to data. The parser skips the header extension and the
-// demo stream, so they are taken from data. In a demo of a crashed engine, everything after the start script is
+// demo stream, so they are taken from data. In a demo of a crashed engine, everything after the setup script is
 // ignored, so it is taken from data too.
 func checkRoundTrip(t *testing.T, data []byte, result *demo.Demo) {
 	t.Helper()

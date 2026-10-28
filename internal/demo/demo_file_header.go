@@ -34,7 +34,7 @@ type DemoFileHeader struct {
 	// UnixTime is the Unix time when the game was started.
 	UnixTime uint64 `json:"unixTime"`
 
-	// ScriptSize is the size of the start script.
+	// ScriptSize is the size of the setup script.
 	ScriptSize int32 `json:"scriptSize"`
 
 	// DemoStreamSize is the size of the demo stream; 0 if the engine crashed while recording.
@@ -177,7 +177,7 @@ func (h *DemoFileHeader) validate() error {
 	return h.validateStatistics()
 }
 
-// validateGame checks the fields about the start script, the demo stream and the game's duration.
+// validateGame checks the fields about the setup script, the demo stream and the game's duration.
 func (h *DemoFileHeader) validateGame() error {
 	if h.ScriptSize <= 0 {
 		return fmt.Errorf("scriptSize: got %d, want > 0", h.ScriptSize)

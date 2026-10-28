@@ -115,7 +115,7 @@ var _ = Describe("Parse", func() {
 		})
 	})
 
-	It("parses a start script of a demo", func() {
+	It("parses a setup script of a demo", func() {
 		result, err := tdf.Parse(testScript)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -138,7 +138,7 @@ func nested(depth int) string {
 	return strings.Repeat("[a]{", depth) + strings.Repeat("}", depth)
 }
 
-// testScript is the start script of a demo of a 1v1 against BARb, as the engine writes it.
+// testScript is the setup script of a demo of a 1v1 against BARb, as the engine writes it.
 const testScript = `[game]
 {
 [allyteam1]
