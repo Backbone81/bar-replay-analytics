@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"encoding/binary"
 	"encoding/json"
-	"io"
 	"io/fs"
 	"math"
 	"os"
@@ -18,6 +17,18 @@ import (
 )
 
 var _ = Describe("Demo", func() {
+	// A low limit keeps the specs about it small. The test demos are far below it.
+	var maxDecompressedSizeBackup int64
+
+	BeforeEach(func() {
+		maxDecompressedSizeBackup = demo.MaxDecompressedSize
+		demo.MaxDecompressedSize = 4096
+	})
+
+	AfterEach(func() {
+		demo.MaxDecompressedSize = maxDecompressedSizeBackup
+	})
+
 	Context("Read", func() {
 		It("reads every section of a demo", func() {
 			testDemo := newTestDemo()
@@ -51,6 +62,20 @@ var _ = Describe("Demo", func() {
 			Expect(result.WinningAllyTeams).To(BeEmpty())
 			Expect(result.PlayerStats).To(BeEmpty())
 			Expect(result.TeamStats).To(BeEmpty())
+		})
+
+		It("reads winning allyteams listed twice or beyond numTeams", func() {
+			testDemo := newTestDemo()
+			testDemo.winningAllyTeams = []uint8{2, 2}
+			testDemo.updateSizes()
+
+			compressed, err := testDemo.compressed()
+			Expect(err).NotTo(HaveOccurred())
+
+			result, err := demo.Read(bytes.NewReader(compressed))
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.WinningAllyTeams).To(Equal([]uint8{2, 2}))
 		})
 
 		It("reads a team without statistics entries", func() {
@@ -122,20 +147,16 @@ var _ = Describe("Demo", func() {
 
 			_, err = demo.Read(bytes.NewReader(compressed))
 
-			Expect(err).To(MatchError(ContainSubstring("decompressing demo")))
+			Expect(err).To(MatchError(gzip.ErrChecksum))
 		})
 
 		It("rejects a demo larger than MaxDecompressedSize", func() {
-			// Compressing the zeros as a stream keeps the input small; Read still decompresses up to its limit.
-			var compressed bytes.Buffer
-			gzipWriter := gzip.NewWriter(&compressed)
-			_, err := io.Copy(gzipWriter, io.LimitReader(zeroReader{}, demo.MaxDecompressedSize+1))
+			compressed, err := compress(make([]byte, demo.MaxDecompressedSize+1))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(gzipWriter.Close()).To(Succeed())
 
-			_, err = demo.Read(&compressed)
+			_, err = demo.Read(bytes.NewReader(compressed))
 
-			Expect(err).To(MatchError(ContainSubstring("larger than")))
+			Expect(err).To(MatchError("reading demo: larger than 4096 bytes"))
 		})
 
 		DescribeTable("rejects an invalid demo",
@@ -182,15 +203,6 @@ var _ = Describe("Demo", func() {
 					testDemo.header.WinningAllyTeamsSize = 2
 				},
 				"winning allyteams: 2 bytes, but only 1 bytes left"),
-			Entry("with a winning allyteam not below the number of teams",
-				func(testDemo *testDemo) { testDemo.winningAllyTeams = []uint8{2} },
-				"winning allyteams: allyteam 2, want below numTeams 2"),
-			Entry("with a winning allyteam listed twice",
-				func(testDemo *testDemo) {
-					testDemo.winningAllyTeams = []uint8{1, 1}
-					testDemo.updateSizes()
-				},
-				"winning allyteams: allyteam 1 listed twice"),
 			Entry("with player statistics beyond the end of the file",
 				func(testDemo *testDemo) {
 					testDemo.teamStats = nil
@@ -254,7 +266,8 @@ var _ = Describe("Demo", func() {
 		})
 
 		It("rejects a demo larger than MaxDecompressedSize", func() {
-			Expect(demo.ReadUncompressed(io.LimitReader(zeroReader{}, demo.MaxDecompressedSize+1))).Error().To(HaveOccurred())
+			_, err := demo.ReadUncompressed(bytes.NewReader(make([]byte, demo.MaxDecompressedSize+1)))
+			Expect(err).To(MatchError("reading demo: larger than 4096 bytes"))
 		})
 	})
 

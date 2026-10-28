@@ -32,7 +32,7 @@ func newTestDemo() *testDemo {
 			WallclockTime:      1759,
 			PlayerStatElemSize: int32(binary.Size(demo.PlayerStatistics{})),
 			TeamStatElemSize:   int32(binary.Size(demo.TeamStatistics{})),
-			TeamStatPeriod:     demo.StatsPeriod,
+			TeamStatPeriod:     15,
 		},
 		setupScript:      "[game]\n{\n\tmapname=Argent Strata 1.1;\n}\n",
 		demoStream:       []byte{0, 0, 0, 0, 3, 0, 0, 0, 1, 2, 3},

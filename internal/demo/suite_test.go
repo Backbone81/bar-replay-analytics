@@ -11,11 +11,3 @@ func TestDemo(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Demo Suite")
 }
-
-// zeroReader reads an endless stream of zero bytes.
-type zeroReader struct{}
-
-func (zeroReader) Read(p []byte) (int, error) {
-	clear(p)
-	return len(p), nil
-}

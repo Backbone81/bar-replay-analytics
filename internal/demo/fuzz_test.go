@@ -92,7 +92,10 @@ func checkConsistent(t *testing.T, result *demo.Demo) {
 		return
 	}
 
-	checkWinningAllyTeams(t, result.WinningAllyTeams, header)
+	if len(result.WinningAllyTeams) != int(header.WinningAllyTeamsSize) {
+		t.Fatalf("winning allyteams: %d, want winningAllyTeamsSize %d", len(result.WinningAllyTeams),
+			header.WinningAllyTeamsSize)
+	}
 
 	if len(result.PlayerStats) != int(header.NumPlayers) {
 		t.Fatalf("player statistics: %d players, want numPlayers %d", len(result.PlayerStats), header.NumPlayers)
@@ -108,25 +111,6 @@ func checkConsistent(t *testing.T, result *demo.Demo) {
 					history[i].Frame, history[i-1].Frame)
 			}
 		}
-	}
-}
-
-// checkWinningAllyTeams checks that every winning allyteam is below numTeams and listed once.
-func checkWinningAllyTeams(t *testing.T, winningAllyTeams []uint8, header demo.DemoFileHeader) {
-	t.Helper()
-	if len(winningAllyTeams) != int(header.WinningAllyTeamsSize) {
-		t.Fatalf("winning allyteams: %d, want winningAllyTeamsSize %d", len(winningAllyTeams),
-			header.WinningAllyTeamsSize)
-	}
-	seen := make(map[uint8]bool)
-	for _, allyTeam := range winningAllyTeams {
-		if int32(allyTeam) >= header.NumTeams {
-			t.Fatalf("winning allyteams: allyteam %d, want below numTeams %d", allyTeam, header.NumTeams)
-		}
-		if seen[allyTeam] {
-			t.Fatalf("winning allyteams: allyteam %d listed twice", allyTeam)
-		}
-		seen[allyTeam] = true
 	}
 }
 

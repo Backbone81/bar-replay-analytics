@@ -29,7 +29,7 @@ type DemoFileHeader struct {
 	VersionString [256]byte `json:"versionString"`
 
 	// GameID is the unique game identifier. Identical for each player of the game.
-	GameID [16]byte `json:"gameId"`
+	GameID [16]byte `json:"gameID"` //nolint:tagliatelle
 
 	// UnixTime is the Unix time when the game was started.
 	UnixTime uint64 `json:"unixTime"`
@@ -109,7 +109,7 @@ func (h DemoFileHeader) MarshalJSON() ([]byte, error) {
 		Version              int32  `json:"version"`
 		HeaderSize           int32  `json:"headerSize"`
 		VersionString        string `json:"versionString"`
-		GameID               string `json:"gameId"`
+		GameID               string `json:"gameID"` //nolint:tagliatelle
 		UnixTime             uint64 `json:"unixTime"`
 		ScriptSize           int32  `json:"scriptSize"`
 		DemoStreamSize       int32  `json:"demoStreamSize"`
@@ -224,8 +224,8 @@ func (h *DemoFileHeader) validateStatistics() error {
 		return fmt.Errorf("teamStatElemSize: got %d, want %d", h.TeamStatElemSize, teamStatisticsSize)
 	}
 
-	if h.TeamStatPeriod != StatsPeriod {
-		return fmt.Errorf("teamStatPeriod: got %d, want %d", h.TeamStatPeriod, StatsPeriod)
+	if h.TeamStatPeriod <= 0 {
+		return fmt.Errorf("teamStatPeriod: got %d, want > 0", h.TeamStatPeriod)
 	}
 
 	if h.WinningAllyTeamsSize < 0 || h.WinningAllyTeamsSize > MaxTeams {

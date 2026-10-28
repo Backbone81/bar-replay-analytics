@@ -23,7 +23,9 @@ type Demo struct {
 	// SetupScript provides the start script: map, game, players, teams, allyteams and AIs.
 	SetupScript string `json:"setupScript"`
 
-	// WinningAllyTeams provides the teams which have won.
+	// WinningAllyTeams provides the allyteams which have won, as the game's Lua passed them to Spring.GameOver: an
+	// allyteam may be listed twice, and Gaia's allyteam is accepted as well. The header holds no allyteam count to
+	// check them against.
 	// Is nil if the engine crashed while recording the demo.
 	WinningAllyTeams []uint8 `json:"winningAllyTeams"`
 
@@ -72,14 +74,16 @@ func Read(reader io.Reader) (*Demo, error) {
 	return ReadUncompressed(gzipReader)
 }
 
+// ReadUncompressed reads an already decompressed demo file from reader into memory, parses and validates it.
+// Returns an error if validation fails.
 func ReadUncompressed(reader io.Reader) (*Demo, error) {
 	// We read one byte more than the max, so we can detect if there would have been more than the max number of bytes.
 	data, err := io.ReadAll(io.LimitReader(reader, MaxDecompressedSize+1))
 	if err != nil {
-		return nil, fmt.Errorf("decompressing demo: %w", err)
+		return nil, fmt.Errorf("reading demo: %w", err)
 	}
-	if len(data) > MaxDecompressedSize {
-		return nil, fmt.Errorf("decompressing demo: larger than %d bytes", MaxDecompressedSize)
+	if int64(len(data)) > MaxDecompressedSize {
+		return nil, fmt.Errorf("reading demo: larger than %d bytes", MaxDecompressedSize)
 	}
 	return parse(data)
 }
@@ -134,10 +138,9 @@ func parse(data []byte) (*Demo, error) {
 	if err != nil {
 		return nil, err
 	}
-	winningAllyTeams, err := readWinningAllyTeams(winningAllyTeamsData, fileHeader.NumTeams)
-	if err != nil {
-		return nil, err
-	}
+	// Copied, so the Demo does not keep the whole decompressed file in memory.
+	winningAllyTeams := make([]uint8, len(winningAllyTeamsData))
+	copy(winningAllyTeams, winningAllyTeamsData)
 
 	playerStatsData, err := nextSection(buffer, "player statistics", fileHeader.PlayerStatSize)
 	if err != nil {
@@ -190,24 +193,6 @@ func readSetupScript(setupScriptData []byte) (string, error) {
 	return string(setupScriptData), nil
 }
 
-// readWinningAllyTeams reads one allyteam ID per byte. An allyteam has at least one team, so every ID is below
-// numTeams.
-func readWinningAllyTeams(winningAllyTeamsData []byte, numTeams int32) ([]uint8, error) {
-	winners := make([]uint8, 0, len(winningAllyTeamsData))
-	seen := make(map[uint8]bool, len(winningAllyTeamsData))
-	for _, allyTeam := range winningAllyTeamsData {
-		if int32(allyTeam) >= numTeams {
-			return nil, fmt.Errorf("winning allyteams: allyteam %d, want below numTeams %d", allyTeam, numTeams)
-		}
-		if seen[allyTeam] {
-			return nil, fmt.Errorf("winning allyteams: allyteam %d listed twice", allyTeam)
-		}
-		seen[allyTeam] = true
-		winners = append(winners, allyTeam)
-	}
-	return winners, nil
-}
-
 // readPlayerStatistics reads numPlayers PlayerStatistics. The header validation made len(data) match numPlayers.
 func readPlayerStatistics(playerStatsData []byte, numPlayers int) ([]PlayerStatistics, error) {
 	stats := make([]PlayerStatistics, numPlayers)
@@ -221,6 +206,9 @@ func readPlayerStatistics(playerStatsData []byte, numPlayers int) ([]PlayerStati
 }
 
 // readTeamStatistics reads the number of TeamStatistics per team (one uint32 each), then each team's history.
+//
+// This follows the writer, CDemoRecorder::WriteTeamStats. The engine's reader, CDemoReader::LoadStats, reads only
+// numTeams bytes of counts instead of numTeams uint32s, so its team statistics are wrong in every demo with a team.
 func readTeamStatistics(teamStatsData []byte, numTeams int) ([][]TeamStatistics, error) {
 	countsSize := numTeams * 4
 	if len(teamStatsData) < countsSize {

@@ -11,7 +11,9 @@ import (
 //
 // Defined in the Recoil engine source: rts/Sim/Misc/TeamStatistics.h.
 type TeamStatistics struct {
-	// Frame is the game frame this entry was recorded at (GAME_SPEED is 30 frames per second).
+	// Frame is the game frame this entry was recorded at (GAME_SPEED is 30 frames per second). The last entry is the
+	// exception: it holds the totals at the end of the game, but its frame is the one the next entry would have been
+	// recorded at, up to teamStatPeriod seconds after the end. See CTeam::SlowUpdate in rts/Sim/Misc/Team.cpp.
 	Frame int32 `json:"frame"`
 
 	// MetalUsed is the metal this team has spent.
