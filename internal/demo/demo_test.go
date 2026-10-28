@@ -229,6 +229,35 @@ var _ = Describe("Demo", func() {
 		)
 	})
 
+	Context("ReadUncompressed", func() {
+		It("reads every section of a decompressed demo", func() {
+			testDemo := newTestDemo()
+
+			data, err := testDemo.encode()
+			Expect(err).NotTo(HaveOccurred())
+
+			result, err := demo.ReadUncompressed(bytes.NewReader(data))
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.FileHeader).To(Equal(testDemo.header))
+			Expect(result.SetupScript).To(Equal(testDemo.setupScript))
+			Expect(result.WinningAllyTeams).To(Equal(testDemo.winningAllyTeams))
+			Expect(result.PlayerStats).To(Equal(testDemo.playerStats))
+			Expect(result.TeamStats).To(Equal(testDemo.teamStats))
+		})
+
+		It("rejects a gzip-compressed demo", func() {
+			compressed, err := newTestDemo().compressed()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(demo.ReadUncompressed(bytes.NewReader(compressed))).Error().To(HaveOccurred())
+		})
+
+		It("rejects a demo larger than MaxDecompressedSize", func() {
+			Expect(demo.ReadUncompressed(io.LimitReader(zeroReader{}, demo.MaxDecompressedSize+1))).Error().To(HaveOccurred())
+		})
+	})
+
 	Context("ReadFile", func() {
 		It("reads a demo file", func() {
 			testDemo := newTestDemo()

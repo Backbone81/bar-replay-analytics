@@ -69,8 +69,12 @@ func Read(reader io.Reader) (*Demo, error) {
 	}
 	defer gzipReader.Close() //nolint:errcheck
 
+	return ReadUncompressed(gzipReader)
+}
+
+func ReadUncompressed(reader io.Reader) (*Demo, error) {
 	// We read one byte more than the max, so we can detect if there would have been more than the max number of bytes.
-	data, err := io.ReadAll(io.LimitReader(gzipReader, MaxDecompressedSize+1))
+	data, err := io.ReadAll(io.LimitReader(reader, MaxDecompressedSize+1))
 	if err != nil {
 		return nil, fmt.Errorf("decompressing demo: %w", err)
 	}
