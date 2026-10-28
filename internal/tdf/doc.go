@@ -42,7 +42,7 @@
 // The order of elements is not kept: the engine keeps them in hash maps, so the order carries no meaning. Iterating a
 // Section yields names in sorted order.
 //
-// Values and sections are looked up by a path of names separated by PathSeparator, the way the engine looks them up:
-// Value(`game\ai0\options\profile`). Lookups ignore case. A name containing the separator cannot be looked up by path,
-// but is still yielded when iterating.
+// Values and sections are looked up by a location, names separated by LocationSeparator, the way the engine looks them
+// up: Value(`game\ai0\options\profile`). Lookups ignore case. A name containing the separator cannot be looked up by
+// location, but is still yielded when iterating.
 package tdf

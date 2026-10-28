@@ -126,10 +126,10 @@ var _ = Describe("Parse", func() {
 	})
 })
 
-// valueAt returns the value at path in section and expects it to be there.
-func valueAt(section *tdf.Section, path string) tdf.Value {
-	value, ok := section.Value(path)
-	ExpectWithOffset(1, ok).To(BeTrue(), "value at %s", path)
+// valueAt returns the value at location in section and expects it to be there.
+func valueAt(section *tdf.Section, location string) tdf.Value {
+	value, ok := section.Value(location)
+	ExpectWithOffset(1, ok).To(BeTrue(), "value at %s", location)
 	return value
 }
 

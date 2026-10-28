@@ -48,8 +48,8 @@ var _ = Describe("Section", func() {
 		})
 
 		DescribeTable("returns false for",
-			func(path string) {
-				value, ok := script.Value(path)
+			func(location string) {
+				value, ok := script.Value(location)
 
 				Expect(ok).To(BeFalse())
 				Expect(value).To(BeEmpty())
@@ -57,7 +57,7 @@ var _ = Describe("Section", func() {
 			Entry("a missing value", `game\missing`),
 			Entry("a value in a missing section", `missing\mapname`),
 			Entry("a section", `game\player0`),
-			Entry("an empty path", ``),
+			Entry("an empty location", ``),
 			Entry("an empty name", `game\`),
 			Entry("an empty name in between", `game\\mapname`),
 			Entry("a name containing the separator", `a\b\c`),
@@ -84,13 +84,13 @@ var _ = Describe("Section", func() {
 		})
 
 		DescribeTable("returns nil for",
-			func(path string) {
-				Expect(script.Section(path)).To(BeNil())
+			func(location string) {
+				Expect(script.Section(location)).To(BeNil())
 			},
 			Entry("a missing section", `game\missing`),
 			Entry("a section in a missing section", `missing\ai0`),
 			Entry("a value", `game\mapname`),
-			Entry("an empty path", ``),
+			Entry("an empty location", ``),
 			Entry("a name containing the separator", `a\b`),
 		)
 
@@ -181,13 +181,25 @@ var _ = Describe("Section", func() {
 			Expect(encoded).To(MatchJSON(`{"shortname":"BARb","options":{"profile":"Hard"}}`))
 		})
 
-		It("writes a nil section as an empty object", func() {
-			var section *tdf.Section
+		It("writes a section held by value", func() {
+			holder := struct {
+				Script tdf.Section `json:"script"`
+			}{Script: *script.Section(`game\ai0`)}
 
-			encoded, err := section.MarshalJSON()
+			encoded, err := json.Marshal(holder)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(encoded).To(MatchJSON(`{}`))
+			Expect(encoded).To(MatchJSON(`{"script":{"shortname":"BARb","options":{"profile":"Hard"}}}`))
+		})
+
+		It("writes an empty section as an empty object", func() {
+			Expect(json.Marshal(tdf.Section{})).To(MatchJSON(`{}`))
+		})
+
+		It("writes a nil section as null", func() {
+			var section *tdf.Section
+
+			Expect(json.Marshal(section)).To(MatchJSON(`null`))
 		})
 	})
 
@@ -221,6 +233,24 @@ var _ = Describe("Section", func() {
 			Expect(json.Unmarshal([]byte(`{"a":"x"}`), result)).To(Succeed())
 
 			Expect(json.Marshal(result)).To(MatchJSON(`{"a":"x"}`))
+		})
+
+		It("leaves a section held by value unchanged for null", func() {
+			holder := struct {
+				Script tdf.Section `json:"script"`
+			}{Script: *script.Section(`game\ai0`)}
+
+			Expect(json.Unmarshal([]byte(`{"script":null}`), &holder)).To(Succeed())
+
+			Expect(valueAt(&holder.Script, "shortname")).To(Equal(tdf.Value("BARb")))
+		})
+
+		It("rejects data after the object", func() {
+			var result tdf.Section
+
+			err := result.UnmarshalJSON([]byte(`{"a":"x"} {}`))
+
+			Expect(err).To(MatchError("data after the JSON object"))
 		})
 
 		DescribeTable("rejects",
