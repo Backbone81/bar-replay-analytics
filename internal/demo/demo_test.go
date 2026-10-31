@@ -135,9 +135,7 @@ var _ = Describe("Demo", func() {
 			data, err := newTestDemo().encode()
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = demo.Read(bytes.NewReader(data))
-
-			Expect(err).To(MatchError(ContainSubstring("decompressing demo")))
+			Expect(demo.Read(bytes.NewReader(data))).Error().To(MatchError(ContainSubstring("decompressing demo")))
 		})
 
 		It("rejects a gzip stream with a broken checksum", func() {
@@ -145,18 +143,14 @@ var _ = Describe("Demo", func() {
 			Expect(err).NotTo(HaveOccurred())
 			compressed[len(compressed)-8] ^= 0xff // The CRC-32 is in the gzip trailer's first 4 of 8 bytes.
 
-			_, err = demo.Read(bytes.NewReader(compressed))
-
-			Expect(err).To(MatchError(gzip.ErrChecksum))
+			Expect(demo.Read(bytes.NewReader(compressed))).Error().To(MatchError(gzip.ErrChecksum))
 		})
 
 		It("rejects a demo larger than MaxDecompressedSize", func() {
 			compressed, err := compress(make([]byte, demo.MaxDecompressedSize+1))
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = demo.Read(bytes.NewReader(compressed))
-
-			Expect(err).To(MatchError("reading demo: larger than 4096 bytes"))
+			Expect(demo.Read(bytes.NewReader(compressed))).Error().To(MatchError("reading demo: larger than 4096 bytes"))
 		})
 
 		DescribeTable("rejects an invalid demo",
@@ -167,9 +161,7 @@ var _ = Describe("Demo", func() {
 				compressed, err := testDemo.compressed()
 				Expect(err).NotTo(HaveOccurred())
 
-				_, err = demo.Read(bytes.NewReader(compressed))
-
-				Expect(err).To(MatchError(ContainSubstring(expectedError)))
+				Expect(demo.Read(bytes.NewReader(compressed))).Error().To(MatchError(ContainSubstring(expectedError)))
 			},
 			Entry("with an invalid header",
 				func(testDemo *testDemo) { testDemo.header.Version = 4 },
@@ -266,8 +258,8 @@ var _ = Describe("Demo", func() {
 		})
 
 		It("rejects a demo larger than MaxDecompressedSize", func() {
-			_, err := demo.ReadUncompressed(bytes.NewReader(make([]byte, demo.MaxDecompressedSize+1)))
-			Expect(err).To(MatchError("reading demo: larger than 4096 bytes"))
+			Expect(demo.ReadUncompressed(bytes.NewReader(make([]byte, demo.MaxDecompressedSize+1)))).Error().To(
+				MatchError("reading demo: larger than 4096 bytes"))
 		})
 	})
 
@@ -287,18 +279,14 @@ var _ = Describe("Demo", func() {
 		})
 
 		It("returns the error of a file that cannot be opened", func() {
-			_, err := demo.ReadFile(filepath.Join(GinkgoT().TempDir(), "missing.sdfz"))
-
-			Expect(err).To(MatchError(fs.ErrNotExist))
+			Expect(demo.ReadFile(filepath.Join(GinkgoT().TempDir(), "missing.sdfz"))).Error().To(MatchError(fs.ErrNotExist))
 		})
 
 		It("returns the error of an invalid demo file", func() {
 			filePath := filepath.Join(GinkgoT().TempDir(), "invalid.sdfz")
 			Expect(os.WriteFile(filePath, []byte("not a demo"), 0o600)).To(Succeed())
 
-			_, err := demo.ReadFile(filePath)
-
-			Expect(err).To(MatchError(ContainSubstring("decompressing demo")))
+			Expect(demo.ReadFile(filePath)).Error().To(MatchError(ContainSubstring("decompressing demo")))
 		})
 	})
 

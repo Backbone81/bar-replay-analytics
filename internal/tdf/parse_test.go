@@ -103,15 +103,11 @@ var _ = Describe("Parse", func() {
 		})
 
 		It("accepts sections nested MaxDepth deep", func() {
-			_, err := tdf.Parse(nested(3))
-
-			Expect(err).NotTo(HaveOccurred())
+			Expect(tdf.Parse(nested(3))).Error().NotTo(HaveOccurred())
 		})
 
 		It("rejects sections nested deeper than MaxDepth", func() {
-			_, err := tdf.Parse(nested(4))
-
-			Expect(err).To(MatchError(`line 1: section "a": nested deeper than 3 sections`))
+			Expect(tdf.Parse(nested(4))).Error().To(MatchError(`line 1: section "a": nested deeper than 3 sections`))
 		})
 	})
 

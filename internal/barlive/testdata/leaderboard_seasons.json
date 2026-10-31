@@ -1,0 +1,29 @@
+[
+  {
+    "season": 1,
+    "game_types": [
+      "Small Team",
+      "Large Team",
+      "Duel",
+      "FFA"
+    ]
+  },
+  {
+    "season": 2,
+    "game_types": [
+      "Small Team",
+      "Large Team",
+      "Duel",
+      "FFA"
+    ]
+  },
+  {
+    "season": 3,
+    "game_types": [
+      "Small Team",
+      "Large Team",
+      "Duel",
+      "FFA"
+    ]
+  }
+]

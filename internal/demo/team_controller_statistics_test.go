@@ -28,9 +28,8 @@ var _ = Describe("TeamControllerStatistics", func() {
 		})
 
 		It("rejects data shorter than the statistics", func() {
-			_, err := demo.ReadTeamControllerStatistics(make([]byte, 7))
-
-			Expect(err).To(MatchError(ContainSubstring("reading TeamControllerStatistics")))
+			Expect(demo.ReadTeamControllerStatistics(make([]byte, 7))).Error().To(
+				MatchError(ContainSubstring("reading TeamControllerStatistics")))
 		})
 
 		DescribeTable("rejects a negative field",
@@ -38,9 +37,8 @@ var _ = Describe("TeamControllerStatistics", func() {
 				data, err := encodeValue(stats)
 				Expect(err).NotTo(HaveOccurred())
 
-				_, err = demo.ReadTeamControllerStatistics(data)
-
-				Expect(err).To(MatchError(ContainSubstring("invalid TeamControllerStatistics: " + expectedError)))
+				Expect(demo.ReadTeamControllerStatistics(data)).Error().To(
+					MatchError(ContainSubstring("invalid TeamControllerStatistics: " + expectedError)))
 			},
 			Entry("numCommands", demo.TeamControllerStatistics{NumCommands: -1}, "numCommands"),
 			Entry("unitCommands", demo.TeamControllerStatistics{UnitCommands: -1}, "unitCommands"),

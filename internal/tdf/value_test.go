@@ -25,9 +25,7 @@ var _ = Describe("Value", func() {
 
 		DescribeTable("rejects",
 			func(value tdf.Value, expectedError string) {
-				_, err := value.AsInt()
-
-				Expect(err).To(MatchError(expectedError))
+				Expect(value.AsInt()).Error().To(MatchError(expectedError))
 			},
 			Entry("an empty value", tdf.Value(""), `"" is not an integer: invalid syntax`),
 			Entry("trailing text", tdf.Value("12abc"), `"12abc" is not an integer: invalid syntax`),
@@ -51,9 +49,7 @@ var _ = Describe("Value", func() {
 
 		DescribeTable("rejects",
 			func(value tdf.Value, expectedError string) {
-				_, err := value.AsFloat()
-
-				Expect(err).To(MatchError(expectedError))
+				Expect(value.AsFloat()).Error().To(MatchError(expectedError))
 			},
 			Entry("an empty value", tdf.Value(""), `"" is not a number: invalid syntax`),
 			Entry("several numbers", tdf.Value("0.99609375 0.546875 0"),
@@ -75,9 +71,7 @@ var _ = Describe("Value", func() {
 
 		DescribeTable("rejects",
 			func(value tdf.Value) {
-				_, err := value.AsBool()
-
-				Expect(err).To(MatchError(`"` + string(value) + `" is not a boolean, want "0" or "1"`))
+				Expect(value.AsBool()).Error().To(MatchError(`"` + string(value) + `" is not a boolean, want "0" or "1"`))
 			},
 			Entry("an empty value", tdf.Value("")),
 			Entry("true", tdf.Value("true")),

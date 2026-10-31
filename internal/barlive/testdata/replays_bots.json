@@ -1,0 +1,36 @@
+{
+  "totalResults": -1,
+  "page": 1,
+  "limit": 1,
+  "data": [
+    {
+      "id": "00000000000000000000000000000002",
+      "startTime": "2026-10-28T16:27:53.000Z",
+      "durationMs": 2254333,
+      "Map": {
+        "fileName": "aethermoor_creek_1.0",
+        "scriptName": "Aethermoor Creek 1.0"
+      },
+      "AllyTeams": [
+        {
+          "winningTeam": true,
+          "Players": [],
+          "AIs": [
+            {
+              "shortName": "BARb"
+            }
+          ]
+        },
+        {
+          "winningTeam": false,
+          "Players": [
+            {
+              "name": "Player301"
+            }
+          ],
+          "AIs": []
+        }
+      ]
+    }
+  ]
+}

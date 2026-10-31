@@ -55,15 +55,11 @@ var _ = Describe("TeamStatistics", func() {
 			data, err := encodeValue(stats)
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = demo.ReadTeamStatistics(data)
-
-			Expect(err).NotTo(HaveOccurred())
+			Expect(demo.ReadTeamStatistics(data)).Error().NotTo(HaveOccurred())
 		})
 
 		It("rejects data shorter than the statistics", func() {
-			_, err := demo.ReadTeamStatistics(make([]byte, 79))
-
-			Expect(err).To(MatchError(ContainSubstring("reading TeamStatistics")))
+			Expect(demo.ReadTeamStatistics(make([]byte, 79))).Error().To(MatchError(ContainSubstring("reading TeamStatistics")))
 		})
 
 		DescribeTable("rejects an invalid field",
@@ -74,9 +70,8 @@ var _ = Describe("TeamStatistics", func() {
 				data, err := encodeValue(stats)
 				Expect(err).NotTo(HaveOccurred())
 
-				_, err = demo.ReadTeamStatistics(data)
-
-				Expect(err).To(MatchError(ContainSubstring("invalid TeamStatistics: " + expectedError)))
+				Expect(demo.ReadTeamStatistics(data)).Error().To(
+					MatchError(ContainSubstring("invalid TeamStatistics: " + expectedError)))
 			},
 			Entry("negative frame", func(stats *demo.TeamStatistics) { stats.Frame = -1 }, "frame"),
 			Entry("NaN metalUsed",

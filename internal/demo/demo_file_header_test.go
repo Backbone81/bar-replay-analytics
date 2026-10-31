@@ -36,18 +36,15 @@ var _ = Describe("DemoFileHeader", func() {
 			data, err := encodeValue(header)
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = demo.ReadDemoFileHeader(data)
-
-			Expect(err).NotTo(HaveOccurred())
+			Expect(demo.ReadDemoFileHeader(data)).Error().NotTo(HaveOccurred())
 		})
 
 		It("rejects data shorter than the header", func() {
 			data, err := encodeValue(newTestDemo().header)
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = demo.ReadDemoFileHeader(data[:len(data)-1])
-
-			Expect(err).To(MatchError(ContainSubstring("reading DemoFileHeader")))
+			Expect(demo.ReadDemoFileHeader(data[:len(data)-1])).Error().To(
+				MatchError(ContainSubstring("reading DemoFileHeader")))
 		})
 
 		DescribeTable("rejects an invalid field",
@@ -58,9 +55,8 @@ var _ = Describe("DemoFileHeader", func() {
 				data, err := encodeValue(header)
 				Expect(err).NotTo(HaveOccurred())
 
-				_, err = demo.ReadDemoFileHeader(data)
-
-				Expect(err).To(MatchError(ContainSubstring("invalid DemoFileHeader: " + expectedError)))
+				Expect(demo.ReadDemoFileHeader(data)).Error().To(
+					MatchError(ContainSubstring("invalid DemoFileHeader: " + expectedError)))
 			},
 			Entry("magic",
 				func(header *demo.DemoFileHeader) { header.Magic[0] = 'x' },

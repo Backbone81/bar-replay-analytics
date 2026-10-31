@@ -1,0 +1,5 @@
+{
+  "statusCode": 400,
+  "error": "Bad Request",
+  "message": "querystring.preset[0] should be equal to constant, querystring.preset[0] should be equal to constant, querystring.preset[0] should be equal to constant, querystring.preset[0] should match some schema in anyOf"
+}
