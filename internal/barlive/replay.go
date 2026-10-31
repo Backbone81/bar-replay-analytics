@@ -7,6 +7,16 @@ import (
 	"time"
 )
 
+// ReplayPreset is the kind of game, see Replay.Preset.
+type ReplayPreset string
+
+// The presets bar-db knows.
+const (
+	ReplayPresetDuel ReplayPreset = "duel"
+	ReplayPresetTeam ReplayPreset = "team"
+	ReplayPresetFFA  ReplayPreset = "ffa"
+)
+
 // Replay is a replay as bar-db stores it, without the chat log. bar-db reads it from the replay file: most fields
 // mirror the replay's setup script and statistics.
 //
@@ -333,19 +343,19 @@ type Award struct {
 }
 
 // Replay returns the replay with the given ID, see ReplaySummary.ID.
-func (c *Client) Replay(ctx context.Context, id string) (Replay, error) {
+func (c *Client) Replay(ctx context.Context, id string) (*Replay, error) {
 	if id == "" {
-		return Replay{}, errors.New("replay ID is empty")
+		return nil, errors.New("replay ID is empty")
 	}
 
 	replayURL, err := url.JoinPath(c.config.ReplayAPIURL, "/replays/", url.PathEscape(id))
 	if err != nil {
-		return Replay{}, err
+		return nil, err
 	}
 
 	var replay Replay
 	if err := c.getJSON(ctx, replayURL, &replay); err != nil {
-		return Replay{}, err
+		return nil, err
 	}
-	return replay, nil
+	return &replay, nil
 }

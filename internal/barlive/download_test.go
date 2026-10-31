@@ -115,6 +115,8 @@ var _ = Describe("DownloadDemo", func() {
 			Expect(server.recorded()).To(BeEmpty())
 		},
 		Entry("empty", ""),
+		Entry("current directory", "."),
+		Entry("parent directory", ".."),
 		Entry("path", "demos/a.sdfz"),
 		Entry("parent path", "../a.sdfz"),
 		Entry("absolute path", "/tmp/a.sdfz"),

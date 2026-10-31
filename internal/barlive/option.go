@@ -6,7 +6,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// Option describes what makes up an option.
+// Option changes the Config a Client is created with.
 type Option func(config *Config)
 
 // WithTransport sets Config.Transport.
@@ -37,7 +37,7 @@ func WithStorageURL(storageURL string) Option {
 	}
 }
 
-// WithMaxRequestRate sets Config.MaxRequestRate.
+// WithMaxRequestRate sets Config.MaxRequestRate. Zero means no limit.
 func WithMaxRequestRate(limit rate.Limit) Option {
 	return func(config *Config) {
 		config.MaxRequestRate = limit

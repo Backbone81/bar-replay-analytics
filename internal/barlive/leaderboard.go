@@ -2,6 +2,7 @@ package barlive
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"strconv"
 )
@@ -28,7 +29,9 @@ type Leaderboard struct {
 	// Name is the game type, see the GameType constants.
 	Name string `json:"name"`
 
-	// Players holds the top 100 players ordered descending.
+	// Players holds at most the 100 best players ordered by Rating descending. Teiserver lists only players whose rating
+	// changed in the 35 days before now (for the current season) or before the season's last rating change (for an
+	// earlier season), so the list may be shorter.
 	Players []LeaderboardPlayer `json:"players"`
 }
 
@@ -46,27 +49,31 @@ type LeaderboardPlayer struct {
 
 // LeaderboardSeasons returns the seasons for which Teiserver has leaderboards ordered ascending.
 func (c *Client) LeaderboardSeasons(ctx context.Context) ([]LeaderboardSeason, error) {
-	leaderboardUrl, err := url.JoinPath(c.config.TeiserverURL, "/teiserver/api/public/leaderboard")
+	leaderboardURL, err := url.JoinPath(c.config.TeiserverURL, "/teiserver/api/public/leaderboard")
 	if err != nil {
 		return nil, err
 	}
 
 	var seasons []LeaderboardSeason
-	if err := c.getJSON(ctx, leaderboardUrl, &seasons); err != nil {
+	if err := c.getJSON(ctx, leaderboardURL, &seasons); err != nil {
 		return nil, err
 	}
 	return seasons, nil
 }
 
-// Leaderboards returns the leaderboard of each game type in season.
+// Leaderboards returns the leaderboard of each game type in season, which starts at 1.
 func (c *Client) Leaderboards(ctx context.Context, season int) ([]Leaderboard, error) {
-	seasonUrl, err := url.JoinPath(c.config.TeiserverURL, "/teiserver/api/public/leaderboard/", strconv.Itoa(season))
+	if season <= 0 {
+		return nil, fmt.Errorf("season: got %d, want >= 1", season)
+	}
+
+	seasonURL, err := url.JoinPath(c.config.TeiserverURL, "/teiserver/api/public/leaderboard/", strconv.Itoa(season))
 	if err != nil {
 		return nil, err
 	}
 
 	var leaderboards []Leaderboard
-	if err := c.getJSON(ctx, seasonUrl, &leaderboards); err != nil {
+	if err := c.getJSON(ctx, seasonURL, &leaderboards); err != nil {
 		return nil, err
 	}
 	return leaderboards, nil

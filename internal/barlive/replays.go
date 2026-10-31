@@ -9,16 +9,6 @@ import (
 	"time"
 )
 
-// ReplayPreset is the kind of game, see Replay.Preset.
-type ReplayPreset string
-
-// The presets bar-db knows.
-const (
-	ReplayPresetDuel ReplayPreset = "duel"
-	ReplayPresetTeam ReplayPreset = "team"
-	ReplayPresetFFA  ReplayPreset = "ffa"
-)
-
 // MaxReplaysLimit is the largest ReplaysQuery.Limit bar-db accepts.
 const MaxReplaysLimit = 100
 
@@ -35,8 +25,8 @@ type ReplaysQuery struct {
 	// Limit is the number of replays per page, at most MaxReplaysLimit. Zero selects bar-db's default of 24.
 	Limit int
 
-	// Presets selects replays of any of these presets.
-	Presets []ReplayPreset
+	// Preset selects replays of any of these presets.
+	Preset []ReplayPreset
 
 	// EndedNormally selects replays of games which ended normally (true) or were aborted (false).
 	EndedNormally *bool
@@ -55,15 +45,16 @@ type ReplaysQuery struct {
 	// Maps selects replays on any of these maps, by Map.ScriptName.
 	Maps []string
 
-	// Dates selects replays of games which started in this range, or nil for any date.
-	Dates *DateRange
+	// Date selects replays of games which started in this range, or nil for any date.
+	Date *DateRange
 
-	// Durations selects replays of games whose Replay.DurationMs lies in this range, or nil for any duration.
-	Durations *DurationRange
+	// DurationRange selects replays of games whose Replay.DurationMs lies in this range, or nil for any duration.
+	// bar-db names it durationRangeMins, as it receives minutes.
+	DurationRange *DurationRange
 
-	// TrueSkills selects replays in which every player's Player.TrueSkill lies in this range, or nil for any skill.
+	// TSRange selects replays in which every player's Player.TrueSkill lies in this range, or nil for any skill.
 	// Current replays have no TrueSkill, so this selects only old ones.
-	TrueSkills *TrueSkillRange
+	TSRange *TrueSkillRange
 
 	// ComputeTotalResults makes bar-db count all selected replays into ReplaysPage.TotalResults.
 	ComputeTotalResults bool
@@ -93,7 +84,7 @@ type TrueSkillRange struct {
 }
 
 // Values returns the query as bar-db expects it: a list repeats its key, a range is a list of two values.
-func (q *ReplaysQuery) Values() url.Values {
+func (q ReplaysQuery) Values() url.Values {
 	values := make(url.Values)
 	if q.Page != 0 {
 		values.Set("page", strconv.Itoa(q.Page))
@@ -101,7 +92,7 @@ func (q *ReplaysQuery) Values() url.Values {
 	if q.Limit != 0 {
 		values.Set("limit", strconv.Itoa(q.Limit))
 	}
-	for _, preset := range q.Presets {
+	for _, preset := range q.Preset {
 		values.Add("preset", string(preset))
 	}
 	if q.EndedNormally != nil {
@@ -119,22 +110,22 @@ func (q *ReplaysQuery) Values() url.Values {
 	for _, mapName := range q.Maps {
 		values.Add("maps", mapName)
 	}
-	if q.Dates != nil {
+	if q.Date != nil {
 		// bar-db selects the games which started from the midnight of the first date to the midnight of the second.
-		lastDay := q.Dates.To
+		lastDay := q.Date.To
 		if lastDay.IsZero() {
-			lastDay = q.Dates.From
+			lastDay = q.Date.From
 		}
-		values.Add("date", q.Dates.From.Format(dateLayout))
+		values.Add("date", q.Date.From.Format(dateLayout))
 		values.Add("date", lastDay.AddDate(0, 0, 1).Format(dateLayout))
 	}
-	if q.Durations != nil {
-		values.Add("durationRangeMins", strconv.FormatFloat(q.Durations.Min.Minutes(), 'f', -1, 64))
-		values.Add("durationRangeMins", strconv.FormatFloat(q.Durations.Max.Minutes(), 'f', -1, 64))
+	if q.DurationRange != nil {
+		values.Add("durationRangeMins", strconv.FormatFloat(q.DurationRange.Min.Minutes(), 'f', -1, 64))
+		values.Add("durationRangeMins", strconv.FormatFloat(q.DurationRange.Max.Minutes(), 'f', -1, 64))
 	}
-	if q.TrueSkills != nil {
-		values.Add("tsRange", strconv.FormatFloat(q.TrueSkills.Min, 'f', -1, 64))
-		values.Add("tsRange", strconv.FormatFloat(q.TrueSkills.Max, 'f', -1, 64))
+	if q.TSRange != nil {
+		values.Add("tsRange", strconv.FormatFloat(q.TSRange.Min, 'f', -1, 64))
+		values.Add("tsRange", strconv.FormatFloat(q.TSRange.Max, 'f', -1, 64))
 	}
 	if q.ComputeTotalResults {
 		values.Set("computeTotalResults", "true")
@@ -205,17 +196,20 @@ func (c *Client) Replays(ctx context.Context, query ReplaysQuery) (*ReplaysPage,
 }
 
 // AllReplays returns every replay selected by query, newest first, from query.Page on. It requests one page after the
-// other as the caller iterates, and stops after the first error, which it yields with a zero ReplaySummary.
+// other as the caller iterates, and stops after the first error, which it yields with a zero ReplaySummary. Each
+// iteration starts again at query.Page.
 //
 // The pages are requested one at a time, so a replay may be returned twice or skipped if bar-db stores a new replay
 // while the caller iterates.
 func (c *Client) AllReplays(ctx context.Context, query ReplaysQuery) iter.Seq2[ReplaySummary, error] {
 	return func(yield func(ReplaySummary, error) bool) {
-		if query.Page == 0 {
-			query.Page = 1
+		// Each iteration pages through its own copy, so the next one starts at query.Page again.
+		pageQuery := query
+		if pageQuery.Page == 0 {
+			pageQuery.Page = 1
 		}
 		for {
-			page, err := c.Replays(ctx, query)
+			page, err := c.Replays(ctx, pageQuery)
 			if err != nil {
 				yield(ReplaySummary{}, err)
 				return
@@ -229,7 +223,7 @@ func (c *Client) AllReplays(ctx context.Context, query ReplaysQuery) iter.Seq2[R
 			if len(page.Data) == 0 || len(page.Data) < page.Limit {
 				return
 			}
-			query.Page++
+			pageQuery.Page++
 		}
 	}
 }

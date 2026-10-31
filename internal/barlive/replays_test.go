@@ -31,18 +31,18 @@ var _ = Describe("Replays", func() {
 			query := barlive.ReplaysQuery{
 				Page:          2,
 				Limit:         50,
-				Presets:       []barlive.ReplayPreset{barlive.ReplayPresetDuel, barlive.ReplayPresetFFA},
+				Preset:        []barlive.ReplayPreset{barlive.ReplayPresetDuel, barlive.ReplayPresetFFA},
 				EndedNormally: &endedNormally,
 				HasBots:       &hasBots,
 				Reported:      &reported,
 				Players:       []string{"Player002", "Player033"},
 				Maps:          []string{"Cape_Violet_V1"},
-				Dates: &barlive.DateRange{
+				Date: &barlive.DateRange{
 					From: time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC),
 					To:   time.Date(2026, 9, 30, 23, 0, 0, 0, time.UTC),
 				},
-				Durations:           &barlive.DurationRange{Min: 90 * time.Second, Max: time.Hour},
-				TrueSkills:          &barlive.TrueSkillRange{Min: 20, Max: 45.5},
+				DurationRange:       &barlive.DurationRange{Min: 90 * time.Second, Max: time.Hour},
+				TSRange:             &barlive.TrueSkillRange{Min: 20, Max: 45.5},
 				ComputeTotalResults: true,
 			}
 
@@ -62,8 +62,8 @@ var _ = Describe("Replays", func() {
 			}))
 		})
 
-		It("selects one day if Dates has no end", func() {
-			query := barlive.ReplaysQuery{Dates: &barlive.DateRange{From: time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)}}
+		It("selects one day if Date has no end", func() {
+			query := barlive.ReplaysQuery{Date: &barlive.DateRange{From: time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)}}
 
 			Expect(query.Values()).To(Equal(url.Values{"date": {"2026-12-31", "2027-01-01"}}))
 		})
@@ -76,7 +76,7 @@ var _ = Describe("Replays", func() {
 
 			page, err := server.client().Replays(context.Background(), barlive.ReplaysQuery{
 				Limit:   3,
-				Presets: []barlive.ReplayPreset{barlive.ReplayPresetDuel},
+				Preset:  []barlive.ReplayPreset{barlive.ReplayPresetDuel},
 				HasBots: &hasBots,
 				Players: []string{"Player002"},
 			})
@@ -121,7 +121,7 @@ var _ = Describe("Replays", func() {
 			server.HandleFunc("GET /replays", serveTestdata(http.StatusBadRequest, "replays_bad_request.json"))
 
 			Expect(server.client().Replays(context.Background(), barlive.ReplaysQuery{
-				Presets: []barlive.ReplayPreset{"nonsense"},
+				Preset: []barlive.ReplayPreset{"nonsense"},
 			})).Error().To(HaveOccurred())
 		})
 
@@ -174,6 +174,29 @@ var _ = Describe("Replays", func() {
 
 			Expect(count).To(Equal(2))
 			Expect(server.recorded()).To(HaveLen(1))
+		})
+
+		It("starts every iteration at the page of the query", func() {
+			server.HandleFunc("GET /replays", func(writer http.ResponseWriter, request *http.Request) {
+				if request.URL.Query().Get("page") == "1" {
+					serveTestdata(http.StatusOK, "replays_page_1.json")(writer, request)
+				} else {
+					serveTestdata(http.StatusOK, "replays_page_empty.json")(writer, request)
+				}
+			})
+			replays := server.client().AllReplays(context.Background(), barlive.ReplaysQuery{Limit: 3})
+
+			for range 2 {
+				count := 0
+				for _, err := range replays {
+					Expect(err).NotTo(HaveOccurred())
+					count++
+				}
+				Expect(count).To(Equal(3))
+			}
+
+			Expect(server.recorded()).To(HaveLen(4))
+			Expect(server.recorded()[2].Query.Get("page")).To(Equal("1"))
 		})
 
 		It("starts at the page of the query", func() {

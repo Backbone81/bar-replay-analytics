@@ -21,7 +21,7 @@ type Config struct {
 	StorageURL string
 
 	// MaxRequestRate is the maximum number of requests per second to Teiserver and bar-db together, shared by all
-	// goroutines using the Client. Downloads from the storage do not count. Defaults to 1.
+	// goroutines using the Client. Downloads from the storage do not count. Zero means no limit. Defaults to 1.
 	MaxRequestRate rate.Limit
 }
 
