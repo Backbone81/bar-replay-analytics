@@ -2,6 +2,7 @@ package barlive_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"time"
@@ -236,4 +237,111 @@ var _ = Describe("Replays", func() {
 			Expect(errs[0]).To(HaveOccurred())
 		})
 	})
+
+	Context("RecentReplays", func() {
+		// now is when the spec starts; the replays of the page started before it.
+		var now time.Time
+
+		// since is the start of the selected time span.
+		var since time.Time
+
+		BeforeEach(func() {
+			now = time.Now().UTC().Truncate(time.Second)
+			since = now.Add(-48 * time.Hour)
+		})
+
+		It("selects the replays of the player and game type in bar-db", func() {
+			server.HandleFunc("GET /replays", serveReplaysPage())
+
+			Expect(recentIDs(server, since, barlive.GameTypeSmallTeam)).To(BeEmpty())
+
+			Expect(server.recorded()[0].Query).To(Equal(url.Values{
+				"page":          {"1"},
+				"limit":         {"100"},
+				"preset":        {"team"},
+				"endedNormally": {"true"},
+				"hasBots":       {"false"},
+				"players":       {"Player002"},
+				"date":          {since.Format(time.DateOnly), now.AddDate(0, 0, 1).Format(time.DateOnly)},
+			}))
+		})
+
+		It("returns the replays of the game type which started since then", func() {
+			server.HandleFunc("GET /replays", serveReplaysPage(
+				replayStartedAt("a", now.Add(-time.Hour), 1, 1),
+				replayStartedAt("b", now.Add(-2*time.Hour), 2, 2),
+				replayStartedAt("c", now.Add(-3*time.Hour), 1, 1),
+				replayStartedAt("d", now.Add(-49*time.Hour), 1, 1),
+				replayStartedAt("e", now.Add(-50*time.Hour), 1, 1),
+			))
+
+			Expect(recentIDs(server, since, barlive.GameTypeDuel)).To(Equal([]string{"a", "c"}))
+			// The page is full, but its older replays end the search.
+			Expect(server.recorded()).To(HaveLen(1))
+		})
+
+		It("requests the next page while the replays are recent", func() {
+			server.HandleFunc("GET /replays", serveReplaysPage(replayStartedAt("a", now.Add(-time.Hour), 1, 1)))
+
+			Expect(recentIDs(server, since, barlive.GameTypeDuel)).To(Equal([]string{"a"}))
+			Expect(server.recorded()).To(HaveLen(2))
+		})
+
+		It("yields an error for a game type without preset and sends no request", func() {
+			var errs []error
+			for _, err := range server.client().RecentReplays(context.Background(), "Player002", "Team FFA", since) {
+				errs = append(errs, err)
+			}
+
+			Expect(errs).To(ConsistOf(MatchError(`no replay preset for game type "Team FFA"`)))
+			Expect(server.recorded()).To(BeEmpty())
+		})
+
+		It("yields the error of a request", func() {
+			server.HandleFunc("GET /replays", serveTestdata(http.StatusBadRequest, "replays_bad_request.json"))
+
+			var errs []error
+			for _, err := range server.client().RecentReplays(context.Background(), "Player002", barlive.GameTypeDuel, since) {
+				errs = append(errs, err)
+			}
+
+			Expect(errs).To(ConsistOf(HaveOccurred()))
+		})
+	})
 })
+
+// serveReplaysPage answers with a full first page holding replays, and an empty page after it.
+func serveReplaysPage(replays ...*barlive.ReplaySummary) http.HandlerFunc {
+	page := barlive.ReplaysPage{TotalResults: -1, Page: 1, Limit: max(len(replays), 1)}
+	for _, replay := range replays {
+		page.Data = append(page.Data, *replay)
+	}
+	data, err := json.Marshal(page)
+	Expect(err).NotTo(HaveOccurred())
+	return func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Query().Get("page") != "1" {
+			serveTestdata(http.StatusOK, "replays_page_empty.json")(writer, request)
+			return
+		}
+		serveString(http.StatusOK, "application/json", string(data))(writer, request)
+	}
+}
+
+// replayStartedAt returns a replay with ID id which started at startTime and has allyteams of the given sizes.
+func replayStartedAt(id string, startTime time.Time, allyTeamSizes ...int) *barlive.ReplaySummary {
+	replay := testReplaySummary(allyTeamSizes...)
+	replay.ID = id
+	replay.StartTime = startTime
+	return replay
+}
+
+// recentIDs returns the IDs of the replays RecentReplays returns for Player002 from server, and fails the spec on an
+// error.
+func recentIDs(server *testServer, since time.Time, gameType barlive.GameType) []string {
+	var ids []string
+	for replay, err := range server.client().RecentReplays(context.Background(), "Player002", gameType, since) {
+		Expect(err).NotTo(HaveOccurred())
+		ids = append(ids, replay.ID)
+	}
+	return ids
+}

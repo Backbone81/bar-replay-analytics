@@ -227,3 +227,52 @@ func (c *Client) AllReplays(ctx context.Context, query ReplaysQuery) iter.Seq2[R
 		}
 	}
 }
+
+// RecentReplays returns the replays of the games of gameType which player played in and which started at since or
+// later, newest first. player is a current account name, see ReplaysQuery.Players.
+//
+// It selects in bar-db the preset of gameType (GameType.ReplayPreset), games without AIs which ended normally, and the
+// days from since to now; it then drops the replays which started before since or do not have the shape of gameType
+// (GameType.Matches). The rated and unrated games are both returned: bar-db does not tell them apart. Errors are
+// yielded as by AllReplays.
+func (c *Client) RecentReplays(
+	ctx context.Context, player string, gameType GameType, since time.Time,
+) iter.Seq2[ReplaySummary, error] {
+	return func(yield func(ReplaySummary, error) bool) {
+		preset, found := gameType.ReplayPreset()
+		if !found {
+			yield(ReplaySummary{}, fmt.Errorf("no replay preset for game type %q", gameType))
+			return
+		}
+
+		endedNormally := true
+		hasBots := false
+		query := ReplaysQuery{
+			Limit:         MaxReplaysLimit,
+			Preset:        []ReplayPreset{preset},
+			EndedNormally: &endedNormally,
+			HasBots:       &hasBots,
+			Players:       []string{player},
+			Date: &DateRange{
+				From: since.UTC(),
+				To:   time.Now().UTC(),
+			},
+		}
+		for replay, err := range c.AllReplays(ctx, query) {
+			if err != nil {
+				yield(ReplaySummary{}, err)
+				return
+			}
+			// The replays come newest first, so the rest of the first day started before since too.
+			if replay.StartTime.Before(since) {
+				return
+			}
+			if !gameType.Matches(&replay) {
+				continue
+			}
+			if !yield(replay, nil) {
+				return
+			}
+		}
+	}
+}

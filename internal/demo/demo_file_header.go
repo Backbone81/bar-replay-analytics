@@ -2,12 +2,15 @@ package demo
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math"
+	"os"
 	"unicode"
 	"unicode/utf8"
 )
@@ -83,6 +86,29 @@ func ReadDemoFileHeader(data []byte) (DemoFileHeader, error) {
 	return header, nil
 }
 
+// ReadDemoFileHeaderFromFilePath reads and validates only the DemoFileHeader of the demo file named by filePath. It
+// decompresses no more than the header, so it is cheap even for a large demo, but it does not notice a demo which is
+// damaged further on.
+func ReadDemoFileHeaderFromFilePath(filePath string) (DemoFileHeader, error) {
+	file, err := os.Open(filePath) //nolint:gosec // Opening the file the caller names is the purpose of ReadFileHeader.
+	if err != nil {
+		return DemoFileHeader{}, err
+	}
+	defer file.Close() //nolint:errcheck
+
+	gzipReader, err := gzip.NewReader(file)
+	if err != nil {
+		return DemoFileHeader{}, fmt.Errorf("decompressing demo: %w", err)
+	}
+	defer gzipReader.Close() //nolint:errcheck
+
+	data := make([]byte, demoFileHeaderSize)
+	if _, err := io.ReadFull(gzipReader, data); err != nil {
+		return DemoFileHeader{}, fmt.Errorf("reading DemoFileHeader: %w", err)
+	}
+	return ReadDemoFileHeader(data)
+}
+
 // MagicAsString returns Magic up to its terminating NUL, or an empty string if it has none.
 func (h *DemoFileHeader) MagicAsString() string {
 	magic, _, found := bytes.Cut(h.Magic[:], []byte{0})
@@ -99,6 +125,11 @@ func (h *DemoFileHeader) VersionStringAsString() string {
 		return ""
 	}
 	return string(versionString)
+}
+
+// GameIDAsString returns GameID as a lowercase hex string, which is how bar-db names the replay of the game.
+func (h *DemoFileHeader) GameIDAsString() string {
+	return hex.EncodeToString(h.GameID[:])
 }
 
 // MarshalJSON writes Magic and VersionString as strings without their NUL bytes and GameID as a hex string. Go would
@@ -128,7 +159,7 @@ func (h DemoFileHeader) MarshalJSON() ([]byte, error) {
 		Version:              h.Version,
 		HeaderSize:           h.HeaderSize,
 		VersionString:        h.VersionStringAsString(),
-		GameID:               hex.EncodeToString(h.GameID[:]),
+		GameID:               h.GameIDAsString(),
 		UnixTime:             h.UnixTime,
 		ScriptSize:           h.ScriptSize,
 		DemoStreamSize:       h.DemoStreamSize,

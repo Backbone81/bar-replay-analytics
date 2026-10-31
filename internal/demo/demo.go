@@ -33,6 +33,10 @@ type Demo struct {
 	// Is nil if the engine crashed while recording the demo.
 	PlayerStats []PlayerStatistics `json:"playerStats"`
 
+	// PlayerStatsByteSwapped is true if the demo held PlayerStats in big-endian byte order, as engines before
+	// PlayerStatsByteOrderFixedVersion wrote them on some Linux hosts. PlayerStats holds the corrected values.
+	PlayerStatsByteSwapped bool `json:"playerStatsByteSwapped"`
+
 	// TeamStats provides statistics per team.
 	// Is nil if the engine crashed while recording the demo.
 	TeamStats [][]TeamStatistics `json:"teamStats"`
@@ -48,17 +52,19 @@ func (d Demo) MarshalJSON() ([]byte, error) {
 		}
 	}
 	return json.Marshal(struct {
-		FileHeader       DemoFileHeader     `json:"fileHeader"`
-		SetupScript      string             `json:"setupScript"`
-		WinningAllyTeams []int              `json:"winningAllyTeams"`
-		PlayerStats      []PlayerStatistics `json:"playerStats"`
-		TeamStats        [][]TeamStatistics `json:"teamStats"`
+		FileHeader             DemoFileHeader     `json:"fileHeader"`
+		SetupScript            string             `json:"setupScript"`
+		WinningAllyTeams       []int              `json:"winningAllyTeams"`
+		PlayerStats            []PlayerStatistics `json:"playerStats"`
+		PlayerStatsByteSwapped bool               `json:"playerStatsByteSwapped"`
+		TeamStats              [][]TeamStatistics `json:"teamStats"`
 	}{
-		FileHeader:       d.FileHeader,
-		SetupScript:      d.SetupScript,
-		WinningAllyTeams: winningAllyTeams,
-		PlayerStats:      d.PlayerStats,
-		TeamStats:        d.TeamStats,
+		FileHeader:             d.FileHeader,
+		SetupScript:            d.SetupScript,
+		WinningAllyTeams:       winningAllyTeams,
+		PlayerStats:            d.PlayerStats,
+		PlayerStatsByteSwapped: d.PlayerStatsByteSwapped,
+		TeamStats:              d.TeamStats,
 	})
 }
 
@@ -146,7 +152,11 @@ func parse(data []byte) (*Demo, error) {
 	if err != nil {
 		return nil, err
 	}
-	playerStats, err := readPlayerStatistics(playerStatsData, int(fileHeader.NumPlayers))
+	playerStats, playerStatsByteSwapped, err := readPlayerStatistics(
+		playerStatsData,
+		int(fileHeader.NumPlayers),
+		fileHeader.VersionStringAsString(),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -164,11 +174,12 @@ func parse(data []byte) (*Demo, error) {
 		return nil, fmt.Errorf("%d unexpected bytes after the team statistics", buffer.Len())
 	}
 	return &Demo{
-		FileHeader:       fileHeader,
-		SetupScript:      setupScript,
-		WinningAllyTeams: winningAllyTeams,
-		PlayerStats:      playerStats,
-		TeamStats:        teamStats,
+		FileHeader:             fileHeader,
+		SetupScript:            setupScript,
+		WinningAllyTeams:       winningAllyTeams,
+		PlayerStats:            playerStats,
+		PlayerStatsByteSwapped: playerStatsByteSwapped,
+		TeamStats:              teamStats,
 	}, nil
 }
 
@@ -194,11 +205,45 @@ func readSetupScript(setupScriptData []byte) (string, error) {
 }
 
 // readPlayerStatistics reads numPlayers PlayerStatistics. The header validation made len(data) match numPlayers.
-func readPlayerStatistics(playerStatsData []byte, numPlayers int) ([]PlayerStatistics, error) {
+//
+// Engines before PlayerStatsByteOrderFixedVersion wrote the player statistics in big-endian byte order on some Linux
+// hosts, such as the autohosts which record the replays of bar-db: rts/System/Platform/byteorder.h compared
+// __BYTE_ORDER with __BIG_ENDIAN without including <endian.h>, so where neither macro was defined, both were 0 and
+// PlayerStatistics::swab swapped the bytes (fixed by commit 8e77748d54, "fix endianness of stats in demos produced on
+// Linux", #3358). The rest of such a demo is little-endian. A swapped value is out of range for any realistic count,
+// so if the statistics of a demo by such an engine fail validation, they are read again in big-endian, all players
+// at once, as one engine wrote them all. It reports whether it did. If both byte orders fail, the error names both.
+func readPlayerStatistics(
+	playerStatsData []byte, numPlayers int, engineVersion string,
+) ([]PlayerStatistics, bool, error) {
+	stats, err := readAllPlayerStatistics(playerStatsData, numPlayers, ByteOrder)
+	if err == nil {
+		return stats, false, nil
+	}
+	if !versionBefore(engineVersion, PlayerStatsByteOrderFixedVersion) {
+		return nil, false, err
+	}
+	swapped, swappedErr := readAllPlayerStatistics(playerStatsData, numPlayers, binary.BigEndian)
+	if swappedErr != nil {
+		return nil, false, fmt.Errorf(
+			"%w; in big-endian, as engine %s may have written them: %w",
+			err,
+			engineVersion,
+			swappedErr,
+		)
+	}
+	return swapped, true, nil
+}
+
+// readAllPlayerStatistics reads numPlayers PlayerStatistics in byteOrder.
+func readAllPlayerStatistics(
+	playerStatsData []byte, numPlayers int, byteOrder binary.ByteOrder,
+) ([]PlayerStatistics, error) {
 	stats := make([]PlayerStatistics, numPlayers)
 	for i := range stats {
 		var err error
-		if stats[i], err = ReadPlayerStatistics(playerStatsData[i*playerStatisticsSize:]); err != nil {
+		stats[i], err = readPlayerStatisticsInOrder(playerStatsData[i*playerStatisticsSize:], byteOrder)
+		if err != nil {
 			return nil, fmt.Errorf("player %d: %w", i, err)
 		}
 	}

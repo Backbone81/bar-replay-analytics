@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"context"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/spf13/cobra"
 )
@@ -11,23 +14,19 @@ var barDataDir string
 // rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
 	Use:   "bar-replay-analytics-go",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Analyze replays of Beyond All Reason",
+	Long: `Reads replays (demo files) of Beyond All Reason, shows the leaderboards of the BAR lobby server and downloads
+the replays of top players from the replay database behind https://bar-rts.com.`,
 	SilenceUsage: true,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return nil
-	},
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
+// Execute adds all child commands to the root command and sets flags appropriately. Ctrl-C or SIGTERM cancel the
+// context of the running command, so downloads stop and leave no partial files.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	err := rootCmd.Execute()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	err := rootCmd.ExecuteContext(ctx)
+	stop()
 	if err != nil {
 		os.Exit(1)
 	}

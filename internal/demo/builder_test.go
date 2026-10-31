@@ -5,6 +5,8 @@ import (
 	"compress/gzip"
 	"encoding/binary"
 
+	. "github.com/onsi/gomega"
+
 	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
 )
 
@@ -19,6 +21,10 @@ type testDemo struct {
 	playerStats      []demo.PlayerStatistics
 	teamStats        [][]demo.TeamStatistics
 	trailingData     []byte
+
+	// playerStatsByteOrder is the byte order encode writes playerStats in, or nil for demo.ByteOrder. Engines before
+	// demo.PlayerStatsByteOrderFixedVersion wrote them in big-endian on some Linux hosts.
+	playerStatsByteOrder binary.ByteOrder
 }
 
 // newTestDemo returns a valid demo of a 1v1 with one player, two teams and two statistics entries per team.
@@ -87,7 +93,11 @@ func (d *testDemo) encode() ([]byte, error) {
 	buffer.WriteString(d.setupScript)
 	buffer.Write(d.demoStream)
 	buffer.Write(d.winningAllyTeams)
-	if err := binary.Write(&buffer, demo.ByteOrder, d.playerStats); err != nil {
+	playerStatsByteOrder := d.playerStatsByteOrder
+	if playerStatsByteOrder == nil {
+		playerStatsByteOrder = demo.ByteOrder
+	}
+	if err := binary.Write(&buffer, playerStatsByteOrder, d.playerStats); err != nil {
 		return nil, err
 	}
 	for _, history := range d.teamStats {
@@ -111,6 +121,20 @@ func (d *testDemo) compressed() ([]byte, error) {
 		return nil, err
 	}
 	return compress(data)
+}
+
+// read encodes the demo, compresses it and reads it back with demo.Read. It fails the spec if the demo cannot be
+// encoded, so the error it returns is always one of demo.Read.
+func (d *testDemo) read() (*demo.Demo, error) {
+	compressed, err := d.compressed()
+	Expect(err).NotTo(HaveOccurred())
+	return demo.Read(bytes.NewReader(compressed))
+}
+
+// setEngineVersion sets the engine version in the header.
+func (d *testDemo) setEngineVersion(version string) {
+	d.header.VersionString = [256]byte{}
+	copy(d.header.VersionString[:], version)
 }
 
 // compress gzips data.

@@ -33,3 +33,8 @@ var playerStatisticsSize = binary.Size(PlayerStatistics{})
 
 // teamStatisticsSize is the size of TeamStatistics.
 var teamStatisticsSize = binary.Size(TeamStatistics{})
+
+// PlayerStatsByteOrderFixedVersion is the first engine release which writes the player statistics in little-endian
+// byte order on every host, see Demo.PlayerStatsByteSwapped. Recoil commit 8e77748d54 is in the releases 2026.09.01 and
+// later.
+var PlayerStatsByteOrderFixedVersion = [3]int{2026, 9, 1}

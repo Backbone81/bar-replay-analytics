@@ -68,7 +68,18 @@ func fuzzSeeds() []*testDemo {
 	withHeaderExtension.headerExtension = []byte{1, 2, 3, 4}
 	withHeaderExtension.updateSizes()
 
-	return []*testDemo{complete, crashed, crashedWithStream, empty, withoutEntries, withHeaderExtension}
+	byteSwapped := newTestDemo()
+	byteSwapped.playerStatsByteOrder = binary.BigEndian
+
+	return []*testDemo{
+		complete,
+		crashed,
+		crashedWithStream,
+		empty,
+		withoutEntries,
+		withHeaderExtension,
+		byteSwapped,
+	}
 }
 
 // checkConsistent checks that an accepted demo agrees with its header and its validation rules.
@@ -139,6 +150,9 @@ func checkRoundTrip(t *testing.T, data []byte, result *demo.Demo) {
 		winningAllyTeams: result.WinningAllyTeams,
 		playerStats:      result.PlayerStats,
 		teamStats:        result.TeamStats,
+	}
+	if result.PlayerStatsByteSwapped {
+		fuzzDemo.playerStatsByteOrder = binary.BigEndian
 	}
 	streamStart := header.HeaderSize + header.ScriptSize
 	if header.DemoStreamSize == 0 {

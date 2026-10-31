@@ -21,7 +21,11 @@ type Config struct {
 	StorageURL string
 
 	// MaxRequestRate is the maximum number of requests per second to Teiserver and bar-db together, shared by all
-	// goroutines using the Client. Downloads from the storage do not count. Zero means no limit. Defaults to 1.
+	// goroutines using the Client. Downloads from the storage do not count. Zero means no limit. Defaults to 5.
+	//
+	// bar-db limits each client IP address to 1000 requests per minute (fastify-rate-limit's defaults, registered in
+	// src/rest-api.ts), so 5 per second uses 30% of that and leaves room for other use from the same address.
+	// Teiserver's public API has no rate limit of its own.
 	MaxRequestRate rate.Limit
 }
 
@@ -31,5 +35,5 @@ var DefaultConfig = Config{
 	TeiserverURL:   "https://server4.beyondallreason.info",
 	ReplayAPIURL:   "https://api.bar-rts.com",
 	StorageURL:     "https://storage.uk.cloud.ovh.net/v1/AUTH_10286efc0d334efd917d476d7183232e/BAR",
-	MaxRequestRate: 1,
+	MaxRequestRate: 5,
 }

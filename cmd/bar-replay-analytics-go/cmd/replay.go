@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -10,10 +11,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// replayCmd groups the commands which work on a single replay.
+// replayCmd groups the commands which read or download replays.
 var replayCmd = &cobra.Command{
 	Use:   "replay",
-	Short: "Work with a single replay",
+	Short: "Work with replays",
 }
 
 func init() {
@@ -31,6 +32,11 @@ func replayPath(arg string) (string, error) {
 		return "", err
 	}
 	return filepath.Join(barDataDir, "demos", arg), nil
+}
+
+// printField prints one "label: value" line to stdout, with the values of all such lines aligned.
+func printField(label string, value any) {
+	fmt.Printf("%-12s %v\n", label+":", value)
 }
 
 // writeJSON writes value to stdout as indented JSON.

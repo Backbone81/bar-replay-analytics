@@ -233,6 +233,92 @@ var _ = Describe("Demo", func() {
 		)
 	})
 
+	Context("byte-swapped player statistics", func() {
+		It("reads little-endian player statistics as they are", func() {
+			result, err := newTestDemo().read()
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.PlayerStatsByteSwapped).To(BeFalse())
+		})
+
+		It("reads big-endian player statistics of an engine before the fix", func() {
+			testDemo := newTestDemo()
+			testDemo.playerStatsByteOrder = binary.BigEndian
+
+			result, err := testDemo.read()
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.PlayerStats).To(Equal(testDemo.playerStats))
+			Expect(result.PlayerStatsByteSwapped).To(BeTrue())
+			Expect(result.TeamStats).To(Equal(testDemo.teamStats))
+		})
+
+		It("reads the statistics of all players in one byte order", func() {
+			testDemo := newTestDemo()
+			// A spectator's statistics are all 0 in either byte order.
+			testDemo.playerStats = append(testDemo.playerStats, demo.PlayerStatistics{})
+			testDemo.updateSizes()
+			testDemo.playerStatsByteOrder = binary.BigEndian
+
+			result, err := testDemo.read()
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.PlayerStats).To(Equal(testDemo.playerStats))
+			Expect(result.PlayerStatsByteSwapped).To(BeTrue())
+		})
+
+		It("writes whether it swapped the bytes to JSON", func() {
+			testDemo := newTestDemo()
+			testDemo.playerStatsByteOrder = binary.BigEndian
+			result, err := testDemo.read()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(json.Marshal(result)).To(ContainSubstring(`"playerStatsByteSwapped":true`))
+		})
+
+		DescribeTable("reads big-endian player statistics only of an engine before the fix",
+			func(version string, beforeFix bool) {
+				testDemo := newTestDemo()
+				testDemo.setEngineVersion(version)
+				testDemo.playerStatsByteOrder = binary.BigEndian
+
+				result, err := testDemo.read()
+
+				if beforeFix {
+					Expect(err).NotTo(HaveOccurred())
+					Expect(result.PlayerStats).To(Equal(testDemo.playerStats))
+					Expect(result.PlayerStatsByteSwapped).To(BeTrue())
+				} else {
+					Expect(err).To(MatchError(ContainSubstring("player 0: invalid PlayerStatistics")))
+					Expect(err).NotTo(MatchError(ContainSubstring("big-endian")))
+				}
+			},
+			Entry("an earlier release", "2026.07.04", true),
+			Entry("an earlier development build", "2026.07.04-12-gabcdef0", true),
+			Entry("an earlier month", "2026.08.99", true),
+			Entry("an earlier year", "2025.12.31", true),
+			Entry("a Spring version", "105.1.1-2590-gb9462a0 BAR105", true),
+			Entry("a version with two numbers, the third counting as 0", "2026.9", true),
+			Entry("the release with the fix", "2026.09.01", false),
+			Entry("a development build of it", "2026.09.01-3-g1234567", false),
+			Entry("a later release", "2026.09.02", false),
+			Entry("a later year", "2027.01.01", false),
+			Entry("a version which is not a number", "dev", false),
+			Entry("a version with an empty number", "2026..01", false),
+		)
+
+		It("names both byte orders if both fail", func() {
+			testDemo := newTestDemo()
+			testDemo.playerStats[0].KeyPresses = -1
+
+			_, err := testDemo.read()
+
+			Expect(err).To(MatchError(MatchRegexp(
+				`player 0: invalid PlayerStatistics: keyPresses.*; in big-endian, as engine 2026\.07\.04 may have ` +
+					`written them: player 0: invalid PlayerStatistics`)))
+		})
+	})
+
 	Context("ReadUncompressed", func() {
 		It("reads every section of a decompressed demo", func() {
 			testDemo := newTestDemo()
@@ -290,6 +376,59 @@ var _ = Describe("Demo", func() {
 		})
 	})
 
+	Context("ReadFileHeader", func() {
+		It("reads the header of a demo file", func() {
+			testDemo := newTestDemo()
+			compressed, err := testDemo.compressed()
+			Expect(err).NotTo(HaveOccurred())
+
+			header, err := demo.ReadDemoFileHeaderFromFilePath(writeTempFile(compressed))
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(header).To(Equal(testDemo.header))
+			Expect(header.GameIDAsString()).To(Equal("0102030405060708090a0b0c0d0e0f10"))
+		})
+
+		It("reads the header of a demo which is cut off after it", func() {
+			data, err := newTestDemo().encode()
+			Expect(err).NotTo(HaveOccurred())
+			compressed, err := compress(data[:binary.Size(demo.DemoFileHeader{})])
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(demo.ReadDemoFileHeaderFromFilePath(writeTempFile(compressed))).Error().NotTo(HaveOccurred())
+		})
+
+		It("rejects a demo shorter than the header", func() {
+			data, err := newTestDemo().encode()
+			Expect(err).NotTo(HaveOccurred())
+			compressed, err := compress(data[:binary.Size(demo.DemoFileHeader{})-1])
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(demo.ReadDemoFileHeaderFromFilePath(writeTempFile(compressed))).Error().To(
+				MatchError(ContainSubstring("reading DemoFileHeader")))
+		})
+
+		It("rejects an invalid header", func() {
+			testDemo := newTestDemo()
+			testDemo.header.Version = 4
+			compressed, err := testDemo.compressed()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(demo.ReadDemoFileHeaderFromFilePath(writeTempFile(compressed))).Error().To(
+				MatchError(ContainSubstring("invalid DemoFileHeader: version")))
+		})
+
+		It("rejects data that is not gzip-compressed", func() {
+			Expect(demo.ReadDemoFileHeaderFromFilePath(writeTempFile([]byte("not a demo")))).Error().To(
+				MatchError(ContainSubstring("decompressing demo")))
+		})
+
+		It("returns the error of a file that cannot be opened", func() {
+			Expect(demo.ReadDemoFileHeaderFromFilePath(filepath.Join(GinkgoT().TempDir(), "missing.sdfz"))).Error().To(
+				MatchError(fs.ErrNotExist))
+		})
+	})
+
 	Context("MarshalJSON", func() {
 		It("writes the winning allyteams as an array of numbers", func() {
 			testDemo := newTestDemo()
@@ -309,3 +448,10 @@ var _ = Describe("Demo", func() {
 		})
 	})
 })
+
+// writeTempFile writes data to a new file and returns its path.
+func writeTempFile(data []byte) string {
+	filePath := filepath.Join(GinkgoT().TempDir(), "test.sdfz")
+	Expect(os.WriteFile(filePath, data, 0o600)).To(Succeed())
+	return filePath
+}

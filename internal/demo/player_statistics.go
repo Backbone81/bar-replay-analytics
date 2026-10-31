@@ -23,8 +23,13 @@ type PlayerStatistics struct {
 
 // ReadPlayerStatistics reads and validates a PlayerStatistics from the start of data.
 func ReadPlayerStatistics(playerStatsData []byte) (PlayerStatistics, error) {
+	return readPlayerStatisticsInOrder(playerStatsData, ByteOrder)
+}
+
+// readPlayerStatisticsInOrder reads and validates a PlayerStatistics in byteOrder from the start of data.
+func readPlayerStatisticsInOrder(playerStatsData []byte, byteOrder binary.ByteOrder) (PlayerStatistics, error) {
 	var stats PlayerStatistics
-	if _, err := binary.Decode(playerStatsData, ByteOrder, &stats); err != nil {
+	if _, err := binary.Decode(playerStatsData, byteOrder, &stats); err != nil {
 		return PlayerStatistics{}, fmt.Errorf("reading PlayerStatistics: %w", err)
 	}
 	if err := stats.validate(); err != nil {
