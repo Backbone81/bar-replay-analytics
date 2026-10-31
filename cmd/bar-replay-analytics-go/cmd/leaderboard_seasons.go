@@ -18,7 +18,7 @@ var leaderboardSeasonsCmd = &cobra.Command{
 them. The last season is the active one.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		seasons, err := barlive.NewClient().LeaderboardSeasons(cmd.Context())
+		seasons, err := barlive.NewClient(barlive.WithOnRequest(printRequest)).LeaderboardSeasons(cmd.Context())
 		if err != nil {
 			return err
 		}

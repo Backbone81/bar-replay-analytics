@@ -24,7 +24,7 @@ var (
 
 // replayDownloadTopCmd downloads the recent replays of the best players of a leaderboard.
 var replayDownloadTopCmd = &cobra.Command{
-	Use:   "download-top --game-type <game-type>",
+	Use:   "download-top",
 	Short: "Download the recent replays of the best players of a leaderboard",
 	Long: `Downloads the replays of the games which the best players of a leaderboard played in the last days, for the
 game type of the leaderboard only. A game counts as that game type if bar-db's preset fits and its allyteams have the
@@ -47,7 +47,7 @@ holds the replay's game, so an interrupted run leaves no partial replay under th
 			return err
 		}
 
-		client := barlive.NewClient()
+		client := barlive.NewClient(barlive.WithOnRequest(printRequest))
 		replays, err := findTopReplays(cmd.Context(), client)
 		if err != nil {
 			return err
@@ -92,7 +92,6 @@ func init() {
 		false,
 		"List the missing replays without downloading them.",
 	)
-	_ = replayDownloadTopCmd.MarkFlagRequired("game-type")
 }
 
 // checkDownloadTopFlags checks the flags of replayDownloadTopCmd which need no request.

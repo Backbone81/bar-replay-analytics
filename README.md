@@ -19,7 +19,7 @@ bar-replay-analytics-go leaderboard seasons
 bar-replay-analytics-go leaderboard show [--season N] [--game-type duel] [--top 20]
 
 # Download the games of the 10 best duel players of the last 7 days into data/demos/leaderboard/
-bar-replay-analytics-go replay download-top --game-type duel [--season N] [--top 10] [--days 7] [--dry-run]
+bar-replay-analytics-go replay download-top [--game-type duel] [--season N] [--top 10] [--days 7] [--dry-run]
 
 # Download replays by ID (as in https://www.bar-rts.com/replays/<replay-id>)
 bar-replay-analytics-go replay download <replay-id>...

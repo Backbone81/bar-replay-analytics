@@ -33,6 +33,28 @@ var _ = Describe("Client", func() {
 			Expect(server.recorded()[0].Header.Get("Accept")).To(Equal("application/json"))
 		})
 
+		It("reports each request to OnRequest", func() {
+			recorder := &requestRecorder{}
+			client := server.client(barlive.WithOnRequest(recorder.record))
+
+			Expect(client.LeaderboardSeasons(context.Background())).Error().NotTo(HaveOccurred())
+
+			Expect(recorder.recordedURLs()).To(Equal([]string{server.server.URL + "/teiserver/api/public/leaderboard"}))
+		})
+
+		It("reports a request once the rate limit lets it through", func() {
+			recorder := &requestRecorder{}
+			client := server.client(barlive.WithMaxRequestRate(maxRequestRate), barlive.WithOnRequest(recorder.record))
+
+			for range 2 {
+				Expect(client.LeaderboardSeasons(context.Background())).Error().NotTo(HaveOccurred())
+			}
+
+			times := recorder.recordedTimes()
+			Expect(times).To(HaveLen(2))
+			Expect(times[1].Sub(times[0])).To(BeNumerically(">=", interval*9/10))
+		})
+
 		It("reports a status other than 200 OK", func() {
 			server.HandleFunc("GET /teiserver/api/public/leaderboard/1", serveString(
 				http.StatusBadGateway, "text/html", "<html>Bad Gateway</html>"))

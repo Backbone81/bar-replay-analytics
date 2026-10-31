@@ -107,7 +107,8 @@ type FetchResult struct {
 // Fetch makes the directory hold the replay with ID id and the index record it. If Has(id), it does nothing.
 // Otherwise it asks bar-db for the replay's file name: if the directory holds a file of that name, Fetch reads the
 // file's header and records it if it holds the replay's game, else it reports an error matching fs.ErrExist, as
-// another game's replay has the same name. If there is no such file, Fetch downloads it with DownloadDemoIntoDir.
+// another game's replay has the same name. If there is no such file, Fetch creates the directory if it is missing and
+// downloads the file with DownloadDemoIntoDir.
 func (i *ReplayIndex) Fetch(ctx context.Context, client *Client, id string) (FetchResult, error) {
 	i.mutex.Lock()
 	fileName, found := i.fileNamesByID[id]
@@ -135,6 +136,10 @@ func (i *ReplayIndex) Fetch(ctx context.Context, client *Client, id string) (Fet
 			return FetchResult{}, err
 		}
 	case errors.Is(err, fs.ErrNotExist):
+		// The directory is missing on the first fetch into it; MkdirAll does nothing if it exists.
+		if err := os.MkdirAll(i.dir, dirPermissions); err != nil {
+			return FetchResult{}, err
+		}
 		if _, err := client.DownloadDemoIntoDir(ctx, replay, i.dir); err != nil {
 			return FetchResult{}, err
 		}

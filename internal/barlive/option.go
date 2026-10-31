@@ -37,6 +37,13 @@ func WithStorageURL(storageURL string) Option {
 	}
 }
 
+// WithOnRequest sets Config.OnRequest.
+func WithOnRequest(onRequest func(requestURL string)) Option {
+	return func(config *Config) {
+		config.OnRequest = onRequest
+	}
+}
+
 // WithMaxRequestRate sets Config.MaxRequestRate. Zero means no limit.
 func WithMaxRequestRate(limit rate.Limit) Option {
 	return func(config *Config) {

@@ -56,6 +56,13 @@ var _ = Describe("ReplayIndex", func() {
 		Expect(openIndex(dir).Has(testGameID)).To(BeTrue())
 	})
 
+	It("creates the directory when it downloads", func() {
+		index := openIndex(dir)
+
+		Expect(index.Fetch(context.Background(), server.client(), testGameID)).Error().NotTo(HaveOccurred())
+		Expect(os.ReadFile(filepath.Join(dir, testDemoFileName))).To(Equal(demoFile))
+	})
+
 	It("sends no request for a recorded replay whose file exists", func() {
 		Expect(os.MkdirAll(dir, 0o750)).To(Succeed())
 		first := openIndex(dir)

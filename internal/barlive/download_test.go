@@ -95,6 +95,16 @@ var _ = Describe("Download", func() {
 			Expect(server.recorded()[0].Path).To(Equal(testDemoPath))
 		})
 
+		It("reports the download to OnRequest", func() {
+			server.HandleFunc("GET "+testDemoPath, serveDemo(testDemoContent))
+			recorder := &requestRecorder{}
+			client := server.client(barlive.WithOnRequest(recorder.record))
+
+			Expect(client.DownloadDemo(context.Background(), testDemoFileName, &bytes.Buffer{})).To(Succeed())
+
+			Expect(recorder.recordedURLs()).To(Equal([]string{server.server.URL + testDemoPath}))
+		})
+
 		It("accepts an apostrophe, which map names hold", func() {
 			const fileName = "2026-10-28_14-02-51-887_Devil's Postpiles 1.1.1_2026.07.04.sdfz"
 			server.HandleFunc("GET "+testStoragePath+"/demos/"+url.PathEscape(fileName), serveDemo(testDemoContent))

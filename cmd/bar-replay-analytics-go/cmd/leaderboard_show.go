@@ -31,7 +31,7 @@ the end of the season (earlier seasons).`,
 			return fmt.Errorf("--top: got %d, want >= 1", leaderboardShowTop)
 		}
 
-		client := barlive.NewClient()
+		client := barlive.NewClient(barlive.WithOnRequest(printRequest))
 		season, err := client.LeaderboardSeason(cmd.Context(), leaderboardShowSeason)
 		if err != nil {
 			return err

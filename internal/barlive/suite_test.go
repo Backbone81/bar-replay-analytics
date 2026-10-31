@@ -119,3 +119,32 @@ func serveString(status int, contentType string, body string) http.HandlerFunc {
 		_, _ = writer.Write([]byte(body))
 	}
 }
+
+// requestRecorder records the URLs Config.OnRequest reports, with the time of each.
+type requestRecorder struct {
+	mutex sync.Mutex
+	urls  []string
+	times []time.Time
+}
+
+// record is the Config.OnRequest of the recorder.
+func (r *requestRecorder) record(requestURL string) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	r.urls = append(r.urls, requestURL)
+	r.times = append(r.times, time.Now())
+}
+
+// recordedURLs returns the URLs reported so far.
+func (r *requestRecorder) recordedURLs() []string {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	return append([]string(nil), r.urls...)
+}
+
+// recordedTimes returns the times of the reports so far.
+func (r *requestRecorder) recordedTimes() []time.Time {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	return append([]time.Time(nil), r.times...)
+}

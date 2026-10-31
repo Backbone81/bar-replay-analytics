@@ -35,7 +35,7 @@ See 'replay download-top' for where the replays are stored and how existing ones
 		for i, id := range args {
 			replays[i] = replayToDownload{ID: id}
 		}
-		return downloadReplays(cmd.Context(), barlive.NewClient(), replays, false)
+		return downloadReplays(cmd.Context(), barlive.NewClient(barlive.WithOnRequest(printRequest)), replays, false)
 	},
 }
 

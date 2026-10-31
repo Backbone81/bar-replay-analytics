@@ -39,6 +39,13 @@ func NewClient(options ...Option) *Client {
 	}
 }
 
+// reportRequest calls Config.OnRequest, if set, with requestURL.
+func (c *Client) reportRequest(requestURL string) {
+	if c.config.OnRequest != nil {
+		c.config.OnRequest(requestURL)
+	}
+}
+
 // getJSON waits for the rate limiter, requests requestURL and decodes the JSON response into target. Its errors
 // name the request.
 func (c *Client) getJSON(ctx context.Context, requestURL string, target any) error {
@@ -61,6 +68,7 @@ func (c *Client) doGetJSON(ctx context.Context, requestURL string, target any) e
 
 	request.Header.Set("Accept", "application/json")
 
+	c.reportRequest(requestURL)
 	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return err

@@ -56,6 +56,7 @@ func (c *Client) downloadDemo(ctx context.Context, requestURL string, writer io.
 		return err
 	}
 
+	c.reportRequest(requestURL)
 	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return err
