@@ -11,6 +11,9 @@ All commands take `--bar-data-dir` (default `data`), the BAR data directory with
 bar-replay-analytics-go replay inspect <replay>
 bar-replay-analytics-go replay script <replay>
 
+# The report of a replay (JSON): metadata and every player's economy, over the game and in intervals of 5 minutes
+bar-replay-analytics-go replay report <replay> [--interval-length 5m]
+
 # Leaderboards of the BAR lobby server: seasons and game types, best players
 bar-replay-analytics-go leaderboard seasons
 bar-replay-analytics-go leaderboard show [--season N] [--game-type duel] [--top 20]

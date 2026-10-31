@@ -3,9 +3,10 @@ package report_test
 import (
 	"testing"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
 )
 
 func TestReport(t *testing.T) {
