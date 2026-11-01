@@ -1,8 +1,6 @@
 package report
 
 import (
-	"fmt"
-
 	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
 )
 
@@ -23,17 +21,16 @@ func NewReport(replay *demo.Demo, options ...Option) (*Report, error) {
 	for _, option := range options {
 		option(&config)
 	}
-	if config.IntervalLength <= 0 {
-		return nil, fmt.Errorf("interval length: got %v, want > 0", config.IntervalLength)
+	if err := config.Validate(); err != nil {
+		return nil, err
 	}
-	intervalFrames := config.IntervalLength.Seconds() * GameSpeed
 
 	endFrame := int64(replay.FileHeader.GameTime) * GameSpeed
 	players := make([]Player, len(replay.TeamStats))
 	for i, history := range replay.TeamStats {
 		players[i] = Player{
 			PlayerID: i,
-			Economy:  newEconomy(history, endFrame, intervalFrames),
+			Economy:  newEconomy(history, endFrame, config),
 		}
 	}
 

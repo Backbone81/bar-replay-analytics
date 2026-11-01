@@ -1,7 +1,7 @@
 // Package report prepares the analytics of a replay: NewReport turns a demo.Demo into a Report.
 //
 // A Report is meant to be read as it is, by a person or an AI agent coaching a player: it aggregates the data, e.g.
-// into intervals of Config.IntervalLength, so that its reader need not compute anything.
+// into intervals, finer in the opening of the game (see Config), so that its reader need not compute anything.
 //
 // So far a Report holds the replay's metadata from the DemoFileHeader and the winning teams, and per player the
 // economy from its TeamStatistics history: totals and averages per second over the game and per interval. It does not

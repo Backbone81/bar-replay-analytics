@@ -14,8 +14,9 @@ func TestReport(t *testing.T) {
 	RunSpecs(t, "Report Suite")
 }
 
-// newTestDemo returns a demo of a 1v1 of 100 s which allyteam 1 won. Each team has statistics at frames 0 and 1500,
-// and its totals labeled with frame 4500, after the end of the game at frame 3000.
+// newTestDemo returns a demo of a 1v1 of 60 s which allyteam 1 won. Each team has statistics at frames 0 and 1500,
+// and its totals labeled, as the engine does, with frame 1950 of the next period, after the end of the game at frame
+// 1800.
 func newTestDemo() *demo.Demo {
 	return &demo.Demo{
 		FileHeader: demo.DemoFileHeader{
@@ -24,8 +25,8 @@ func newTestDemo() *demo.Demo {
 			VersionString:  versionString("2026.07.04"),
 			UnixTime:       1792849701,
 			DemoStreamSize: 11,
-			GameTime:       100,
-			WallclockTime:  110,
+			GameTime:       60,
+			WallclockTime:  66,
 			NumTeams:       2,
 			TeamStatPeriod: 15,
 		},
@@ -34,12 +35,12 @@ func newTestDemo() *demo.Demo {
 			{
 				{Frame: 0},
 				{Frame: 1500, MetalProduced: 100, MetalUsed: 50, EnergyProduced: 1000, EnergyExcess: 200},
-				{Frame: 4500, MetalProduced: 400, MetalUsed: 350, EnergyProduced: 2500, EnergyExcess: 200},
+				{Frame: 1950, MetalProduced: 420, MetalUsed: 360, EnergyProduced: 2400, EnergyExcess: 240},
 			},
 			{
 				{Frame: 0},
 				{Frame: 1500, MetalProduced: 200, EnergyProduced: 2000, MetalSent: 10, EnergyReceived: 30},
-				{Frame: 4500, MetalProduced: 500, EnergyProduced: 5000, MetalSent: 40, EnergyReceived: 90},
+				{Frame: 1950, MetalProduced: 500, EnergyProduced: 5000, MetalSent: 30, EnergyReceived: 90},
 			},
 		},
 	}

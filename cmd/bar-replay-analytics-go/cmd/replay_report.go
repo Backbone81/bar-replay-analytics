@@ -11,7 +11,9 @@ import (
 
 // The flags of replayReportCmd.
 var (
-	replayReportIntervalLength time.Duration
+	replayReportOpeningLength         time.Duration
+	replayReportOpeningIntervalLength time.Duration
+	replayReportIntervalLength        time.Duration
 )
 
 // replayReportCmd prints the report of a replay.
@@ -20,7 +22,9 @@ var replayReportCmd = &cobra.Command{
 	Short: "Print the report of a replay as JSON",
 	Long: `Prints the report of a replay as JSON: the data of the replay aggregated for analyzing and coaching the game,
 so that it can be read as it is. So far it holds the metadata of the game and the economy of every player, over the
-whole game and in intervals of --interval-length. Times are game time in minutes:seconds.
+whole game and in intervals: of --opening-interval-length in the first --opening-length of the game, where economies
+grow fastest and build orders differ most, and of --interval-length after that. The intervals are the same in every
+report, so games can be compared interval by interval. Times are game time in minutes:seconds.
 
 <replay> is a path to a .sdfz file, or the name of a file in the demos/ folder of the BAR data directory.`,
 	Args: cobra.ExactArgs(1),
@@ -33,7 +37,12 @@ whole game and in intervals of --interval-length. Times are game time in minutes
 		if err != nil {
 			return err
 		}
-		result, err := report.NewReport(replay, report.WithIntervalLength(replayReportIntervalLength))
+		result, err := report.NewReport(
+			replay,
+			report.WithOpeningLength(replayReportOpeningLength),
+			report.WithOpeningIntervalLength(replayReportOpeningIntervalLength),
+			report.WithIntervalLength(replayReportIntervalLength),
+		)
 		if err != nil {
 			return err
 		}
@@ -43,11 +52,25 @@ whole game and in intervals of --interval-length. Times are game time in minutes
 
 func init() {
 	replayCmd.AddCommand(replayReportCmd)
-	replayReportCmd.Flags().DurationVar(
+	flags := replayReportCmd.Flags()
+	flags.DurationVar(
+		&replayReportOpeningLength,
+		"opening-length",
+		report.DefaultConfig.OpeningLength,
+		"The length of the opening, which the report aggregates in intervals of --opening-interval-length. "+
+			"0 aggregates the whole game in intervals of --interval-length.",
+	)
+	flags.DurationVar(
+		&replayReportOpeningIntervalLength,
+		"opening-interval-length",
+		report.DefaultConfig.OpeningIntervalLength,
+		"The length of the intervals in the opening. Rounded up to whole statistics periods of 15 s.",
+	)
+	flags.DurationVar(
 		&replayReportIntervalLength,
 		"interval-length",
 		report.DefaultConfig.IntervalLength,
-		"The length of the intervals the report aggregates the game in, such as 1m or 5m. Rounded up to whole "+
-			"statistics periods of 15 s.",
+		"The length of the intervals after the opening, such as 1m or 5m. Rounded up to whole statistics periods "+
+			"of 15 s.",
 	)
 }

@@ -12,6 +12,12 @@ import (
 )
 
 var _ = Describe("Report", func() {
+	Context("Config", func() {
+		It("rejects an invalid configuration", func() {
+			Expect(report.NewReport(newTestDemo(), report.WithIntervalLength(0))).Error().To(HaveOccurred())
+		})
+	})
+
 	Context("Metadata", func() {
 		It("collects the metadata from the header and the setup script", func() {
 			result, err := report.NewReport(newTestDemo())
@@ -21,7 +27,7 @@ var _ = Describe("Report", func() {
 				GameID:        "0102030405060708090a0b0c0d0e0f10",
 				EngineVersion: "2026.07.04",
 				StartTime:     time.Unix(1792849701, 0).UTC(),
-				Duration:      report.Duration(100 * time.Second),
+				Duration:      report.Duration(60 * time.Second),
 				WinningTeams:  []int{1},
 			}))
 		})
@@ -78,7 +84,7 @@ var _ = Describe("Report", func() {
 					"gameID": "0102030405060708090a0b0c0d0e0f10",
 					"engineVersion": "2026.07.04",
 					"startTime": "2026-10-24T13:48:21Z",
-					"duration": "1:40",
+					"duration": "1:00",
 					"winningTeams": [1]
 				},
 				"players": [

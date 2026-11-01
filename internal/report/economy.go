@@ -1,7 +1,7 @@
 package report
 
 import (
-	"slices"
+	"time"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
 )
@@ -14,8 +14,9 @@ type Economy struct {
 	// PerSecond provides the average amounts per second over the whole game.
 	PerSecond Resources `json:"perSecond"`
 
-	// Intervals provides the average amounts per second in consecutive intervals of Config.IntervalLength, oldest first.
-	// The last interval ends with the game, so it may be shorter.
+	// Intervals provides the average amounts per second in consecutive intervals, oldest first: of
+	// Config.OpeningIntervalLength in the opening, of Config.IntervalLength after it. The last interval ends with the
+	// game, so it may be shorter.
 	Intervals []EconomyInterval `json:"intervals"`
 }
 
@@ -55,76 +56,81 @@ type Resource struct {
 	Sent float64 `json:"sent"`
 }
 
-// newEconomy prepares the economy from a player's statistics history. endFrame is the frame the game ended at,
-// intervalFrames the length of an interval in frames.
+// newEconomy prepares the economy from a player's statistics history. endFrame is the frame the game ended at, config
+// sets the intervals and must be valid (Config.Validate).
 // Returns nil if the history is empty.
-func newEconomy(history []demo.TeamStatistics, endFrame int64, intervalFrames float64) *Economy {
+func newEconomy(history []demo.TeamStatistics, endFrame int64, config Config) *Economy {
 	if len(history) == 0 {
 		return nil
 	}
-	history = endHistory(history, endFrame)
 
-	last := history[len(history)-1]
 	economy := &Economy{
-		Total:     resources(last),
+		Total:     resources(history[len(history)-1]),
 		Intervals: []EconomyInterval{},
 	}
-	if last.Frame > 0 {
-		economy.PerSecond = economy.Total.div(seconds(last.Frame))
+	if lastFrame := entryFrame(history, len(history)-1, endFrame); lastFrame > 0 {
+		economy.PerSecond = economy.Total.div(seconds(lastFrame))
 	}
-	bounds := intervalBounds(history, intervalFrames)
+	bounds := intervalBounds(history, endFrame, config)
 	for i := 1; i < len(bounds); i++ {
-		first, current := history[bounds[i-1]], history[bounds[i]]
+		first, current := bounds[i-1], bounds[i]
+		start, end := entryFrame(history, first, endFrame), entryFrame(history, current, endFrame)
 		economy.Intervals = append(economy.Intervals, EconomyInterval{
-			Time:      frameInterval(first.Frame, current.Frame),
-			PerSecond: resources(current).sub(resources(first)).div(seconds(current.Frame - first.Frame)),
+			Time:      frameInterval(start, end),
+			PerSecond: resources(history[current]).sub(resources(history[first])).div(seconds(end - start)),
 		})
 	}
 	return economy
 }
 
-// intervalBounds returns the indexes of the history entries which start and end the intervals: an interval ends at
-// the first entry at least intervalFrames after its start, the last interval at the last entry. Intervals are thus as
-// long as intervalFrames, rounded up to whole statistics periods, except for the last one, which may be shorter.
-func intervalBounds(history []demo.TeamStatistics, intervalFrames float64) []int {
+// entryFrame returns the frame of history entry i. The last entry holds the totals at the end of the game, but the
+// engine labels it with the frame of the next period (demo.TeamStatistics.Frame), so its frame is capped at endFrame,
+// though not earlier than the entry before it: endFrame is in whole seconds, so it may lie slightly before the actual
+// end.
+func entryFrame(history []demo.TeamStatistics, i int, endFrame int64) int32 {
+	frame := history[i].Frame
+	if i < len(history)-1 {
+		return frame
+	}
+	// The minimum is at most frame, so it fits an int32.
+	frame = int32(min(int64(frame), endFrame)) //nolint:gosec
+	if i > 0 {
+		frame = max(frame, history[i-1].Frame)
+	}
+	return frame
+}
+
+// intervalEnd returns the earliest frame at which the interval starting at the frame start may end: one opening
+// interval later, but not past the end of the opening, if it starts in the opening, else one interval later.
+func intervalEnd(config Config, start float64) float64 {
+	opening := frames(config.OpeningLength)
+	if start < opening {
+		return min(start+frames(config.OpeningIntervalLength), opening)
+	}
+	return start + frames(config.IntervalLength)
+}
+
+// intervalBounds returns the indexes of the history entries which start and end the intervals of config: an interval
+// ends at the first entry at or after its end (intervalEnd), the last interval at the last entry. Intervals are thus
+// as long as config says, rounded up to whole statistics periods, except for the last one, which may be shorter. The
+// frames of the entries are those of entryFrame. If the last entry has the frame of the last bound, it replaces that
+// bound, as it holds the totals at the end of the game.
+func intervalBounds(history []demo.TeamStatistics, endFrame int64, config Config) []int {
 	bounds := []int{0}
-	for i := 1; i < len(history); i++ {
-		frames := float64(history[i].Frame - history[bounds[len(bounds)-1]].Frame)
-		if frames >= intervalFrames || (i == len(history)-1 && frames > 0) {
+	last := len(history) - 1
+	for i := 1; i <= last; i++ {
+		start := entryFrame(history, bounds[len(bounds)-1], endFrame)
+		frame := entryFrame(history, i, endFrame)
+		switch {
+		case float64(frame) >= intervalEnd(config, float64(start)):
 			bounds = append(bounds, i)
+		case i == last && frame > start:
+			bounds = append(bounds, i)
+		case i == last:
+			bounds[len(bounds)-1] = i
 		}
 	}
 	return bounds
-}
-
-// endHistory returns a copy of history whose last entry, the totals at the end of the game, is at endFrame.
-//
-// The engine labels the totals in advance with the frame of the next entry, up to TeamStatPeriod seconds after the end
-// of the game (demo.TeamStatistics.Frame). If the totals did not change since the entry before, they are dropped. If
-// the game ended at that entry's frame (endFrame is in whole seconds, so it may lie slightly before the actual end),
-// the totals replace that entry, which keeps them.
-func endHistory(history []demo.TeamStatistics, endFrame int64) []demo.TeamStatistics {
-	ended := slices.Clone(history)
-	count := len(ended)
-	if count >= 2 && sameTotals(ended[count-1], ended[count-2]) {
-		return ended[:count-1]
-	}
-
-	last := &ended[count-1]
-	// The minimum is at most last.Frame, so it fits an int32.
-	last.Frame = int32(min(int64(last.Frame), endFrame)) //nolint:gosec
-	if count >= 2 && last.Frame <= ended[count-2].Frame {
-		last.Frame = ended[count-2].Frame
-		ended[count-2] = *last
-		return ended[:count-1]
-	}
-	return ended
-}
-
-// sameTotals returns whether a and b hold the same totals, regardless of their frames.
-func sameTotals(a, b demo.TeamStatistics) bool {
-	a.Frame = b.Frame
-	return a == b
 }
 
 // resources returns the resource totals of a statistics entry.
@@ -188,4 +194,9 @@ func (r Resource) div(divisor float64) Resource {
 // seconds returns a frame as seconds of game time.
 func seconds(frame int32) float64 {
 	return float64(frame) / GameSpeed
+}
+
+// frames returns a duration of game time in frames.
+func frames(duration time.Duration) float64 {
+	return duration.Seconds() * GameSpeed
 }
