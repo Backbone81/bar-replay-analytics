@@ -13,6 +13,15 @@ type File struct {
 	// Events provides the events in the order the widget wrote them, which is the order of their frames.
 	Events []Event `json:"events"`
 
+	// Game provides the game that was played.
+	Game Game `json:"game"`
+
+	// Teams provides every team but Gaia.
+	Teams []Team `json:"teams"`
+
+	// UnitDefs provides the unit defs the events and teams refer to, by unitDefID.
+	UnitDefs map[int]UnitDef `json:"unitDefs"`
+
 	// End provides when and why the widget stopped logging.
 	// Is nil if the file is incomplete, but Read rejects such a file.
 	End *End `json:"end"`
@@ -46,8 +55,8 @@ func ReadFile(filePath string) (*File, error) {
 	return Read(file)
 }
 
-// Validate returns an error if the file is incomplete, the game did not end, an event is invalid or the frames go
-// backwards.
+// Validate returns an error if the file is incomplete, the game did not end, an event is invalid, the frames go
+// backwards, or an event or team refers to a unit def that is not in UnitDefs.
 func (f *File) Validate() error {
 	if f.End == nil {
 		return errors.New("events: no end, the events file is incomplete")
@@ -64,9 +73,22 @@ func (f *File) Validate() error {
 			return fmt.Errorf("events: event %d: frame %d is before frame %d", i, event.Frame, lastFrame)
 		}
 		lastFrame = event.Frame
+		for _, unitDefID := range event.UnitDefIDs() {
+			if _, ok := f.UnitDefs[unitDefID]; !ok {
+				return fmt.Errorf("events: event %d: unit def %d is not in unitDefs", i, unitDefID)
+			}
+		}
 	}
 	if f.End.Frame < lastFrame {
 		return fmt.Errorf("events: end frame %d is before frame %d", f.End.Frame, lastFrame)
+	}
+	for _, team := range f.Teams {
+		if team.StartUnit == nil {
+			continue
+		}
+		if _, ok := f.UnitDefs[*team.StartUnit]; !ok {
+			return fmt.Errorf("events: team %d: start unit def %d is not in unitDefs", team.TeamID, *team.StartUnit)
+		}
 	}
 	return nil
 }

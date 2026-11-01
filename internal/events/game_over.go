@@ -1,7 +1,7 @@
 package events
 
-// GameOver is written when the game ends.
+// GameOver is written by widget:GameOver: the game ends.
 type GameOver struct {
-	// WinningAllyTeamIDs provides the IDs of the allyteams which have won.
-	WinningAllyTeamIDs []int `json:"winningAllyTeamIDs"`
+	// WinningAllyTeams provides the IDs of the allyteams which have won. Is empty if the game was undecided.
+	WinningAllyTeams []int `json:"winningAllyTeams"`
 }

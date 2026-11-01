@@ -2,42 +2,11 @@
   "events": [
     {
       "frame": 0,
-      "init": {
-        "map": "Argent Strata 1.1",
-        "mapSizeX": 8192,
-        "mapSizeZ": 8192,
-        "game": "Beyond All Reason test-31756-0d4c3c3",
-        "teams": [
-          { "teamID": 0, "allyTeamID": 0, "isAI": false, "side": "cortex", "name": "Player" },
-          { "teamID": 1, "allyTeamID": 1, "isAI": true, "side": "random", "name": "BARbarianAI(1) (UNKNOWN)" }
-        ]
-      }
+      "unitCreated": { "unitID": 2858, "unitDefID": 101, "unitTeam": 0, "x": 1698, "z": 6452 }
     },
     {
       "frame": 0,
-      "unitDef": {
-        "name": "corcom",
-        "humanName": "Cortex Commander",
-        "metalCost": 2700,
-        "energyCost": 26000,
-        "buildTime": 75000,
-        "techLevel": 1,
-        "unitGroup": "builder",
-        "isBuilder": true,
-        "isCommander": true,
-        "isMobile": true,
-        "buildDistance": 145,
-        "energyMake": 30,
-        "maxWeaponRange": 300
-      }
-    },
-    {
-      "frame": 0,
-      "unitCreated": { "unitID": 2858, "unitDef": "corcom", "teamID": 0, "position": [1698, 6452] }
-    },
-    {
-      "frame": 0,
-      "unitFinished": { "unitID": 2858, "unitDef": "corcom", "teamID": 0 }
+      "unitFinished": { "unitID": 2858, "unitDefID": 101, "unitTeam": 0 }
     },
     {
       "frame": 0,
@@ -45,38 +14,19 @@
     },
     {
       "frame": 0,
-      "resources": {
+      "teamResources": {
         "teamID": 0,
-        "metal": { "current": 1000, "storage": 1000, "pull": 0, "income": 0, "expense": 0 },
-        "energy": { "current": 1000, "storage": 1000, "pull": 0, "income": 0, "expense": 0 },
-        "unitCount": 1,
-        "builderCount": 1,
-        "idleBuilderCount": 1,
-        "factoryCount": 0,
-        "idleFactoryCount": 0
+        "metal": { "currentLevel": 1000, "storage": 1000, "pull": 0, "income": 0, "expense": 0 },
+        "energy": { "currentLevel": 1000, "storage": 1000, "pull": 0, "income": 0, "expense": 0 }
       }
     },
     {
       "frame": 30,
-      "unitCreated": {
-        "unitID": 1604,
-        "unitDef": "corlab",
-        "teamID": 0,
-        "position": [1800, 6400],
-        "builderID": 2858,
-        "builderDef": "corcom"
-      }
+      "unitCreated": { "unitID": 1604, "unitDefID": 102, "unitTeam": 0, "x": 1800, "z": 6400, "builderID": 2858 }
     },
     {
       "frame": 45,
-      "builderState": { "unitID": 2858, "state": "working", "command": -151, "targetID": 1604 }
-    },
-    {
-      "frame": 900,
-      "armyPositions": {
-        "teamID": 0,
-        "units": [{ "unitDef": "corak", "position": [2000, 6000] }]
-      }
+      "builderState": { "unitID": 2858, "state": "working", "cmdID": -102, "targetID": 1604 }
     },
     {
       "frame": 1200,
@@ -84,25 +34,75 @@
     },
     {
       "frame": 1500,
-      "unitGiven": { "unitID": 1604, "unitDef": "corlab", "teamID": 1, "oldTeamID": 0, "someFutureField": true }
+      "unitGiven": { "unitID": 1604, "unitDefID": 102, "newTeam": 1, "oldTeam": 0, "someFutureField": true }
     },
     {
       "frame": 1800,
       "unitDestroyed": {
         "unitID": 2858,
-        "unitDef": "corcom",
-        "teamID": 0,
-        "position": [1700, 6450],
+        "unitDefID": 101,
+        "unitTeam": 0,
+        "x": 1700,
+        "z": 6450,
         "buildProgress": 1,
-        "attackerDef": "corak",
-        "attackerTeamID": 1,
-        "weapon": "corak_gun"
+        "attackerID": 4711,
+        "attackerDefID": 101,
+        "attackerTeam": 1,
+        "weaponDefID": 17
       }
     },
     {
       "frame": 1800,
-      "gameOver": { "winningAllyTeamIDs": [1] }
+      "gameOver": { "winningAllyTeams": [1] }
     }
   ],
+  "game": {
+    "mapName": "Argent Strata 1.1",
+    "mapSizeX": 8192,
+    "mapSizeZ": 8192,
+    "gameName": "Beyond All Reason",
+    "gameVersion": "test-31720-0f97aa5",
+    "maxUnits": 32000
+  },
+  "teams": [
+    { "teamID": 0, "allyTeam": 0, "isAI": false, "side": "cortex", "startUnit": 101, "name": "Player" },
+    { "teamID": 1, "allyTeam": 1, "isAI": true, "side": "random", "startUnit": 101, "name": "BARbarianAI(1) (UNKNOWN)" }
+  ],
+  "unitDefs": {
+    "101": {
+      "name": "corcom",
+      "translatedHumanName": "Cortex Commander",
+      "metalCost": 2700,
+      "energyCost": 26000,
+      "buildTime": 75000,
+      "isFactory": false,
+      "isBuilder": true,
+      "canMove": true,
+      "buildDistance": 145,
+      "canResurrect": false,
+      "extractsMetal": 0,
+      "energyMake": 30,
+      "windGenerator": 0,
+      "maxWeaponRange": 300,
+      "customParams": { "techlevel": "1", "unitgroup": "builder", "iscommander": "1" }
+    },
+    "102": {
+      "name": "corlab",
+      "translatedHumanName": "Bot Lab",
+      "metalCost": 600,
+      "energyCost": 1300,
+      "buildTime": 6500,
+      "isFactory": true,
+      "isBuilder": true,
+      "canMove": true,
+      "buildDistance": 128,
+      "canResurrect": false,
+      "extractsMetal": 0,
+      "energyMake": 0,
+      "windGenerator": 0,
+      "maxWeaponRange": 0,
+      "customParams": {}
+    }
+  },
   "end": { "frame": 1800, "reason": "gameover" }
 }

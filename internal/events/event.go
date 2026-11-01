@@ -8,12 +8,6 @@ type Event struct {
 	// Frame is the game frame the event happened at.
 	Frame int `json:"frame"`
 
-	// Init is the first event.
-	Init *Init `json:"init,omitempty"`
-
-	// UnitDef is written the first time a unit type shows up.
-	UnitDef *UnitDef `json:"unitDef,omitempty"`
-
 	// UnitCreated is written when a unit is started or spawned.
 	UnitCreated *UnitCreated `json:"unitCreated,omitempty"`
 
@@ -29,11 +23,8 @@ type Event struct {
 	// BuilderState is written when a builder's state changes.
 	BuilderState *BuilderState `json:"builderState,omitempty"`
 
-	// Resources is written for each team every few seconds.
-	Resources *Resources `json:"resources,omitempty"`
-
-	// ArmyPositions is written for each team every few seconds.
-	ArmyPositions *ArmyPositions `json:"armyPositions,omitempty"`
+	// TeamResources is written for each team every 5 s.
+	TeamResources *TeamResources `json:"teamResources,omitempty"`
 
 	// GameOver is written when the game ends.
 	GameOver *GameOver `json:"gameOver,omitempty"`
@@ -42,15 +33,12 @@ type Event struct {
 // Validate returns an error if more than one event type is set.
 func (e *Event) Validate() error {
 	isSet := []bool{
-		e.Init != nil,
-		e.UnitDef != nil,
 		e.UnitCreated != nil,
 		e.UnitFinished != nil,
 		e.UnitDestroyed != nil,
 		e.UnitGiven != nil,
 		e.BuilderState != nil,
-		e.Resources != nil,
-		e.ArmyPositions != nil,
+		e.TeamResources != nil,
 		e.GameOver != nil,
 	}
 	count := 0
@@ -61,6 +49,26 @@ func (e *Event) Validate() error {
 	}
 	if count > 1 {
 		return fmt.Errorf("frame %d: %d event types set, at most one is allowed", e.Frame, count)
+	}
+	return nil
+}
+
+// UnitDefIDs returns the unit defs the event refers to.
+func (e *Event) UnitDefIDs() []int {
+	switch {
+	case e.UnitCreated != nil:
+		return []int{e.UnitCreated.UnitDefID}
+	case e.UnitFinished != nil:
+		return []int{e.UnitFinished.UnitDefID}
+	case e.UnitDestroyed != nil:
+		if e.UnitDestroyed.AttackerDefID != nil {
+			return []int{e.UnitDestroyed.UnitDefID, *e.UnitDestroyed.AttackerDefID}
+		}
+		return []int{e.UnitDestroyed.UnitDefID}
+	case e.UnitGiven != nil:
+		return []int{e.UnitGiven.UnitDefID}
+	case e.BuilderState != nil && e.BuilderState.CmdID != nil && *e.BuilderState.CmdID < 0:
+		return []int{-*e.BuilderState.CmdID}
 	}
 	return nil
 }

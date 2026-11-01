@@ -31,4 +31,36 @@ var _ = Describe("Event", func() {
 			Expect(event.Validate()).NotTo(Succeed())
 		})
 	})
+
+	Context("UnitDefIDs", func() {
+		It("returns the unit def of a unit event", func() {
+			event := events.Event{UnitGiven: &events.UnitGiven{UnitDefID: 101}}
+
+			Expect(event.UnitDefIDs()).To(Equal([]int{101}))
+		})
+
+		It("returns the unit defs of the unit and its attacker", func() {
+			event := events.Event{UnitDestroyed: &events.UnitDestroyed{UnitDefID: 101, AttackerDefID: new(102)}}
+
+			Expect(event.UnitDefIDs()).To(Equal([]int{101, 102}))
+		})
+
+		It("returns the unit def a builder builds", func() {
+			event := events.Event{BuilderState: &events.BuilderState{CmdID: new(-102)}}
+
+			Expect(event.UnitDefIDs()).To(Equal([]int{102}))
+		})
+
+		It("returns none for a builder's other commands", func() {
+			event := events.Event{BuilderState: &events.BuilderState{CmdID: new(90)}}
+
+			Expect(event.UnitDefIDs()).To(BeEmpty())
+		})
+
+		It("returns none for team resources", func() {
+			event := events.Event{TeamResources: &events.TeamResources{}}
+
+			Expect(event.UnitDefIDs()).To(BeEmpty())
+		})
+	})
 })
