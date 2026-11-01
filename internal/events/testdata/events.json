@@ -10,14 +10,20 @@
     },
     {
       "frame": 0,
-      "builderState": { "unitID": 2858, "state": "idle" }
+      "unitIdle": { "unitID": 2858, "unitDefID": 101, "unitTeam": 0 }
     },
     {
-      "frame": 0,
-      "teamResources": {
-        "teamID": 0,
-        "metal": { "currentLevel": 1000, "storage": 1000, "pull": 0, "income": 0, "expense": 0 },
-        "energy": { "currentLevel": 1000, "storage": 1000, "pull": 0, "income": 0, "expense": 0 }
+      "frame": 15,
+      "unitCommand": {
+        "unitID": 2858,
+        "unitDefID": 101,
+        "unitTeam": 0,
+        "cmdID": -102,
+        "cmdParams": [1800, 120.5, 6400, 0],
+        "cmdOpts": 32,
+        "playerID": 0,
+        "fromSynced": false,
+        "fromLua": false
       }
     },
     {
@@ -25,8 +31,8 @@
       "unitCreated": { "unitID": 1604, "unitDefID": 102, "unitTeam": 0, "x": 1800, "z": 6400, "builderID": 2858 }
     },
     {
-      "frame": 45,
-      "builderState": { "unitID": 2858, "state": "working", "cmdID": -102, "targetID": 1604 }
+      "frame": 900,
+      "unitCmdDone": { "unitID": 2858, "unitDefID": 101, "unitTeam": 0, "cmdID": -102, "cmdParams": [1800, 120.5, 6400, 0] }
     },
     {
       "frame": 1200,
@@ -53,6 +59,10 @@
     },
     {
       "frame": 1800,
+      "teamDied": { "teamID": 0 }
+    },
+    {
+      "frame": 1800,
       "gameOver": { "winningAllyTeams": [1] }
     }
   ],
@@ -68,6 +78,26 @@
     { "teamID": 0, "allyTeam": 0, "isAI": false, "side": "cortex", "startUnit": 101, "name": "Player" },
     { "teamID": 1, "allyTeam": 1, "isAI": true, "side": "random", "startUnit": 101, "name": "BARbarianAI(1) (UNKNOWN)" }
   ],
+  "teamStats": {
+    "0": [
+      {
+        "time": 0, "frame": 0,
+        "metalUsed": 0, "metalProduced": 0, "metalExcess": 0, "metalReceived": 0, "metalSent": 0,
+        "energyUsed": 0, "energyProduced": 0, "energyExcess": 0, "energyReceived": 0, "energySent": 0,
+        "damageDealt": 0, "damageReceived": 0,
+        "unitsProduced": 0, "unitsDied": 0, "unitsReceived": 0, "unitsSent": 0,
+        "unitsCaptured": 0, "unitsOutCaptured": 0, "unitsKilled": 0
+      },
+      {
+        "time": 60, "frame": 1800,
+        "metalUsed": 1100.5, "metalProduced": 1200.25, "metalExcess": 1, "metalReceived": 2, "metalSent": 3,
+        "energyUsed": 9000, "energyProduced": 9500, "energyExcess": 4, "energyReceived": 5, "energySent": 6,
+        "damageDealt": 700, "damageReceived": 800,
+        "unitsProduced": 2, "unitsDied": 1, "unitsReceived": 7, "unitsSent": 1,
+        "unitsCaptured": 8, "unitsOutCaptured": 9, "unitsKilled": 10
+      }
+    ]
+  },
   "unitDefs": {
     "101": {
       "name": "corcom",

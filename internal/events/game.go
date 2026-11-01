@@ -17,7 +17,7 @@ type Game struct {
 	// GameVersion is the game's version, e.g. "test-31720-0f97aa5".
 	GameVersion string `json:"gameVersion"`
 
-	// MaxUnits is the maximum number of units. A BuilderState.TargetID of at least MaxUnits is a feature: featureID +
-	// MaxUnits.
+	// MaxUnits is the maximum number of units. A command's target ID (e.g. UnitCommand.CmdParams of a reclaim) of at
+	// least MaxUnits is a feature: featureID + MaxUnits.
 	MaxUnits int `json:"maxUnits"`
 }

@@ -112,11 +112,14 @@ func testdataFile() *events.File {
 		Events: []events.Event{
 			{Frame: 0, UnitCreated: &events.UnitCreated{UnitID: 2858, UnitDefID: 101, UnitTeam: 0, X: 1698, Z: 6452}},
 			{Frame: 0, UnitFinished: &events.UnitFinished{UnitID: 2858, UnitDefID: 101, UnitTeam: 0}},
-			{Frame: 0, BuilderState: &events.BuilderState{UnitID: 2858, State: events.BuilderStateIdle}},
-			{Frame: 0, TeamResources: &events.TeamResources{
-				TeamID: 0,
-				Metal:  events.Resource{CurrentLevel: 1000, Storage: 1000},
-				Energy: events.Resource{CurrentLevel: 1000, Storage: 1000},
+			{Frame: 0, UnitIdle: &events.UnitIdle{UnitID: 2858, UnitDefID: 101, UnitTeam: 0}},
+			{Frame: 15, UnitCommand: &events.UnitCommand{
+				UnitID:    2858,
+				UnitDefID: 101,
+				UnitTeam:  0,
+				CmdID:     -102,
+				CmdParams: []float64{1800, 120.5, 6400, 0},
+				CmdOpts:   32,
 			}},
 			{Frame: 30, UnitCreated: &events.UnitCreated{
 				UnitID:    1604,
@@ -126,11 +129,12 @@ func testdataFile() *events.File {
 				Z:         6400,
 				BuilderID: new(2858),
 			}},
-			{Frame: 45, BuilderState: &events.BuilderState{
-				UnitID:   2858,
-				State:    events.BuilderStateWorking,
-				CmdID:    new(-102),
-				TargetID: new(1604),
+			{Frame: 900, UnitCmdDone: &events.UnitCmdDone{
+				UnitID:    2858,
+				UnitDefID: 101,
+				UnitTeam:  0,
+				CmdID:     -102,
+				CmdParams: []float64{1800, 120.5, 6400, 0},
 			}},
 			{Frame: 1200},
 			{Frame: 1500, UnitGiven: &events.UnitGiven{UnitID: 1604, UnitDefID: 102, NewTeam: 1, OldTeam: 0}},
@@ -146,6 +150,7 @@ func testdataFile() *events.File {
 				AttackerTeam:  new(1),
 				WeaponDefID:   17,
 			}},
+			{Frame: 1800, TeamDied: &events.TeamDied{TeamID: 0}},
 			{Frame: 1800, GameOver: &events.GameOver{WinningAllyTeams: []int{1}}},
 		},
 		Game: events.Game{
@@ -159,6 +164,34 @@ func testdataFile() *events.File {
 		Teams: []events.Team{
 			{TeamID: 0, AllyTeam: 0, IsAI: false, Side: "cortex", StartUnit: new(101), Name: "Player"},
 			{TeamID: 1, AllyTeam: 1, IsAI: true, Side: "random", StartUnit: new(101), Name: "BARbarianAI(1) (UNKNOWN)"},
+		},
+		TeamStats: map[int][]events.TeamStats{
+			0: {
+				{},
+				{
+					Time:             60,
+					Frame:            1800,
+					MetalUsed:        1100.5,
+					MetalProduced:    1200.25,
+					MetalExcess:      1,
+					MetalReceived:    2,
+					MetalSent:        3,
+					EnergyUsed:       9000,
+					EnergyProduced:   9500,
+					EnergyExcess:     4,
+					EnergyReceived:   5,
+					EnergySent:       6,
+					DamageDealt:      700,
+					DamageReceived:   800,
+					UnitsProduced:    2,
+					UnitsDied:        1,
+					UnitsReceived:    7,
+					UnitsSent:        1,
+					UnitsCaptured:    8,
+					UnitsOutCaptured: 9,
+					UnitsKilled:      10,
+				},
+			},
 		},
 		UnitDefs: map[int]events.UnitDef{
 			101: {

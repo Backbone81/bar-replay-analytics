@@ -20,11 +20,17 @@ type Event struct {
 	// UnitGiven is written when a unit changes team.
 	UnitGiven *UnitGiven `json:"unitGiven,omitempty"`
 
-	// BuilderState is written when a builder's state changes.
-	BuilderState *BuilderState `json:"builderState,omitempty"`
+	// UnitIdle is written when a builder or factory has no more orders.
+	UnitIdle *UnitIdle `json:"unitIdle,omitempty"`
 
-	// TeamResources is written for each team every 5 s.
-	TeamResources *TeamResources `json:"teamResources,omitempty"`
+	// UnitCommand is written when a builder or factory is given a command.
+	UnitCommand *UnitCommand `json:"unitCommand,omitempty"`
+
+	// UnitCmdDone is written when a builder or factory finished a command.
+	UnitCmdDone *UnitCmdDone `json:"unitCmdDone,omitempty"`
+
+	// TeamDied is written when a team dies.
+	TeamDied *TeamDied `json:"teamDied,omitempty"`
 
 	// GameOver is written when the game ends.
 	GameOver *GameOver `json:"gameOver,omitempty"`
@@ -37,8 +43,10 @@ func (e *Event) Validate() error {
 		e.UnitFinished != nil,
 		e.UnitDestroyed != nil,
 		e.UnitGiven != nil,
-		e.BuilderState != nil,
-		e.TeamResources != nil,
+		e.UnitIdle != nil,
+		e.UnitCommand != nil,
+		e.UnitCmdDone != nil,
+		e.TeamDied != nil,
 		e.GameOver != nil,
 	}
 	count := 0
@@ -53,7 +61,7 @@ func (e *Event) Validate() error {
 	return nil
 }
 
-// UnitDefIDs returns the unit defs the event refers to.
+// UnitDefIDs returns the unit defs the event refers to: the unit's, an attacker's, and what a build command builds.
 func (e *Event) UnitDefIDs() []int {
 	switch {
 	case e.UnitCreated != nil:
@@ -67,8 +75,20 @@ func (e *Event) UnitDefIDs() []int {
 		return []int{e.UnitDestroyed.UnitDefID}
 	case e.UnitGiven != nil:
 		return []int{e.UnitGiven.UnitDefID}
-	case e.BuilderState != nil && e.BuilderState.CmdID != nil && *e.BuilderState.CmdID < 0:
-		return []int{-*e.BuilderState.CmdID}
+	case e.UnitIdle != nil:
+		return []int{e.UnitIdle.UnitDefID}
+	case e.UnitCommand != nil:
+		return withBuild(e.UnitCommand.UnitDefID, e.UnitCommand.CmdID)
+	case e.UnitCmdDone != nil:
+		return withBuild(e.UnitCmdDone.UnitDefID, e.UnitCmdDone.CmdID)
 	}
 	return nil
+}
+
+// withBuild returns the unit's unit def, and the one a build command (cmdID < 0) builds.
+func withBuild(unitDefID int, cmdID int) []int {
+	if cmdID < 0 {
+		return []int{unitDefID, -cmdID}
+	}
+	return []int{unitDefID}
 }

@@ -45,20 +45,20 @@ var _ = Describe("Event", func() {
 			Expect(event.UnitDefIDs()).To(Equal([]int{101, 102}))
 		})
 
-		It("returns the unit def a builder builds", func() {
-			event := events.Event{BuilderState: &events.BuilderState{CmdID: new(-102)}}
+		It("returns the unit's unit def and the one a build command builds", func() {
+			event := events.Event{UnitCommand: &events.UnitCommand{UnitDefID: 101, CmdID: -102}}
 
-			Expect(event.UnitDefIDs()).To(Equal([]int{102}))
+			Expect(event.UnitDefIDs()).To(Equal([]int{101, 102}))
 		})
 
-		It("returns none for a builder's other commands", func() {
-			event := events.Event{BuilderState: &events.BuilderState{CmdID: new(90)}}
+		It("returns only the unit's unit def for other commands", func() {
+			event := events.Event{UnitCmdDone: &events.UnitCmdDone{UnitDefID: 101, CmdID: 90}}
 
-			Expect(event.UnitDefIDs()).To(BeEmpty())
+			Expect(event.UnitDefIDs()).To(Equal([]int{101}))
 		})
 
-		It("returns none for team resources", func() {
-			event := events.Event{TeamResources: &events.TeamResources{}}
+		It("returns none for a team that died", func() {
+			event := events.Event{TeamDied: &events.TeamDied{TeamID: 1}}
 
 			Expect(event.UnitDefIDs()).To(BeEmpty())
 		})

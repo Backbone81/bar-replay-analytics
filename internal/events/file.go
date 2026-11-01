@@ -19,6 +19,9 @@ type File struct {
 	// Teams provides every team but Gaia.
 	Teams []Team `json:"teams"`
 
+	// TeamStats provides every team's statistics history by teamID, an entry every 15 s.
+	TeamStats map[int][]TeamStats `json:"teamStats"`
+
 	// UnitDefs provides the unit defs the events and teams refer to, by unitDefID.
 	UnitDefs map[int]UnitDef `json:"unitDefs"`
 
