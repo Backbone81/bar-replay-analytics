@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
+	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
 )
 
 func TestReport(t *testing.T) {
@@ -51,4 +52,43 @@ func versionString(version string) [256]byte {
 	var result [256]byte
 	copy(result[:], version)
 	return result
+}
+
+// testSetupScript is the setup script of the demo of newTestDemo: the user against BARb, as BAR's local lobby writes
+// it. The allyteams, teams and AIs are numbered with gaps, which the engine closes: allyteam3 is allyteam 1, team2 is
+// team 1.
+const testSetupScript = `
+	[game]
+	{
+		gametype=Beyond All Reason test-31756-0d4c3c3;
+		mapname=Argent Strata 1.1;
+		startpostype=2;
+		[modoptions] { date_day=29; tweakdefs=; }
+		[allyteam0] { startrectleft=0.12; startrecttop=0.72; startrectright=0.26; startrectbottom=0.885; }
+		[allyteam3] { startrectleft=0.74; startrecttop=0.115; startrectright=0.88; startrectbottom=0.28; }
+		[player0] { name=Player; team=0; }
+		[team0] { allyteam=0; teamleader=0; side=Cortex; handicap=0; }
+		[team2] { allyteam=3; teamleader=0; side=Random; handicap=0; }
+		[ai1]
+		{
+			name=BARbarianAI(1);
+			shortname=BARb;
+			host=0;
+			team=2;
+			[options] { profile=Hard; disabledunits=; }
+		}
+	}
+`
+
+// newTestSetupScript returns testSetupScript parsed.
+func newTestSetupScript() *tdf.Section {
+	return parseScript(testSetupScript)
+}
+
+// parseScript returns the setup script text parsed.
+func parseScript(text string) *tdf.Section {
+	GinkgoHelper()
+	script, err := tdf.Parse(text)
+	Expect(err).NotTo(HaveOccurred())
+	return script
 }

@@ -173,6 +173,32 @@ var _ = Describe("Section", func() {
 		})
 	})
 
+	Context("FilterValues", func() {
+		It("keeps the values for which keep returns true, in subsections too", func() {
+			section, err := tdf.Parse(`a=; b=1; [c] { d=; e=2; [f] { g=; } }`)
+			Expect(err).NotTo(HaveOccurred())
+
+			filtered := section.FilterValues(func(_ string, value tdf.Value) bool { return value != "" })
+
+			Expect(json.Marshal(filtered)).To(MatchJSON(`{"b":"1","c":{"e":"2","f":{}}}`))
+		})
+
+		It("leaves the section unchanged", func() {
+			section, err := tdf.Parse(`a=; [c] { d=; }`)
+			Expect(err).NotTo(HaveOccurred())
+
+			section.FilterValues(func(string, tdf.Value) bool { return false })
+
+			Expect(json.Marshal(section)).To(MatchJSON(`{"a":"","c":{"d":""}}`))
+		})
+
+		It("returns nil on a nil section", func() {
+			var section *tdf.Section
+
+			Expect(section.FilterValues(func(string, tdf.Value) bool { return true })).To(BeNil())
+		})
+	})
+
 	Context("MarshalJSON", func() {
 		It("writes values as strings and sections as objects", func() {
 			encoded, err := json.Marshal(script.Section(`game\ai0`))

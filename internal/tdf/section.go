@@ -96,6 +96,25 @@ func (s *Section) Indexed(location string) iter.Seq2[int, *Section] {
 	}
 }
 
+// FilterValues returns a copy of this section with only the values for which keep returns true, in its subsections
+// too. Subsections are kept, also when no value is left in them. Returns nil on a nil section.
+func (s *Section) FilterValues(keep func(name string, value Value) bool) *Section {
+	if s == nil {
+		return nil
+	}
+
+	var result Section
+	for name, value := range s.Values() {
+		if keep(name, value) {
+			result.setValue(name, value)
+		}
+	}
+	for name, section := range s.Sections() {
+		result.setSection(name, section.FilterValues(keep))
+	}
+	return &result
+}
+
 // MarshalJSON writes the section as one JSON object: a value as a string, a subsection as a nested object, e.g.
 // {"game":{"mapname":"Argent Strata 1.1","ai0":{"options":{"profile":"Hard"}}}}. A name is never both, so the object
 // is unambiguous. The receiver is a value, so that a Section held by value is written too; encoding/json writes a nil

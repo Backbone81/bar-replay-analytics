@@ -11,8 +11,8 @@ All commands take `--bar-data-dir` (default `data`), the BAR data directory with
 bar-replay-analytics-go replay inspect <replay>
 bar-replay-analytics-go replay script <replay>
 
-# The report of a replay (JSON): metadata and every player's economy, over the game and in intervals of 1 minute
-# for the first 10 minutes and of 5 minutes after that
+# The report of a replay (JSON): metadata and game options, teams, every player (name, faction, income bonus, AI)
+# and its economy, over the game and in intervals of 1 minute for the first 10 minutes and of 5 minutes after that
 bar-replay-analytics-go replay report <replay> \
     [--opening-length 10m] [--opening-interval-length 1m] [--interval-length 5m]
 

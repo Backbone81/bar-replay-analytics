@@ -1,12 +1,14 @@
 package cmd
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
 	"github.com/backbone81/bar-replay-analytics-go/internal/report"
+	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
 )
 
 // The flags of replayReportCmd.
@@ -21,9 +23,10 @@ var replayReportCmd = &cobra.Command{
 	Use:   "report <replay>",
 	Short: "Print the report of a replay as JSON",
 	Long: `Prints the report of a replay as JSON: the data of the replay aggregated for analyzing and coaching the game,
-so that it can be read as it is. So far it holds the metadata of the game and the economy of every player, over the
-whole game and in intervals: of --opening-interval-length in the first --opening-length of the game, where economies
-grow fastest and build orders differ most, and of --interval-length after that. The intervals are the same in every
+so that it can be read as it is. It holds the metadata of the game (map, game version, game options), the teams,
+every player with name, faction, income bonus and AI profile, and the economy of every player, over the whole game
+and in intervals: of --opening-interval-length in the first --opening-length of the game, where economies grow
+fastest and build orders differ most, and of --interval-length after that. The intervals are the same in every
 report, so games can be compared interval by interval. Times are game time in minutes:seconds.
 
 <replay> is a path to a .sdfz file, or the name of a file in the demos/ folder of the BAR data directory.`,
@@ -37,8 +40,13 @@ report, so games can be compared interval by interval. Times are game time in mi
 		if err != nil {
 			return err
 		}
+		setupScript, err := tdf.Parse(replay.SetupScript)
+		if err != nil {
+			return fmt.Errorf("setup script: %w", err)
+		}
 		result, err := report.NewReport(
 			replay,
+			setupScript,
 			report.WithOpeningLength(replayReportOpeningLength),
 			report.WithOpeningIntervalLength(replayReportOpeningIntervalLength),
 			report.WithIntervalLength(replayReportIntervalLength),
