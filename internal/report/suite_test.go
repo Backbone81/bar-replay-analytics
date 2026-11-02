@@ -50,7 +50,9 @@ func newTestDemo() *demo.Demo {
 
 // newTestEventsFile returns an events file of the game of newTestDemo, in which player 0 starts with a Cortex commander
 // and player 1, Random in the setup script, with an Armada one. Each builds a metal extractor, player 0 also a bot lab,
-// and after the opening of 10 minutes (frame 18000) a construction bot. The ID of the metal extractor of player 0 is
+// and after the opening of 10 minutes (frame 18000) a construction bot. Player 0 has enough resources for its metal
+// extractor and its construction bot (build rate 1) and gets help with its bot lab (2), player 1 lacks resources for
+// its metal extractor (0.83). The ID of the metal extractor of player 0 is
 // reused after it died, for a commander given by a gadget.
 func newTestEventsFile() *events.File {
 	return &events.File{
@@ -87,12 +89,12 @@ func newTestEventsFile() *events.File {
 			{TeamID: 1, AllyTeam: 1, HasAI: true, StartUnit: new(5), Name: "BARbarianAI(1) (UNKNOWN)"},
 		},
 		UnitDefs: map[int]events.UnitDef{
-			1: {Name: "corcom", TranslatedHumanName: "Cortex Commander"},
-			2: {Name: "cormex", TranslatedHumanName: "Metal Extractor"},
-			3: {Name: "corlab", TranslatedHumanName: "Bot Lab"},
-			4: {Name: "corck", TranslatedHumanName: "Construction Bot"},
-			5: {Name: "armcom", TranslatedHumanName: "Armada Commander"},
-			6: {Name: "armmex", TranslatedHumanName: "Metal Extractor"},
+			1: {Name: "corcom", TranslatedHumanName: "Cortex Commander", BuildSpeed: 300},
+			2: {Name: "cormex", TranslatedHumanName: "Metal Extractor", BuildTime: 5700},
+			3: {Name: "corlab", TranslatedHumanName: "Bot Lab", BuildTime: 36000, BuildSpeed: 150},
+			4: {Name: "corck", TranslatedHumanName: "Construction Bot", BuildTime: 4500},
+			5: {Name: "armcom", TranslatedHumanName: "Armada Commander", BuildSpeed: 300},
+			6: {Name: "armmex", TranslatedHumanName: "Metal Extractor", BuildTime: 5700},
 			7: {Name: "legcom", TranslatedHumanName: "Legion Commander"},
 		},
 		End: &events.End{Frame: 18300, Reason: events.EndReasonGameOver},

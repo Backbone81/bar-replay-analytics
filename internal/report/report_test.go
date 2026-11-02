@@ -311,8 +311,8 @@ var _ = Describe("Report", func() {
 							"intervals": []
 						},
 						"openingBuildOrder": [
-							{"time": "0:20", "name": "Metal Extractor"},
-							{"time": "1:30", "name": "Bot Lab"}
+							{"time": "0:20", "name": "Metal Extractor", "buildRate": 1},
+							{"time": "1:30", "name": "Bot Lab", "buildRate": 2}
 						]
 					},
 					{
@@ -328,7 +328,7 @@ var _ = Describe("Report", func() {
 							"intervals": []
 						},
 						"openingBuildOrder": [
-							{"time": "0:25", "name": "Metal Extractor"}
+							{"time": "0:25", "name": "Metal Extractor", "buildRate": 0.83}
 						]
 					}
 				]

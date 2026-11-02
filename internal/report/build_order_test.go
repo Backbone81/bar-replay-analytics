@@ -17,20 +17,63 @@ var _ = Describe("OpeningBuildOrder", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(result.Players[0].OpeningBuildOrder).To(Equal([]report.BuildOrderEntry{
 			{
-				Time: report.Duration(20 * time.Second),
-				Name: "Metal Extractor",
+				Time:      report.Duration(20 * time.Second),
+				Name:      "Metal Extractor",
+				BuildRate: 1,
 			},
 			{
-				Time: report.Duration(90 * time.Second),
-				Name: "Bot Lab",
+				Time:      report.Duration(90 * time.Second),
+				Name:      "Bot Lab",
+				BuildRate: 2,
 			},
 		}))
 		Expect(result.Players[1].OpeningBuildOrder).To(Equal([]report.BuildOrderEntry{
 			{
-				Time: report.Duration(25 * time.Second),
-				Name: "Metal Extractor",
+				Time:      report.Duration(25 * time.Second),
+				Name:      "Metal Extractor",
+				BuildRate: 0.83,
 			},
 		}))
+	})
+
+	It("rates a factory's unit by the factory's build speed", func() {
+		result, err := report.NewReport(
+			newTestDemo(),
+			newTestSetupScript(),
+			newTestEventsFile(),
+			report.WithOpeningLength(11*time.Minute),
+		)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result.Players[0].OpeningBuildOrder[2].BuildRate).To(BeNumerically("==", 1))
+	})
+
+	It("leaves out resurrected units, which are finished when they are created", func() {
+		eventsFile := newTestEventsFile()
+		eventsFile.Events = append(eventsFile.Events[:13],
+			events.Event{
+				Frame: 3600,
+				UnitCreated: &events.UnitCreated{
+					UnitID:    104,
+					UnitDefID: 2,
+					UnitTeam:  0,
+					BuilderID: new(100),
+				},
+			},
+			events.Event{
+				Frame: 3600,
+				UnitFinished: &events.UnitFinished{
+					UnitID:    104,
+					UnitDefID: 2,
+					UnitTeam:  0,
+				},
+			},
+		)
+
+		result, err := report.NewReport(newTestDemo(), newTestSetupScript(), eventsFile)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(buildOrderNames(result.Players[0].OpeningBuildOrder)).To(Equal([]string{"Metal Extractor", "Bot Lab"}))
 	})
 
 	It("leaves out what was finished after the opening, though started in it", func() {
@@ -47,7 +90,6 @@ var _ = Describe("OpeningBuildOrder", func() {
 
 	It("includes what was finished in the last frame of the opening", func() {
 		eventsFile := newTestEventsFile()
-		eventsFile.Events[13].Frame = 17999
 		eventsFile.Events[14].Frame = 17999
 
 		result, err := report.NewReport(newTestDemo(), newTestSetupScript(), eventsFile)
@@ -100,6 +142,13 @@ var _ = Describe("OpeningBuildOrder", func() {
 	})
 
 	Context("events file", func() {
+		It("rejects a builder without build speed", func() {
+			eventsFile := newTestEventsFile()
+			eventsFile.UnitDefs[1] = events.UnitDef{Name: "corcom", TranslatedHumanName: "Cortex Commander"}
+
+			Expect(report.NewReport(newTestDemo(), newTestSetupScript(), eventsFile)).Error().To(HaveOccurred())
+		})
+
 		It("rejects an invalid events file", func() {
 			eventsFile := newTestEventsFile()
 			eventsFile.End = nil

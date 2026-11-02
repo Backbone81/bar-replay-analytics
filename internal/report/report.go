@@ -64,7 +64,10 @@ func NewReport(
 	if err := validateEventsGame(eventsFile, metadata, len(players)); err != nil {
 		return nil, fmt.Errorf("events: %w", err)
 	}
-	buildOrders := newOpeningBuildOrders(eventsFile, len(players), config)
+	buildOrders, err := newOpeningBuildOrders(eventsFile, len(players), config)
+	if err != nil {
+		return nil, fmt.Errorf("events: %w", err)
+	}
 	for i := range players {
 		players[i].setFactionFromStartUnit(eventsFile)
 		players[i].OpeningBuildOrder = buildOrders[i]

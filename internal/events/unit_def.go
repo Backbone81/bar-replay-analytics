@@ -26,6 +26,9 @@ type UnitDef struct {
 	// CanMove is true for mobile units. BAR sets it for factories too, so they can give their units move orders.
 	CanMove bool `json:"canMove"`
 
+	// BuildSpeed is the build power of a builder: the build time it builds per second. 0 for other units.
+	BuildSpeed float64 `json:"buildSpeed"`
+
 	// BuildDistance is how far a builder builds from, in elmos.
 	BuildDistance float64 `json:"buildDistance"`
 
