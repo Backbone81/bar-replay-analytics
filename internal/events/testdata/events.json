@@ -75,8 +75,8 @@
     "maxUnits": 32000
   },
   "teams": [
-    { "teamID": 0, "allyTeam": 0, "isAI": false, "side": "cortex", "startUnit": 101, "name": "Player" },
-    { "teamID": 1, "allyTeam": 1, "isAI": true, "side": "random", "startUnit": 101, "name": "BARbarianAI(1) (UNKNOWN)" }
+    { "teamID": 0, "allyTeam": 0, "hasAI": false, "side": "cortex", "startUnit": 101, "name": "Player" },
+    { "teamID": 1, "allyTeam": 1, "hasAI": true, "side": "random", "startUnit": 101, "name": "BARbarianAI(1) (UNKNOWN)" }
   ],
   "teamStats": {
     "0": [

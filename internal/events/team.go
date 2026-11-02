@@ -8,8 +8,8 @@ type Team struct {
 	// AllyTeam is the ID of the team's allyteam.
 	AllyTeam int `json:"allyTeam"`
 
-	// IsAI is true if an AI controls the team.
-	IsAI bool `json:"isAI"` //nolint:tagliatelle // the engine's name
+	// HasAI is true if an AI controls the team.
+	HasAI bool `json:"hasAI"` //nolint:tagliatelle // the engine's name
 
 	// Side is the team's faction as the start script holds it, e.g. "cortex", or "random". See StartUnit for the
 	// faction the team played.

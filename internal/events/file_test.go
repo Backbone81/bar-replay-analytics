@@ -162,8 +162,8 @@ func testdataFile() *events.File {
 			MaxUnits:    32000,
 		},
 		Teams: []events.Team{
-			{TeamID: 0, AllyTeam: 0, IsAI: false, Side: "cortex", StartUnit: new(101), Name: "Player"},
-			{TeamID: 1, AllyTeam: 1, IsAI: true, Side: "random", StartUnit: new(101), Name: "BARbarianAI(1) (UNKNOWN)"},
+			{TeamID: 0, AllyTeam: 0, HasAI: false, Side: "cortex", StartUnit: new(101), Name: "Player"},
+			{TeamID: 1, AllyTeam: 1, HasAI: true, Side: "random", StartUnit: new(101), Name: "BARbarianAI(1) (UNKNOWN)"},
 		},
 		TeamStats: map[int][]events.TeamStats{
 			0: {
