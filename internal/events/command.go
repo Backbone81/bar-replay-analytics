@@ -68,4 +68,11 @@ type UnitCmdDone struct {
 
 	// CmdParams provides the command's parameters, see UnitCommand.CmdParams.
 	CmdParams []float64 `json:"cmdParams"`
+
+	// CmdOpts is the command's option bits, see UnitCommand.CmdOpts.
+	CmdOpts int `json:"cmdOpts"`
+
+	// CmdTag is the command's tag, which the engine gave it when it entered the queue. CMD_INSERT and CMD_REMOVE refer to
+	// queued commands by tag.
+	CmdTag int `json:"cmdTag"`
 }

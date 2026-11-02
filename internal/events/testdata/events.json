@@ -32,7 +32,7 @@
     },
     {
       "frame": 900,
-      "unitCmdDone": { "unitID": 2858, "unitDefID": 101, "unitTeam": 0, "cmdID": -102, "cmdParams": [1800, 120.5, 6400, 0] }
+      "unitCmdDone": { "unitID": 2858, "unitDefID": 101, "unitTeam": 0, "cmdID": -102, "cmdParams": [1800, 120.5, 6400, 0], "cmdOpts": 32, "cmdTag": 7 }
     },
     {
       "frame": 1200,
@@ -75,8 +75,14 @@
     "maxUnits": 32000
   },
   "teams": [
-    { "teamID": 0, "allyTeam": 0, "hasAI": false, "side": "cortex", "startUnit": 101, "name": "Player" },
-    { "teamID": 1, "allyTeam": 1, "hasAI": true, "side": "random", "startUnit": 101, "name": "BARbarianAI(1) (UNKNOWN)" }
+    {
+      "teamID": 0, "leader": 0, "isDead": false, "hasAI": false, "side": "cortex", "allyTeam": 0, "incomeMultiplier": 1,
+      "customTeamKeys": {}, "startUnit": 101, "name": "Player"
+    },
+    {
+      "teamID": 1, "leader": 0, "isDead": true, "hasAI": true, "side": "random", "allyTeam": 1, "incomeMultiplier": 1.5,
+      "customTeamKeys": { "startpos": "1" }, "startUnit": 101, "name": "BARbarianAI(1) (UNKNOWN)"
+    }
   ],
   "teamStats": {
     "0": [
