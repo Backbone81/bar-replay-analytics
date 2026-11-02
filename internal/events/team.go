@@ -28,7 +28,8 @@ type Team struct {
 	// CustomTeamKeys provides the custom keys of the team's section in the start script, as strings.
 	CustomTeamKeys map[string]string `json:"customTeamKeys"`
 
-	// StartUnit is the unitDefID of the commander the team started with: BAR's team rules param "startUnit".
+	// StartUnit is the unitDefID of the commander the team started with: BAR's team rules param "startUnit". The side
+	// in File.Sides with this start unit is the faction the team played.
 	// Is nil if the game did not set it.
 	StartUnit *int `json:"startUnit,omitempty"`
 

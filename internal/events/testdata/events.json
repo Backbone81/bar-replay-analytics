@@ -74,6 +74,12 @@
     "gameVersion": "test-31720-0f97aa5",
     "maxUnits": 32000
   },
+  "sides": [
+    { "sideName": "armada", "caseName": "Armada", "startUnit": "armcom" },
+    { "sideName": "cortex", "caseName": "Cortex", "startUnit": "corcom" },
+    { "sideName": "random", "caseName": "Random", "startUnit": "dummycom" },
+    { "sideName": "legion", "caseName": "Legion", "startUnit": "legcom" }
+  ],
   "teams": [
     {
       "teamID": 0, "leader": 0, "isDead": false, "hasAI": false, "side": "cortex", "allyTeam": 0, "incomeMultiplier": 1,

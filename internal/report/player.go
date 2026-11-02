@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
+	"github.com/backbone81/bar-replay-analytics-go/internal/events"
 	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
 )
 
@@ -23,8 +24,10 @@ type Player struct {
 	// Is empty if one player or AI controls it.
 	Controllers []string `json:"controllers,omitempty"`
 
-	// Faction is the faction as chosen in the lobby: "Armada", "Cortex", "Legion", or "Random", which the game
-	// resolves only when it starts, so the replay's setup script does not tell.
+	// Faction is the faction the player played, like "Cortex": the side of the commander it started with
+	// (events.Team.StartUnit, events.File.Sides). The game resolves a faction chosen as "Random" in the lobby only when
+	// it starts, and a player may change the faction after the lobby, so the setup script does not tell. Is the
+	// faction of the setup script, possibly "Random", if the events file has no start unit or no side of it.
 	Faction string `json:"faction"`
 
 	// IncomeMultiplier is the factor the engine applies to this player's income: 1 normally, 1.2 with a bonus of 20%
@@ -39,6 +42,11 @@ type Player struct {
 	// Economy provides the resources this player produced and used.
 	// Is nil if the player has no statistics: the engine records them only at game over.
 	Economy *Economy `json:"economy"`
+
+	// OpeningBuildOrder provides the units and buildings this player built in the opening (Config.OpeningLength), in
+	// the order they were finished. Units which were not built, such as the commander at the start, are left out. Is
+	// empty without an opening.
+	OpeningBuildOrder []BuildOrderEntry `json:"openingBuildOrder"`
 }
 
 // AI describes an AI controlling a player.
@@ -79,7 +87,7 @@ func newPlayers(game *tdf.Section, teamIDs map[int]int, replay *demo.Demo, confi
 	return players, nil
 }
 
-// newPlayer prepares a player, without ID and economy, from the team section of the given number.
+// newPlayer prepares a player, without ID, economy and build order, from the team section of the given number.
 func newPlayer(game *tdf.Section, number int, section *tdf.Section, teamIDs map[int]int) (Player, error) {
 	value, _ := section.Value("allyteam")
 	allyTeam, err := value.AsInt()
@@ -266,4 +274,20 @@ func advantageMultiplier(value tdf.Value, divisor float64) (float64, error) {
 		return 0, err
 	}
 	return max(-1, advantage/divisor) + 1, nil
+}
+
+// setFactionFromStartUnit overwrites the faction of the setup script with the side of the start unit the events file
+// holds for the player, if it holds both. eventsFile must be valid (events.File.Validate).
+func (p *Player) setFactionFromStartUnit(eventsFile *events.File) {
+	for _, team := range eventsFile.Teams {
+		if team.TeamID != p.PlayerID || team.StartUnit == nil {
+			continue
+		}
+		startUnit := eventsFile.UnitDefs[*team.StartUnit].Name
+		for _, side := range eventsFile.Sides {
+			if side.StartUnit == startUnit {
+				p.Faction = side.CaseName
+			}
+		}
+	}
 }

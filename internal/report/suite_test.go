@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
+	"github.com/backbone81/bar-replay-analytics-go/internal/events"
 	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
 )
 
@@ -44,6 +45,57 @@ func newTestDemo() *demo.Demo {
 				{Frame: 1950, MetalProduced: 500, EnergyProduced: 5000, MetalSent: 30, EnergyReceived: 90},
 			},
 		},
+	}
+}
+
+// newTestEventsFile returns an events file of the game of newTestDemo, in which player 0 starts with a Cortex commander
+// and player 1, Random in the setup script, with an Armada one. Each builds a metal extractor, player 0 also a bot lab,
+// and after the opening of 10 minutes (frame 18000) a construction bot. The ID of the metal extractor of player 0 is
+// reused after it died, for a commander given by a gadget.
+func newTestEventsFile() *events.File {
+	return &events.File{
+		Events: []events.Event{
+			{Frame: 0, UnitCreated: &events.UnitCreated{UnitID: 100, UnitDefID: 1, UnitTeam: 0}},
+			{Frame: 0, UnitFinished: &events.UnitFinished{UnitID: 100, UnitDefID: 1, UnitTeam: 0}},
+			{Frame: 0, UnitCreated: &events.UnitCreated{UnitID: 200, UnitDefID: 5, UnitTeam: 1}},
+			{Frame: 0, UnitFinished: &events.UnitFinished{UnitID: 200, UnitDefID: 5, UnitTeam: 1}},
+			{Frame: 30, UnitCreated: &events.UnitCreated{UnitID: 101, UnitDefID: 2, UnitTeam: 0, BuilderID: new(100)}},
+			{Frame: 60, UnitCreated: &events.UnitCreated{UnitID: 201, UnitDefID: 6, UnitTeam: 1, BuilderID: new(200)}},
+			{Frame: 600, UnitFinished: &events.UnitFinished{UnitID: 101, UnitDefID: 2, UnitTeam: 0}},
+			{Frame: 750, UnitFinished: &events.UnitFinished{UnitID: 201, UnitDefID: 6, UnitTeam: 1}},
+			{Frame: 900, UnitCreated: &events.UnitCreated{UnitID: 102, UnitDefID: 3, UnitTeam: 0, BuilderID: new(100)}},
+			{Frame: 2700, UnitFinished: &events.UnitFinished{UnitID: 102, UnitDefID: 3, UnitTeam: 0}},
+			{Frame: 3000, UnitDestroyed: &events.UnitDestroyed{UnitID: 101, UnitDefID: 2, UnitTeam: 0, BuildProgress: 1}},
+			{Frame: 3300, UnitCreated: &events.UnitCreated{UnitID: 101, UnitDefID: 1, UnitTeam: 0}},
+			{Frame: 3300, UnitFinished: &events.UnitFinished{UnitID: 101, UnitDefID: 1, UnitTeam: 0}},
+			{Frame: 17400, UnitCreated: &events.UnitCreated{UnitID: 103, UnitDefID: 4, UnitTeam: 0, BuilderID: new(102)}},
+			{Frame: 18300, UnitFinished: &events.UnitFinished{UnitID: 103, UnitDefID: 4, UnitTeam: 0}},
+		},
+		Game: events.Game{
+			MapName:     "Argent Strata 1.1",
+			GameName:    "Beyond All Reason",
+			GameVersion: "test-31756-0d4c3c3",
+		},
+		Sides: []events.Side{
+			{SideName: "armada", CaseName: "Armada", StartUnit: "armcom"},
+			{SideName: "cortex", CaseName: "Cortex", StartUnit: "corcom"},
+			{SideName: "random", CaseName: "Random", StartUnit: "dummycom"},
+			{SideName: "legion", CaseName: "Legion", StartUnit: "legcom"},
+		},
+		Teams: []events.Team{
+			{TeamID: 0, AllyTeam: 0, StartUnit: new(1), Name: "Player"},
+			{TeamID: 1, AllyTeam: 1, HasAI: true, StartUnit: new(5), Name: "BARbarianAI(1) (UNKNOWN)"},
+		},
+		UnitDefs: map[int]events.UnitDef{
+			1: {Name: "corcom", TranslatedHumanName: "Cortex Commander"},
+			2: {Name: "cormex", TranslatedHumanName: "Metal Extractor"},
+			3: {Name: "corlab", TranslatedHumanName: "Bot Lab"},
+			4: {Name: "corck", TranslatedHumanName: "Construction Bot"},
+			5: {Name: "armcom", TranslatedHumanName: "Armada Commander"},
+			6: {Name: "armmex", TranslatedHumanName: "Metal Extractor"},
+			7: {Name: "legcom", TranslatedHumanName: "Legion Commander"},
+		},
+		End: &events.End{Frame: 18300, Reason: events.EndReasonGameOver},
 	}
 }
 

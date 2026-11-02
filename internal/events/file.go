@@ -16,6 +16,10 @@ type File struct {
 	// Game provides the game that was played.
 	Game Game `json:"game"`
 
+	// Sides provides the sides of the game.
+	// Is empty in a file of a widget from before it wrote them.
+	Sides []Side `json:"sides"`
+
 	// Teams provides every team but Gaia.
 	Teams []Team `json:"teams"`
 

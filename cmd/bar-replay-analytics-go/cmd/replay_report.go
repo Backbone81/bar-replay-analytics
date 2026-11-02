@@ -2,11 +2,15 @@ package cmd
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
+	"github.com/backbone81/bar-replay-analytics-go/internal/events"
+	"github.com/backbone81/bar-replay-analytics-go/internal/playback"
 	"github.com/backbone81/bar-replay-analytics-go/internal/report"
 	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
 )
@@ -22,12 +26,8 @@ var (
 var replayReportCmd = &cobra.Command{
 	Use:   "report <replay>",
 	Short: "Print the report of a replay as JSON",
-	Long: `Prints the report of a replay as JSON: the data of the replay aggregated for analyzing and coaching the game,
-so that it can be read as it is. It holds the metadata of the game (map, game version, game options), the teams,
-every player with name, faction, income bonus and AI profile, and the economy of every player, over the whole game
-and in intervals: of --opening-interval-length in the first --opening-length of the game, where economies grow
-fastest and build orders differ most, and of --interval-length after that. The intervals are the same in every
-report, so games can be compared interval by interval. Times are game time in minutes:seconds.
+	Long: `Prints the report of a replay as JSON: the game aggregated for coaching, readable as it is. It needs the events
+file of the replay's playback (see "replay play").
 
 <replay> is a path to a .sdfz file, or the name of a file in the demos/ folder of the BAR data directory.`,
 	Args: cobra.ExactArgs(1),
@@ -44,9 +44,18 @@ report, so games can be compared interval by interval. Times are game time in mi
 		if err != nil {
 			return fmt.Errorf("setup script: %w", err)
 		}
+		eventsFilePath, err := replayEventsPath(filePath)
+		if err != nil {
+			return err
+		}
+		eventsFile, err := events.ReadFile(eventsFilePath)
+		if err != nil {
+			return fmt.Errorf("events file of the replay's playback: %w", err)
+		}
 		result, err := report.NewReport(
 			replay,
 			setupScript,
+			eventsFile,
 			report.WithOpeningLength(replayReportOpeningLength),
 			report.WithOpeningIntervalLength(replayReportOpeningIntervalLength),
 			report.WithIntervalLength(replayReportIntervalLength),
@@ -58,6 +67,20 @@ report, so games can be compared interval by interval. Times are game time in mi
 	},
 }
 
+// replayEventsPath returns the path of the events file the playback of the replay file filePath wrote, in the events
+// folder of the analytics widget in the BAR data directory.
+// Returns an error if the analytics widget is not installed there.
+func replayEventsPath(filePath string) (string, error) {
+	player, err := playback.NewPlayer(barDataDir)
+	if err != nil {
+		return "", err
+	}
+	replay := playback.Replay{
+		Name: strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath)),
+	}
+	return filepath.Join(player.EventsDir(), replay.EventsFileName()), nil
+}
+
 func init() {
 	replayCmd.AddCommand(replayReportCmd)
 	flags := replayReportCmd.Flags()
@@ -65,20 +88,18 @@ func init() {
 		&replayReportOpeningLength,
 		"opening-length",
 		report.DefaultConfig.OpeningLength,
-		"The length of the opening, which the report aggregates in intervals of --opening-interval-length. "+
-			"0 aggregates the whole game in intervals of --interval-length.",
+		"The length of the opening: the first important minutes of the game. 0 for none.",
 	)
 	flags.DurationVar(
 		&replayReportOpeningIntervalLength,
 		"opening-interval-length",
 		report.DefaultConfig.OpeningIntervalLength,
-		"The length of the intervals in the opening. Rounded up to whole statistics periods of 15 s.",
+		"The length of the intervals in the opening.",
 	)
 	flags.DurationVar(
 		&replayReportIntervalLength,
 		"interval-length",
 		report.DefaultConfig.IntervalLength,
-		"The length of the intervals after the opening, such as 1m or 5m. Rounded up to whole statistics periods "+
-			"of 15 s.",
+		"The length of the intervals after the opening.",
 	)
 }

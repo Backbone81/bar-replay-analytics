@@ -163,6 +163,12 @@ func testdataFile() *events.File {
 			GameVersion: "test-31720-0f97aa5",
 			MaxUnits:    32000,
 		},
+		Sides: []events.Side{
+			{SideName: "armada", CaseName: "Armada", StartUnit: "armcom"},
+			{SideName: "cortex", CaseName: "Cortex", StartUnit: "corcom"},
+			{SideName: "random", CaseName: "Random", StartUnit: "dummycom"},
+			{SideName: "legion", CaseName: "Legion", StartUnit: "legcom"},
+		},
 		Teams: []events.Team{
 			{
 				TeamID:           0,

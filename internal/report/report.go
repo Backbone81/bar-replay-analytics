@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
+	"github.com/backbone81/bar-replay-analytics-go/internal/events"
 	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
 )
 
@@ -20,11 +21,17 @@ type Report struct {
 	Players []Player `json:"players"`
 }
 
-// NewReport prepares the report of a replay from the replay and its parsed setup script, configured by DefaultConfig
-// changed by options.
+// NewReport prepares the report of a replay from the replay, its parsed setup script and the events file of its
+// playback, configured by DefaultConfig changed by options.
 // Returns an error if the configuration is invalid, if the setup script is one the engine refuses or holds an invalid
-// value the report reads, or if it disagrees with the statistics on the number of players.
-func NewReport(replay *demo.Demo, setupScript *tdf.Section, options ...Option) (*Report, error) {
+// value the report reads, if it disagrees with the statistics on the number of players, or if the events file is
+// invalid or not of this game.
+func NewReport(
+	replay *demo.Demo,
+	setupScript *tdf.Section,
+	eventsFile *events.File,
+	options ...Option,
+) (*Report, error) {
 	config := DefaultConfig
 	for _, option := range options {
 		option(&config)
@@ -51,6 +58,17 @@ func NewReport(replay *demo.Demo, setupScript *tdf.Section, options ...Option) (
 			len(replay.TeamStats),
 		)
 	}
+	if err := eventsFile.Validate(); err != nil {
+		return nil, err
+	}
+	if err := validateEventsGame(eventsFile, metadata, len(players)); err != nil {
+		return nil, fmt.Errorf("events: %w", err)
+	}
+	buildOrders := newOpeningBuildOrders(eventsFile, len(players), config)
+	for i := range players {
+		players[i].setFactionFromStartUnit(eventsFile)
+		players[i].OpeningBuildOrder = buildOrders[i]
+	}
 	for _, player := range players {
 		teams[player.TeamID].PlayerIDs = append(teams[player.TeamID].PlayerIDs, player.PlayerID)
 	}
@@ -60,4 +78,20 @@ func NewReport(replay *demo.Demo, setupScript *tdf.Section, options ...Option) (
 		Teams:    teams,
 		Players:  players,
 	}, nil
+}
+
+// validateEventsGame returns an error if the events file is not of the game of metadata with numPlayers players: if its
+// map, game version or number of teams differ.
+func validateEventsGame(eventsFile *events.File, metadata Metadata, numPlayers int) error {
+	game := eventsFile.Game
+	if game.MapName != metadata.Map {
+		return fmt.Errorf("map: got %q, want %q", game.MapName, metadata.Map)
+	}
+	if gameVersion := game.GameName + " " + game.GameVersion; gameVersion != metadata.GameVersion {
+		return fmt.Errorf("game version: got %q, want %q", gameVersion, metadata.GameVersion)
+	}
+	if len(eventsFile.Teams) != numPlayers {
+		return fmt.Errorf("got %d teams, want the %d of the setup script", len(eventsFile.Teams), numPlayers)
+	}
+	return nil
 }

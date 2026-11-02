@@ -13,7 +13,7 @@ import (
 var _ = Describe("Economy", func() {
 	Context("Total and PerSecond", func() {
 		It("takes the totals from the last entry and averages them over the game", func() {
-			result, err := report.NewReport(newTestDemo(), newTestSetupScript())
+			result, err := report.NewReport(newTestDemo(), newTestSetupScript(), newTestEventsFile())
 
 			Expect(err).NotTo(HaveOccurred())
 			economy := result.Players[0].Economy
@@ -28,7 +28,7 @@ var _ = Describe("Economy", func() {
 		})
 
 		It("includes what was shared with allies", func() {
-			result, err := report.NewReport(newTestDemo(), newTestSetupScript())
+			result, err := report.NewReport(newTestDemo(), newTestSetupScript(), newTestEventsFile())
 
 			Expect(err).NotTo(HaveOccurred())
 			economy := result.Players[1].Economy
@@ -46,7 +46,7 @@ var _ = Describe("Economy", func() {
 				{{Frame: 450, MetalProduced: 1}},
 			}
 
-			result, err := report.NewReport(replay, newTestSetupScript())
+			result, err := report.NewReport(replay, newTestSetupScript(), newTestEventsFile())
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Players[0].Economy.Total.Metal.Produced).To(BeNumerically("==", 1))
@@ -58,7 +58,7 @@ var _ = Describe("Economy", func() {
 			replay := newTestDemo()
 			replay.TeamStats[1] = nil
 
-			result, err := report.NewReport(replay, newTestSetupScript())
+			result, err := report.NewReport(replay, newTestSetupScript(), newTestEventsFile())
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Players[0].Economy).NotTo(BeNil())
@@ -72,7 +72,7 @@ var _ = Describe("Economy", func() {
 			replay.FileHeader.GameTime = 21 * 60
 			replay.TeamStats[0] = metalHistory(periodTimes(21 * 60)...)
 
-			result, err := report.NewReport(replay, newTestSetupScript())
+			result, err := report.NewReport(replay, newTestSetupScript(), newTestEventsFile())
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(intervalTimes(result.Players[0].Economy.Intervals)).To(Equal([]string{
@@ -88,7 +88,7 @@ var _ = Describe("Economy", func() {
 			replay.FileHeader.GameTime = 120
 			replay.TeamStats[0] = metalHistory(periodTimes(120)...)
 
-			result, err := report.NewReport(replay, newTestSetupScript(),
+			result, err := report.NewReport(replay, newTestSetupScript(), newTestEventsFile(),
 				report.WithOpeningLength(time.Minute),
 				report.WithOpeningIntervalLength(45*time.Second),
 				report.WithIntervalLength(30*time.Second),
@@ -101,7 +101,12 @@ var _ = Describe("Economy", func() {
 		})
 
 		It("puts the whole game into one interval if it is shorter than the interval length", func() {
-			result, err := report.NewReport(newTestDemo(), newTestSetupScript(), report.WithOpeningLength(0))
+			result, err := report.NewReport(
+				newTestDemo(),
+				newTestSetupScript(),
+				newTestEventsFile(),
+				report.WithOpeningLength(0),
+			)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Players[0].Economy.Intervals).To(Equal([]report.EconomyInterval{{
@@ -111,7 +116,7 @@ var _ = Describe("Economy", func() {
 		})
 
 		It("averages each interval and ends the last one with the game", func() {
-			result, err := report.NewReport(newTestDemo(), newTestSetupScript(),
+			result, err := report.NewReport(newTestDemo(), newTestSetupScript(), newTestEventsFile(),
 				report.WithOpeningLength(0),
 				report.WithIntervalLength(50*time.Second),
 			)
@@ -143,6 +148,7 @@ var _ = Describe("Economy", func() {
 			result, err := report.NewReport(
 				replay,
 				newTestSetupScript(),
+				newTestEventsFile(),
 				report.WithOpeningLength(0),
 				report.WithIntervalLength(20*time.Second),
 			)
@@ -160,6 +166,7 @@ var _ = Describe("Economy", func() {
 			result, err := report.NewReport(
 				replay,
 				newTestSetupScript(),
+				newTestEventsFile(),
 				report.WithOpeningLength(0),
 				report.WithIntervalLength(30*time.Second),
 			)
@@ -175,6 +182,7 @@ var _ = Describe("Economy", func() {
 			result, err := report.NewReport(
 				replay,
 				newTestSetupScript(),
+				newTestEventsFile(),
 				report.WithOpeningLength(0),
 				report.WithIntervalLength(50*time.Second),
 			)
@@ -196,7 +204,7 @@ var _ = Describe("Economy", func() {
 				{Frame: 1965, MetalProduced: 202},
 			}
 
-			result, err := report.NewReport(replay, newTestSetupScript(), report.WithOpeningLength(0))
+			result, err := report.NewReport(replay, newTestSetupScript(), newTestEventsFile(), report.WithOpeningLength(0))
 
 			Expect(err).NotTo(HaveOccurred())
 			economy := result.Players[0].Economy
@@ -213,7 +221,12 @@ var _ = Describe("Economy", func() {
 				{Frame: 1500, MetalProduced: 31},
 			}
 
-			result, err := report.NewReport(replay, newTestSetupScript(), report.WithIntervalLength(time.Second))
+			result, err := report.NewReport(
+				replay,
+				newTestSetupScript(),
+				newTestEventsFile(),
+				report.WithIntervalLength(time.Second),
+			)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(intervalTimes(result.Players[0].Economy.Intervals)).To(Equal([]string{"0:00-0:50"}))
@@ -223,7 +236,7 @@ var _ = Describe("Economy", func() {
 		It("does not change the statistics of the demo", func() {
 			replay := newTestDemo()
 
-			Expect(report.NewReport(replay, newTestSetupScript())).Error().NotTo(HaveOccurred())
+			Expect(report.NewReport(replay, newTestSetupScript(), newTestEventsFile())).Error().NotTo(HaveOccurred())
 			Expect(replay.TeamStats).To(Equal(newTestDemo().TeamStats))
 		})
 	})

@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
+	"github.com/backbone81/bar-replay-analytics-go/internal/events"
 	"github.com/backbone81/bar-replay-analytics-go/internal/report"
 	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
 )
@@ -16,14 +17,14 @@ import (
 var _ = Describe("Report", func() {
 	Context("Config", func() {
 		It("rejects an invalid configuration", func() {
-			Expect(report.NewReport(newTestDemo(), newTestSetupScript(), report.WithIntervalLength(0))).
+			Expect(report.NewReport(newTestDemo(), newTestSetupScript(), newTestEventsFile(), report.WithIntervalLength(0))).
 				Error().To(HaveOccurred())
 		})
 	})
 
 	Context("Metadata", func() {
 		It("collects the metadata from the header and the setup script", func() {
-			result, err := report.NewReport(newTestDemo(), newTestSetupScript())
+			result, err := report.NewReport(newTestDemo(), newTestSetupScript(), newTestEventsFile())
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Metadata).To(Equal(report.Metadata{
@@ -43,7 +44,7 @@ var _ = Describe("Report", func() {
 			replay := newTestDemo()
 			replay.WinningAllyTeams = []uint8{1, 0, 1}
 
-			result, err := report.NewReport(replay, newTestSetupScript())
+			result, err := report.NewReport(replay, newTestSetupScript(), newTestEventsFile())
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Metadata.WinningTeams).To(Equal([]int{0, 1}))
@@ -56,7 +57,7 @@ var _ = Describe("Report", func() {
 			replay.WinningAllyTeams = nil
 			replay.TeamStats = nil
 
-			result, err := report.NewReport(replay, newTestSetupScript())
+			result, err := report.NewReport(replay, newTestSetupScript(), newTestEventsFile())
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Metadata.Duration).To(BeZero())
@@ -70,7 +71,7 @@ var _ = Describe("Report", func() {
 			replay := newTestDemo()
 			replay.TeamStats = [][]demo.TeamStatistics{{}}
 
-			result, err := report.NewReport(replay, newTestSetupScript())
+			result, err := report.NewReport(replay, newTestSetupScript(), newTestEventsFile())
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Players).To(HaveLen(2))
@@ -78,7 +79,7 @@ var _ = Describe("Report", func() {
 		})
 
 		It("reads the map options", func() {
-			result, err := report.NewReport(newTestDemo(), parseScript(hostedScript))
+			result, err := report.NewReport(newTestDemo(), parseScript(hostedScript), newHostedEventsFile())
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Metadata.MapOptions).To(Equal(*parseScript(`dry=0;`)))
@@ -87,7 +88,7 @@ var _ = Describe("Report", func() {
 
 	Context("Teams", func() {
 		It("reports one team per allyteam with its players and outcome", func() {
-			result, err := report.NewReport(newTestDemo(), newTestSetupScript())
+			result, err := report.NewReport(newTestDemo(), newTestSetupScript(), newTestEventsFile())
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Teams).To(Equal([]report.Team{
@@ -107,7 +108,7 @@ var _ = Describe("Report", func() {
 		It("reports a team without players with no player IDs", func() {
 			script := strings.Replace(testSetupScript, "[player0]", "[allyteam5] {} [player0]", 1)
 
-			result, err := report.NewReport(newTestDemo(), parseScript(script))
+			result, err := report.NewReport(newTestDemo(), parseScript(script), newTestEventsFile())
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Teams).To(HaveLen(3))
@@ -117,7 +118,7 @@ var _ = Describe("Report", func() {
 
 	Context("Players", func() {
 		It("reports a human player and an AI", func() {
-			result, err := report.NewReport(newTestDemo(), newTestSetupScript())
+			result, err := report.NewReport(newTestDemo(), newTestSetupScript(), newTestEventsFile())
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Players).To(HaveLen(2))
@@ -136,7 +137,7 @@ var _ = Describe("Report", func() {
 			Expect(ai.PlayerID).To(Equal(1))
 			Expect(ai.TeamID).To(Equal(1))
 			Expect(ai.Name).To(Equal("BARbarianAI(1)"))
-			Expect(ai.Faction).To(Equal("Random"))
+			Expect(ai.Faction).To(Equal("Armada"))
 			Expect(ai.AI).To(Equal(&report.AI{
 				ShortName: "BARb",
 				Profile:   "Hard",
@@ -148,14 +149,14 @@ var _ = Describe("Report", func() {
 		It("names an AI without a name by its short name", func() {
 			script := strings.Replace(testSetupScript, "name=BARbarianAI(1);", "", 1)
 
-			result, err := report.NewReport(newTestDemo(), parseScript(script))
+			result, err := report.NewReport(newTestDemo(), parseScript(script), newTestEventsFile())
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Players[1].Name).To(Equal("BARb"))
 		})
 
 		It("leaves spectators out", func() {
-			result, err := report.NewReport(newTestDemo(), parseScript(hostedScript))
+			result, err := report.NewReport(newTestDemo(), parseScript(hostedScript), newHostedEventsFile())
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Players).To(HaveLen(2))
@@ -169,7 +170,7 @@ var _ = Describe("Report", func() {
 			script := strings.Replace(hostedScript, "[player2] { name=Spec; spectator=1; }",
 				"[player2] { name=C; team=0; spectator=0; }", 1)
 
-			result, err := report.NewReport(newTestDemo(), parseScript(script))
+			result, err := report.NewReport(newTestDemo(), parseScript(script), newHostedEventsFile())
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Players[0].Name).To(Equal("A"))
@@ -177,11 +178,58 @@ var _ = Describe("Report", func() {
 			Expect(result.Players[1].Controllers).To(BeEmpty())
 		})
 
+		It("takes the faction from the start unit, which resolves Random", func() {
+			result, err := report.NewReport(newTestDemo(), newTestSetupScript(), newTestEventsFile())
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.Players[1].Faction).To(Equal("Armada"))
+		})
+
+		It("overwrites the faction of the setup script with the one of the start unit", func() {
+			eventsFile := newTestEventsFile()
+			eventsFile.Teams[0].StartUnit = new(7)
+
+			result, err := report.NewReport(newTestDemo(), newTestSetupScript(), eventsFile)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.Players[0].Faction).To(Equal("Legion"))
+		})
+
+		It("keeps the faction of the setup script without a start unit", func() {
+			eventsFile := newTestEventsFile()
+			eventsFile.Teams[1].StartUnit = nil
+
+			result, err := report.NewReport(newTestDemo(), newTestSetupScript(), eventsFile)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.Players[1].Faction).To(Equal("Random"))
+		})
+
+		It("keeps the faction of the setup script for a start unit of no side", func() {
+			eventsFile := newTestEventsFile()
+			eventsFile.Teams[1].StartUnit = new(4)
+
+			result, err := report.NewReport(newTestDemo(), newTestSetupScript(), eventsFile)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.Players[1].Faction).To(Equal("Random"))
+		})
+
+		It("keeps the faction of the setup script without sides", func() {
+			eventsFile := newTestEventsFile()
+			eventsFile.Sides = nil
+
+			result, err := report.NewReport(newTestDemo(), newTestSetupScript(), eventsFile)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.Players[1].Faction).To(Equal("Random"))
+		})
+
 		DescribeTable("reads the income multiplier",
 			func(values string, want float64) {
 				script := strings.Replace(testSetupScript, "side=Cortex; handicap=0;", "side=Cortex; "+values, 1)
 
-				result, err := report.NewReport(newTestDemo(), parseScript(script))
+				result, err := report.NewReport(newTestDemo(), parseScript(script), newTestEventsFile())
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result.Players[0].IncomeMultiplier).To(BeNumerically("~", want, 1e-9))
@@ -201,7 +249,7 @@ var _ = Describe("Report", func() {
 				Expect(strings.Contains(testSetupScript, old)).To(BeTrue())
 				script := strings.Replace(testSetupScript, old, replacement, 1)
 
-				Expect(report.NewReport(newTestDemo(), parseScript(script))).Error().To(HaveOccurred())
+				Expect(report.NewReport(newTestDemo(), parseScript(script), newTestEventsFile())).Error().To(HaveOccurred())
 			},
 			Entry("a team of another number than the statistics", "[team2]", "[team1] { allyteam=0; teamleader=0; } [team2]"),
 			Entry("a team without allyteam", "[team0] { allyteam=0;", "[team0] {"),
@@ -222,7 +270,7 @@ var _ = Describe("Report", func() {
 			replay := newTestDemo()
 			replay.TeamStats = [][]demo.TeamStatistics{{{Frame: 0}}, {{Frame: 0}}}
 
-			result, err := report.NewReport(replay, newTestSetupScript())
+			result, err := report.NewReport(replay, newTestSetupScript(), newTestEventsFile())
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(json.Marshal(result)).To(MatchJSON(`{
@@ -261,20 +309,27 @@ var _ = Describe("Report", func() {
 							"total": {` + zeroResourcesJSON + `},
 							"perSecond": {` + zeroResourcesJSON + `},
 							"intervals": []
-						}
+						},
+						"openingBuildOrder": [
+							{"time": "0:20", "name": "Metal Extractor"},
+							{"time": "1:30", "name": "Bot Lab"}
+						]
 					},
 					{
 						"playerID": 1,
 						"teamID": 1,
 						"name": "BARbarianAI(1)",
-						"faction": "Random",
+						"faction": "Armada",
 						"incomeMultiplier": 1,
 						"ai": {"shortName": "BARb", "profile": "Hard", "options": {"profile": "Hard"}},
 						"economy": {
 							"total": {` + zeroResourcesJSON + `},
 							"perSecond": {` + zeroResourcesJSON + `},
 							"intervals": []
-						}
+						},
+						"openingBuildOrder": [
+							{"time": "0:25", "name": "Metal Extractor"}
+						]
 					}
 				]
 			}`))
@@ -301,6 +356,14 @@ const hostedScript = `
 		[team1] { allyteam=1; teamleader=1; side=Armada; }
 	}
 `
+
+// newHostedEventsFile returns newTestEventsFile as the events file of the game of hostedScript.
+func newHostedEventsFile() *events.File {
+	eventsFile := newTestEventsFile()
+	eventsFile.Game.MapName = "Pools of Ilys 1.1.2"
+	eventsFile.Game.GameVersion = "test-31691-a617033"
+	return eventsFile
+}
 
 // zeroResourcesJSON is the members of Resources with all amounts 0, as JSON.
 const zeroResourcesJSON = `
