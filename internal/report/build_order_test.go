@@ -11,7 +11,7 @@ import (
 )
 
 var _ = Describe("OpeningBuildOrder", func() {
-	It("lists what each player built in the opening, in the order it was finished", func() {
+	It("lists what each player built in the first 5 minutes, in the order it was finished", func() {
 		result, err := report.NewReport(newTestDemo(), newTestSetupScript(), newTestEventsFile())
 
 		Expect(err).NotTo(HaveOccurred())
@@ -41,7 +41,7 @@ var _ = Describe("OpeningBuildOrder", func() {
 			newTestDemo(),
 			newTestSetupScript(),
 			newTestEventsFile(),
-			report.WithOpeningLength(11*time.Minute),
+			report.WithOpeningBuildOrderLength(6*time.Minute),
 		)
 
 		Expect(err).NotTo(HaveOccurred())
@@ -76,21 +76,21 @@ var _ = Describe("OpeningBuildOrder", func() {
 		Expect(buildOrderNames(result.Players[0].OpeningBuildOrder)).To(Equal([]string{"Metal Extractor", "Bot Lab"}))
 	})
 
-	It("leaves out what was finished after the opening, though started in it", func() {
+	It("leaves out what was finished after the opening build order, though started in it", func() {
 		result, err := report.NewReport(
 			newTestDemo(),
 			newTestSetupScript(),
 			newTestEventsFile(),
-			report.WithOpeningLength(time.Minute),
+			report.WithOpeningBuildOrderLength(time.Minute),
 		)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(buildOrderNames(result.Players[0].OpeningBuildOrder)).To(Equal([]string{"Metal Extractor"}))
 	})
 
-	It("includes what was finished in the last frame of the opening", func() {
+	It("includes what was finished in the last frame of the opening build order", func() {
 		eventsFile := newTestEventsFile()
-		eventsFile.Events[14].Frame = 17999
+		eventsFile.Events[14].Frame = 8999
 
 		result, err := report.NewReport(newTestDemo(), newTestSetupScript(), eventsFile)
 
@@ -99,12 +99,12 @@ var _ = Describe("OpeningBuildOrder", func() {
 			To(Equal([]string{"Metal Extractor", "Bot Lab", "Construction Bot"}))
 	})
 
-	It("is empty without an opening", func() {
+	It("is empty with an opening build order length of 0", func() {
 		result, err := report.NewReport(
 			newTestDemo(),
 			newTestSetupScript(),
 			newTestEventsFile(),
-			report.WithOpeningLength(0),
+			report.WithOpeningBuildOrderLength(0),
 		)
 
 		Expect(err).NotTo(HaveOccurred())

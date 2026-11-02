@@ -43,9 +43,9 @@ type Player struct {
 	// Is nil if neither has statistics of the player: the engine writes them to the replay only at game over.
 	Economy *Economy `json:"economy"`
 
-	// OpeningBuildOrder provides the units and buildings this player built in the opening (Config.OpeningLength), in
-	// the order they were finished. Units which were not built, such as the commander at the start, are left out. Is
-	// empty without an opening.
+	// OpeningBuildOrder provides the units and buildings this player built in the first Config.OpeningBuildOrderLength
+	// of the game, in the order they were finished. Units which were not built, such as the commander at the start, are
+	// left out. Is empty if Config.OpeningBuildOrderLength is 0.
 	OpeningBuildOrder []BuildOrderEntry `json:"openingBuildOrder"`
 }
 

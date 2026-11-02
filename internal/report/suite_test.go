@@ -50,10 +50,10 @@ func newTestDemo() *demo.Demo {
 
 // newTestEventsFile returns an events file of the game of newTestDemo, in which player 0 starts with a Cortex commander
 // and player 1, Random in the setup script, with an Armada one. Each builds a metal extractor, player 0 also a bot lab,
-// and after the opening of 10 minutes (frame 18000) a construction bot. Player 0 has enough resources for its metal
-// extractor and its construction bot (build rate 1) and gets help with its bot lab (2), player 1 lacks resources for
-// its metal extractor (0.83). The ID of the metal extractor of player 0 is
-// reused after it died, for a commander given by a gadget.
+// and after the opening build order of 5 minutes (frame 9000) a construction bot. Player 0 has enough resources for its
+// metal extractor and its construction bot (build rate 1) and gets help with its bot lab (2), player 1 lacks resources
+// for its metal extractor (0.83). The ID of the metal extractor of player 0 is reused after it died, for a commander
+// given by a gadget.
 func newTestEventsFile() *events.File {
 	return &events.File{
 		Events: []events.Event{
@@ -70,8 +70,8 @@ func newTestEventsFile() *events.File {
 			{Frame: 3000, UnitDestroyed: &events.UnitDestroyed{UnitID: 101, UnitDefID: 2, UnitTeam: 0, BuildProgress: 1}},
 			{Frame: 3300, UnitCreated: &events.UnitCreated{UnitID: 101, UnitDefID: 1, UnitTeam: 0}},
 			{Frame: 3300, UnitFinished: &events.UnitFinished{UnitID: 101, UnitDefID: 1, UnitTeam: 0}},
-			{Frame: 17400, UnitCreated: &events.UnitCreated{UnitID: 103, UnitDefID: 4, UnitTeam: 0, BuilderID: new(102)}},
-			{Frame: 18300, UnitFinished: &events.UnitFinished{UnitID: 103, UnitDefID: 4, UnitTeam: 0}},
+			{Frame: 8400, UnitCreated: &events.UnitCreated{UnitID: 103, UnitDefID: 4, UnitTeam: 0, BuilderID: new(102)}},
+			{Frame: 9300, UnitFinished: &events.UnitFinished{UnitID: 103, UnitDefID: 4, UnitTeam: 0}},
 		},
 		Game: events.Game{
 			MapName:     "Argent Strata 1.1",
@@ -97,7 +97,7 @@ func newTestEventsFile() *events.File {
 			6: {Name: "armmex", TranslatedHumanName: "Metal Extractor", BuildTime: 5700},
 			7: {Name: "legcom", TranslatedHumanName: "Legion Commander"},
 		},
-		End: &events.End{Frame: 18300, Reason: events.EndReasonGameOver},
+		End: &events.End{Frame: 9300, Reason: events.EndReasonGameOver},
 	}
 }
 

@@ -25,3 +25,10 @@ func WithIntervalLength(intervalLength time.Duration) Option {
 		config.IntervalLength = intervalLength
 	}
 }
+
+// WithOpeningBuildOrderLength sets Config.OpeningBuildOrderLength.
+func WithOpeningBuildOrderLength(openingBuildOrderLength time.Duration) Option {
+	return func(config *Config) {
+		config.OpeningBuildOrderLength = openingBuildOrderLength
+	}
+}

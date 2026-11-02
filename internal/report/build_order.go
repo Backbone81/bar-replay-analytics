@@ -33,23 +33,23 @@ type startedUnit struct {
 	builderDefID int
 }
 
-// newOpeningBuildOrders prepares the build order of the opening of each of numPlayers players, by player ID: every unit
-// and building a player's builders and factories built and finished before Config.OpeningLength, in the order they were
-// finished. Units finished in the frame they were started at are left out: resurrected units, which the engine
-// creates finished once the wreck is restored (CBuilder::UpdateResurrect in rts/Sim/Units/UnitTypes/Builder.cpp).
-// Returns an error if the builder of a unit in a build order has no build speed.
+// newOpeningBuildOrders prepares the opening build order of each of numPlayers players, by player ID: every unit and
+// building a player's builders and factories built and finished before Config.OpeningBuildOrderLength, in the order
+// they were finished. Units finished in the frame they were started at are left out: resurrected units, which the
+// engine creates finished once the wreck is restored (CBuilder::UpdateResurrect in
+// rts/Sim/Units/UnitTypes/Builder.cpp). Returns an error if the builder of a unit in a build order has no build speed.
 func newOpeningBuildOrders(eventsFile *events.File, numPlayers int, config Config) ([][]BuildOrderEntry, error) {
 	buildOrders := make([][]BuildOrderEntry, numPlayers)
 	for i := range buildOrders {
 		buildOrders[i] = []BuildOrderEntry{}
 	}
 
-	openingEnd := frames(config.OpeningLength)
+	buildOrderEnd := frames(config.OpeningBuildOrderLength)
 	// Unit IDs are reused once a unit died, so each UnitCreated replaces what is known of its ID.
 	unitDefIDs := make(map[int]int)
 	started := make(map[int]startedUnit)
 	for _, event := range eventsFile.Events {
-		if float64(event.Frame) >= openingEnd {
+		if float64(event.Frame) >= buildOrderEnd {
 			break
 		}
 		switch {
