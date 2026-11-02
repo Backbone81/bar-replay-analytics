@@ -43,7 +43,7 @@ func NewReport(
 	game := setupScript.Section("game")
 	metadata := newMetadata(replay, setupScript)
 	teams, teamIDs := newTeams(game, metadata.WinningTeams)
-	players, err := newPlayers(game, teamIDs, replay, config)
+	players, err := newPlayers(game, teamIDs)
 	if err != nil {
 		return nil, fmt.Errorf("setup script: %w", err)
 	}
@@ -68,8 +68,10 @@ func NewReport(
 	if err != nil {
 		return nil, fmt.Errorf("events: %w", err)
 	}
+	endFrame := int64(replay.FileHeader.GameTime) * GameSpeed
 	for i := range players {
 		players[i].setFactionFromStartUnit(eventsFile)
+		players[i].Economy = newEconomy(economyHistory(replay, eventsFile, i), endFrame, config)
 		players[i].OpeningBuildOrder = buildOrders[i]
 	}
 	for _, player := range players {

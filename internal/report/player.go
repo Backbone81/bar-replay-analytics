@@ -3,7 +3,6 @@ package report
 import (
 	"fmt"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
 	"github.com/backbone81/bar-replay-analytics-go/internal/events"
 	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
 )
@@ -39,8 +38,9 @@ type Player struct {
 	// AI describes the AI controlling this player. Is nil for a human player.
 	AI *AI `json:"ai"`
 
-	// Economy provides the resources this player produced and used.
-	// Is nil if the player has no statistics: the engine records them only at game over.
+	// Economy provides the resources this player produced and used, from the statistics history of the replay, or of
+	// the events file if that one has more entries (see economyHistory).
+	// Is nil if neither has statistics of the player: the engine writes them to the replay only at game over.
 	Economy *Economy `json:"economy"`
 
 	// OpeningBuildOrder provides the units and buildings this player built in the opening (Config.OpeningLength), in
@@ -63,15 +63,14 @@ type AI struct {
 	Options tdf.Section `json:"options"`
 }
 
-// newPlayers prepares the players from the team sections of the setup script's game section, given the team IDs by
-// allyteam number, and their economies from the replay's statistics.
+// newPlayers prepares the players, without economy and build order, from the team sections of the setup script's game
+// section, given the team IDs by allyteam number.
 // Returns an error if a value of the setup script is invalid, or if it refers to a missing section.
-func newPlayers(game *tdf.Section, teamIDs map[int]int, replay *demo.Demo, config Config) ([]Player, error) {
+func newPlayers(game *tdf.Section, teamIDs map[int]int) ([]Player, error) {
 	if err := checkTeamReferences(game); err != nil {
 		return nil, err
 	}
 
-	endFrame := int64(replay.FileHeader.GameTime) * GameSpeed
 	var players []Player
 	for number, section := range game.Indexed("team") {
 		player, err := newPlayer(game, number, section, teamIDs)
@@ -79,9 +78,6 @@ func newPlayers(game *tdf.Section, teamIDs map[int]int, replay *demo.Demo, confi
 			return nil, fmt.Errorf("team%d: %w", number, err)
 		}
 		player.PlayerID = len(players)
-		if player.PlayerID < len(replay.TeamStats) {
-			player.Economy = newEconomy(replay.TeamStats[player.PlayerID], endFrame, config)
-		}
 		players = append(players, player)
 	}
 	return players, nil

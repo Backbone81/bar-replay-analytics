@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
+	"github.com/backbone81/bar-replay-analytics-go/internal/events"
 	"github.com/backbone81/bar-replay-analytics-go/internal/report"
 )
 
@@ -63,6 +64,81 @@ var _ = Describe("Economy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Players[0].Economy).NotTo(BeNil())
 			Expect(result.Players[1].Economy).To(BeNil())
+		})
+	})
+
+	Context("history", func() {
+		It("takes the history of the events file if the replay holds only the totals", func() {
+			replay := newTestDemo()
+			replay.TeamStats = [][]demo.TeamStatistics{
+				{{Frame: 1950, MetalProduced: 420}},
+				{{Frame: 1950, MetalProduced: 500}},
+			}
+			eventsFile := newTestEventsFile()
+			eventsFile.TeamStats = map[int][]events.TeamStats{
+				0: {
+					{Frame: 0},
+					{Frame: 900, MetalProduced: 60, EnergyExcess: 30},
+					{Frame: 1800, MetalProduced: 420, EnergyExcess: 240},
+				},
+			}
+
+			result, err := report.NewReport(
+				replay,
+				newTestSetupScript(),
+				eventsFile,
+				report.WithOpeningLength(0),
+				report.WithIntervalLength(30*time.Second),
+			)
+
+			Expect(err).NotTo(HaveOccurred())
+			economy := result.Players[0].Economy
+			Expect(economy.Total.Metal.Produced).To(BeNumerically("==", 420))
+			Expect(economy.Intervals).To(Equal([]report.EconomyInterval{
+				{
+					Time: report.Interval{Start: 0, End: report.Duration(30 * time.Second)},
+					PerSecond: report.Resources{
+						Metal:  report.Resource{Produced: 2},
+						Energy: report.Resource{Wasted: 1},
+					},
+				},
+				{
+					Time: report.Interval{Start: report.Duration(30 * time.Second), End: report.Duration(60 * time.Second)},
+					PerSecond: report.Resources{
+						Metal:  report.Resource{Produced: 12},
+						Energy: report.Resource{Wasted: 7},
+					},
+				},
+			}))
+			Expect(result.Players[1].Economy.Total.Metal.Produced).To(BeNumerically("==", 500))
+			Expect(result.Players[1].Economy.Intervals).To(BeEmpty())
+		})
+
+		It("takes the history of the events file if the replay has no statistics", func() {
+			replay := newTestDemo()
+			replay.TeamStats = nil
+			eventsFile := newTestEventsFile()
+			eventsFile.TeamStats = map[int][]events.TeamStats{
+				1: {{Frame: 0}, {Frame: 1800, MetalProduced: 600}},
+			}
+
+			result, err := report.NewReport(replay, newTestSetupScript(), eventsFile)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.Players[0].Economy).To(BeNil())
+			Expect(result.Players[1].Economy.PerSecond.Metal.Produced).To(BeNumerically("==", 10))
+		})
+
+		It("keeps the history of the replay if the events file has no more entries", func() {
+			eventsFile := newTestEventsFile()
+			eventsFile.TeamStats = map[int][]events.TeamStats{
+				0: {{Frame: 0}, {Frame: 900, MetalProduced: 1}, {Frame: 1800, MetalProduced: 2}},
+			}
+
+			result, err := report.NewReport(newTestDemo(), newTestSetupScript(), eventsFile)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.Players[0].Economy.Total.Metal.Produced).To(BeNumerically("==", 420))
 		})
 	})
 

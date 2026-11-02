@@ -4,9 +4,10 @@ import (
 	"time"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
+	"github.com/backbone81/bar-replay-analytics-go/internal/events"
 )
 
-// Economy is what a player produced and used of metal and energy, from its TeamStatistics history.
+// Economy is what a player produced and used of metal and energy, from its TeamStatistics history (economyHistory).
 type Economy struct {
 	// Total provides the amounts over the whole game.
 	Total Resources `json:"total"`
@@ -54,6 +55,56 @@ type Resource struct {
 
 	// Sent is what was given or shared to allies.
 	Sent float64 `json:"sent"`
+}
+
+// economyHistory returns the statistics history of the player with playerID: the replay's, unless the events file has
+// more entries for it. A replay saved by the game itself holds an entry every 15 s, but one downloaded from the replay
+// database holds only the totals at the end, and a replay of a crashed game none. The playback records the history
+// anew (events.TeamStats), so the events file has every entry. Their last entry is labeled with the frame the widget
+// read them at, not with that of the next period, which entryFrame handles alike.
+// Returns nil if neither has statistics of the player.
+func economyHistory(replay *demo.Demo, eventsFile *events.File, playerID int) []demo.TeamStatistics {
+	var history []demo.TeamStatistics
+	if playerID < len(replay.TeamStats) {
+		history = replay.TeamStats[playerID]
+	}
+	eventsHistory := eventsFile.TeamStats[playerID]
+	if len(eventsHistory) <= len(history) {
+		return history
+	}
+	history = make([]demo.TeamStatistics, 0, len(eventsHistory))
+	for _, stats := range eventsHistory {
+		history = append(history, teamStatistics(stats))
+	}
+	return history
+}
+
+// teamStatistics returns an entry of the events file's statistics history as the replay's TeamStatistics, whose
+// fields the engine holds as float32 and int32.
+func teamStatistics(stats events.TeamStats) demo.TeamStatistics {
+	//nolint:gosec // The engine's TeamStatistics are int32, so the counts fit.
+	return demo.TeamStatistics{
+		Frame:            int32(stats.Frame),
+		MetalUsed:        float32(stats.MetalUsed),
+		EnergyUsed:       float32(stats.EnergyUsed),
+		MetalProduced:    float32(stats.MetalProduced),
+		EnergyProduced:   float32(stats.EnergyProduced),
+		MetalExcess:      float32(stats.MetalExcess),
+		EnergyExcess:     float32(stats.EnergyExcess),
+		MetalReceived:    float32(stats.MetalReceived),
+		EnergyReceived:   float32(stats.EnergyReceived),
+		MetalSent:        float32(stats.MetalSent),
+		EnergySent:       float32(stats.EnergySent),
+		DamageDealt:      float32(stats.DamageDealt),
+		DamageReceived:   float32(stats.DamageReceived),
+		UnitsProduced:    int32(stats.UnitsProduced),
+		UnitsDied:        int32(stats.UnitsDied),
+		UnitsReceived:    int32(stats.UnitsReceived),
+		UnitsSent:        int32(stats.UnitsSent),
+		UnitsCaptured:    int32(stats.UnitsCaptured),
+		UnitsOutCaptured: int32(stats.UnitsOutCaptured),
+		UnitsKilled:      int32(stats.UnitsKilled),
+	}
 }
 
 // newEconomy prepares the economy from a player's statistics history. endFrame is the frame the game ended at, config
