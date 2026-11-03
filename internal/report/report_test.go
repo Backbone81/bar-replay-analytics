@@ -313,6 +313,11 @@ var _ = Describe("Report", func() {
 						"openingBuildOrder": [
 							{"time": "0:20", "name": "Metal Extractor", "buildRate": 1},
 							{"time": "1:30", "name": "Bot Lab", "buildRate": 2}
+						],
+						"firstFinished": [
+							{"time": "0:20", "name": "Metal Extractor"},
+							{"time": "1:30", "name": "Bot Lab"},
+							{"time": "5:10", "name": "Construction Bot"}
 						]
 					},
 					{
@@ -329,6 +334,9 @@ var _ = Describe("Report", func() {
 						},
 						"openingBuildOrder": [
 							{"time": "0:25", "name": "Metal Extractor", "buildRate": 0.83}
+						],
+						"firstFinished": [
+							{"time": "0:25", "name": "Metal Extractor"}
 						]
 					}
 				]

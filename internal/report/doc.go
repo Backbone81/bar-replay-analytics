@@ -8,9 +8,10 @@
 // A Report holds the replay's metadata from the DemoFileHeader, the winning teams and the setup script (map, game
 // version and the game options as the script holds them), the teams, and per player its name, income multiplier and
 // AI from the setup script, its economy from its TeamStatistics history (totals and averages per second over the game
-// and per interval), and from the events the faction it played and its build order in the opening: the units and
-// buildings it finished. NewReport first takes the faction chosen in the lobby from the setup script, then overwrites
-// it with the one of the player's start unit in the events, so a disagreement shows when stepping through it.
+// and per interval), and from the events the faction it played, its build order in the opening (the units and
+// buildings it finished) and when it finished its first unit of each unit def over the game. NewReport first takes the
+// faction chosen in the lobby from the setup script, then overwrites it with the one of the player's start unit in the
+// events, so a disagreement shows when stepping through it.
 //
 // The game options (Metadata.ModOptions) are attached as they are, not interpreted: there are hundreds, and which of
 // them make a game non-standard depends on what it is compared for. A game started from the local lobby holds only the

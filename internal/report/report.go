@@ -68,11 +68,13 @@ func NewReport(
 	if err != nil {
 		return nil, fmt.Errorf("events: %w", err)
 	}
+	firstFinished := newFirstFinished(eventsFile, len(players))
 	endFrame := int64(replay.FileHeader.GameTime) * GameSpeed
 	for i := range players {
 		players[i].setFactionFromStartUnit(eventsFile)
 		players[i].Economy = newEconomy(economyHistory(replay, eventsFile, i), endFrame, config)
 		players[i].OpeningBuildOrder = buildOrders[i]
+		players[i].FirstFinished = firstFinished[i]
 	}
 	for _, player := range players {
 		teams[player.TeamID].PlayerIDs = append(teams[player.TeamID].PlayerIDs, player.PlayerID)

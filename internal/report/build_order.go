@@ -24,20 +24,9 @@ type BuildOrderEntry struct {
 	BuildRate float64 `json:"buildRate"`
 }
 
-// startedUnit is a unit a builder or factory started, for the build order entry when it is finished.
-type startedUnit struct {
-	// frame is the frame the unit was started at.
-	frame int
-
-	// builderDefID is the unit def of the builder or factory which started it, 0 if unknown.
-	builderDefID int
-}
-
 // newOpeningBuildOrders prepares the opening build order of each of numPlayers players, by player ID: every unit and
-// building a player's builders and factories built and finished before Config.OpeningBuildOrderLength, in the order
-// they were finished. Units finished in the frame they were started at are left out: resurrected units, which the
-// engine creates finished once the wreck is restored (CBuilder::UpdateResurrect in
-// rts/Sim/Units/UnitTypes/Builder.cpp). Returns an error if the builder of a unit in a build order has no build speed.
+// building a player built (see builtUnits) and finished before Config.OpeningBuildOrderLength, in the order they were
+// finished. Returns an error if the builder of a unit in a build order has no build speed.
 func newOpeningBuildOrders(eventsFile *events.File, numPlayers int, config Config) ([][]BuildOrderEntry, error) {
 	buildOrders := make([][]BuildOrderEntry, numPlayers)
 	for i := range buildOrders {
@@ -45,43 +34,21 @@ func newOpeningBuildOrders(eventsFile *events.File, numPlayers int, config Confi
 	}
 
 	buildOrderEnd := frames(config.OpeningBuildOrderLength)
-	// Unit IDs are reused once a unit died, so each UnitCreated replaces what is known of its ID.
-	unitDefIDs := make(map[int]int)
-	started := make(map[int]startedUnit)
-	for _, event := range eventsFile.Events {
-		if float64(event.Frame) >= buildOrderEnd {
+	for unit := range builtUnits(eventsFile, numPlayers) {
+		if float64(unit.finishFrame) >= buildOrderEnd {
 			break
 		}
-		switch {
-		case event.UnitCreated != nil:
-			created := event.UnitCreated
-			unitDefIDs[created.UnitID] = created.UnitDefID
-			delete(started, created.UnitID)
-			if created.BuilderID != nil {
-				started[created.UnitID] = startedUnit{
-					frame:        event.Frame,
-					builderDefID: unitDefIDs[*created.BuilderID],
-				}
-			}
-		case event.UnitFinished != nil:
-			finished := event.UnitFinished
-			unit, ok := started[finished.UnitID]
-			if !ok || event.Frame == unit.frame || finished.UnitTeam < 0 || finished.UnitTeam >= numPlayers {
-				continue
-			}
-			builder := eventsFile.UnitDefs[unit.builderDefID]
-			if builder.BuildSpeed <= 0 {
-				return nil, fmt.Errorf("unit %d finished at frame %d: its builder %q has no build speed",
-					finished.UnitID, event.Frame, builder.Name)
-			}
-			unitDef := eventsFile.UnitDefs[finished.UnitDefID]
-			buildOrders[finished.UnitTeam] = append(buildOrders[finished.UnitTeam], BuildOrderEntry{
-				// The engine counts frames in an int32.
-				Time:      frameDuration(int32(event.Frame)), //nolint:gosec
-				Name:      unitDef.TranslatedHumanName,
-				BuildRate: buildRate(unitDef, builder, event.Frame-unit.frame),
-			})
+		builder := eventsFile.UnitDefs[unit.builderDefID]
+		if builder.BuildSpeed <= 0 {
+			return nil, fmt.Errorf("unit %d finished at frame %d: its builder %q has no build speed",
+				unit.unitID, unit.finishFrame, builder.Name)
 		}
+		unitDef := eventsFile.UnitDefs[unit.unitDefID]
+		buildOrders[unit.playerID] = append(buildOrders[unit.playerID], BuildOrderEntry{
+			Time:      unit.time(),
+			Name:      unitDef.TranslatedHumanName,
+			BuildRate: buildRate(unitDef, builder, unit.finishFrame-unit.startFrame),
+		})
 	}
 	return buildOrders, nil
 }

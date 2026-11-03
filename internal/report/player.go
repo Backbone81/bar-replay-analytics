@@ -47,6 +47,13 @@ type Player struct {
 	// of the game, in the order they were finished. Units which were not built, such as the commander at the start, are
 	// left out. Is empty if Config.OpeningBuildOrderLength is 0.
 	OpeningBuildOrder []BuildOrderEntry `json:"openingBuildOrder"`
+
+	// FirstFinished provides, for every unit def this player built over the whole game, the first unit or building of
+	// it, in the order they were finished: the first of each factory, economy building, defence and unit type, which
+	// shows when the player teched up, built up the economy and changed the unit mix. Units which were not built are
+	// left out, as in OpeningBuildOrder. Unit defs of the same name, like the Metal Extractor of Armada and Cortex,
+	// have an entry each.
+	FirstFinished []FirstFinishedEntry `json:"firstFinished"`
 }
 
 // AI describes an AI controlling a player.
