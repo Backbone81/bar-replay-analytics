@@ -7,7 +7,8 @@ import (
 	"github.com/backbone81/bar-replay-analytics-go/internal/events"
 )
 
-// Economy is what a player produced and used of metal and energy, from its TeamStatistics history (economyHistory).
+// Economy is what a player produced and used of metal and energy, from its TeamStatistics history (economyHistory),
+// and the metal extractors it held, from the events.
 type Economy struct {
 	// Total provides the amounts over the whole game.
 	Total Resources `json:"total"`
@@ -28,6 +29,9 @@ type EconomyInterval struct {
 
 	// PerSecond provides the average amounts per second in this interval.
 	PerSecond Resources `json:"perSecond"`
+
+	// MetalExtractors provides the metal extractors the player held at the end of this interval.
+	MetalExtractors MetalExtractors `json:"metalExtractors"`
 }
 
 // Resources provides amounts of metal and energy.
@@ -107,10 +111,15 @@ func teamStatistics(stats events.TeamStats) demo.TeamStatistics {
 	}
 }
 
-// newEconomy prepares the economy from a player's statistics history. endFrame is the frame the game ended at, config
-// sets the intervals and must be valid (Config.Validate).
-// Returns nil if the history is empty.
-func newEconomy(history []demo.TeamStatistics, endFrame int64, config Config) *Economy {
+// newEconomy prepares the economy from a player's statistics history and metal extractor history. endFrame is the
+// frame the game ended at, config sets the intervals and must be valid (Config.Validate).
+// Returns nil if the statistics history is empty.
+func newEconomy(
+	history []demo.TeamStatistics,
+	metalExtractors metalExtractorHistory,
+	endFrame int64,
+	config Config,
+) *Economy {
 	if len(history) == 0 {
 		return nil
 	}
@@ -127,8 +136,9 @@ func newEconomy(history []demo.TeamStatistics, endFrame int64, config Config) *E
 		first, current := bounds[i-1], bounds[i]
 		start, end := entryFrame(history, first, endFrame), entryFrame(history, current, endFrame)
 		economy.Intervals = append(economy.Intervals, EconomyInterval{
-			Time:      frameInterval(start, end),
-			PerSecond: resources(history[current]).sub(resources(history[first])).div(seconds(end - start)),
+			Time:            frameInterval(start, end),
+			PerSecond:       resources(history[current]).sub(resources(history[first])).div(seconds(end - start)),
+			MetalExtractors: metalExtractors.at(end),
 		})
 	}
 	return economy

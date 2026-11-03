@@ -90,12 +90,31 @@ func newTestEventsFile() *events.File {
 		},
 		UnitDefs: map[int]events.UnitDef{
 			1: {Name: "corcom", TranslatedHumanName: "Cortex Commander", BuildSpeed: 300},
-			2: {Name: "cormex", TranslatedHumanName: "Metal Extractor", BuildTime: 5700},
+			2: {
+				Name:                "cormex",
+				TranslatedHumanName: "Metal Extractor",
+				BuildTime:           5700,
+				ExtractsMetal:       0.001,
+				CustomParams:        map[string]string{"techlevel": "1"},
+			},
 			3: {Name: "corlab", TranslatedHumanName: "Bot Lab", BuildTime: 36000, BuildSpeed: 150},
 			4: {Name: "corck", TranslatedHumanName: "Construction Bot", BuildTime: 4500},
 			5: {Name: "armcom", TranslatedHumanName: "Armada Commander", BuildSpeed: 300},
-			6: {Name: "armmex", TranslatedHumanName: "Metal Extractor", BuildTime: 5700},
+			6: {
+				Name:                "armmex",
+				TranslatedHumanName: "Metal Extractor",
+				BuildTime:           5700,
+				ExtractsMetal:       0.001,
+				CustomParams:        map[string]string{"techlevel": "1"},
+			},
 			7: {Name: "legcom", TranslatedHumanName: "Legion Commander"},
+			8: {
+				Name:                "cormoho",
+				TranslatedHumanName: "Advanced Metal Extractor",
+				BuildTime:           14100,
+				ExtractsMetal:       0.004,
+				CustomParams:        map[string]string{"techlevel": "2"},
+			},
 		},
 		End: &events.End{Frame: 9300, Reason: events.EndReasonGameOver},
 	}

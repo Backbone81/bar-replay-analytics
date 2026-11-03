@@ -26,6 +26,8 @@ type Report struct {
 // Returns an error if the configuration is invalid, if the setup script is one the engine refuses or holds an invalid
 // value the report reads, if it disagrees with the statistics on the number of players, or if the events file is
 // invalid or not of this game.
+//
+//nolint:funlen // One part of the report after the other reads best in one function.
 func NewReport(
 	replay *demo.Demo,
 	setupScript *tdf.Section,
@@ -69,10 +71,14 @@ func NewReport(
 		return nil, fmt.Errorf("events: %w", err)
 	}
 	firstFinished := newFirstFinished(eventsFile, len(players))
+	metalExtractors, err := newMetalExtractorHistories(eventsFile, len(players))
+	if err != nil {
+		return nil, fmt.Errorf("events: %w", err)
+	}
 	endFrame := int64(replay.FileHeader.GameTime) * GameSpeed
 	for i := range players {
 		players[i].setFactionFromStartUnit(eventsFile)
-		players[i].Economy = newEconomy(economyHistory(replay, eventsFile, i), endFrame, config)
+		players[i].Economy = newEconomy(economyHistory(replay, eventsFile, i), metalExtractors[i], endFrame, config)
 		players[i].OpeningBuildOrder = buildOrders[i]
 		players[i].FirstFinished = firstFinished[i]
 	}

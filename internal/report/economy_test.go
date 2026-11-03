@@ -101,6 +101,7 @@ var _ = Describe("Economy", func() {
 						Metal:  report.Resource{Produced: 2},
 						Energy: report.Resource{Wasted: 1},
 					},
+					MetalExtractors: report.MetalExtractors{Tech1: 1},
 				},
 				{
 					Time: report.Interval{Start: report.Duration(30 * time.Second), End: report.Duration(60 * time.Second)},
@@ -108,6 +109,7 @@ var _ = Describe("Economy", func() {
 						Metal:  report.Resource{Produced: 12},
 						Energy: report.Resource{Wasted: 7},
 					},
+					MetalExtractors: report.MetalExtractors{Tech1: 1},
 				},
 			}))
 			Expect(result.Players[1].Economy.Total.Metal.Produced).To(BeNumerically("==", 500))
@@ -186,8 +188,9 @@ var _ = Describe("Economy", func() {
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Players[0].Economy.Intervals).To(Equal([]report.EconomyInterval{{
-				Time:      report.Interval{Start: 0, End: report.Duration(60 * time.Second)},
-				PerSecond: result.Players[0].Economy.PerSecond,
+				Time:            report.Interval{Start: 0, End: report.Duration(60 * time.Second)},
+				PerSecond:       result.Players[0].Economy.PerSecond,
+				MetalExtractors: report.MetalExtractors{Tech1: 1},
 			}}))
 		})
 
@@ -205,6 +208,7 @@ var _ = Describe("Economy", func() {
 						Metal:  report.Resource{Produced: 2, Used: 1},
 						Energy: report.Resource{Produced: 20, Wasted: 4},
 					},
+					MetalExtractors: report.MetalExtractors{Tech1: 1},
 				},
 				{
 					Time: report.Interval{Start: report.Duration(50 * time.Second), End: report.Duration(60 * time.Second)},
@@ -212,6 +216,7 @@ var _ = Describe("Economy", func() {
 						Metal:  report.Resource{Produced: 32, Used: 31},
 						Energy: report.Resource{Produced: 140, Wasted: 4},
 					},
+					MetalExtractors: report.MetalExtractors{Tech1: 1},
 				},
 			}))
 		})
