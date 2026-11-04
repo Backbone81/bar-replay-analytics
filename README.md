@@ -1,55 +1,95 @@
-# BAR Replay Analytics Go
+# BAR Replay Analytics
 
-This repository provides a tool for analyzing replays of [Beyond All Reason](https://www.beyondallreason.info/).
+Analyze your [Beyond All Reason](https://www.beyondallreason.info/) games from their replays, and let an AI agent
+coach you.
+
+`bar-replay-analytics-go` plays a replay back at maximum speed in the background and turns it into a report: your
+economy minute by minute, metal extractors, idle constructors, what you killed and lost, your build order, side by
+side with your opponent's. It also downloads the replays of the best players from the leaderboards, so you can compare
+your games with theirs.
+
+The report is written for an AI agent (Claude Code, Codex, …) to read and coach you from. The tool ships the
+instructions for that agent.
+
+## Quick start
+
+You need [Go](https://go.dev/dl/), [Git](https://git-scm.com/downloads) and [7-Zip](https://www.7-zip.org/). 7-Zip
+must be on your `PATH` as `7z`, `7zz` or `7za`; on Windows, add `C:\Program Files\7-Zip` to it.
+
+**1. Install the tool.**
+
+```sh
+go install github.com/backbone81/bar-replay-analytics-go/cmd/bar-replay-analytics-go@latest
+```
+
+It lands in `go/bin/` in your home folder. Add that folder to your `PATH` if `bar-replay-analytics-go` is not found.
+
+**2. Find your BAR data folder.** It holds `demos/`, where BAR saves every game you play. Usually it is:
+
+| Install | BAR data folder |
+| --- | --- |
+| Windows | `%LOCALAPPDATA%\Programs\Beyond-All-Reason\data` |
+| Linux, AppImage | `~/.local/state/Beyond All Reason` |
+| Linux, Flatpak | `~/.var/app/info.beyondallreason.bar/data` |
+
+Below, `<BAR data>` stands for that folder.
+
+**3. Install the analytics widget** into BAR. It records the playback and does nothing in your own games.
+
+```sh
+git clone https://github.com/backbone81/bar-replay-analytics.git "<BAR data>/LuaUI/Widgets/bar-replay-analytics"
+```
+
+**4. Get coached.** Make a folder for your coaching, put the agent's instructions in it and start your AI agent there:
+
+```sh
+bar-replay-analytics-go agents-md > AGENTS.md
+```
+
+Ask the agent to analyze your last game. It asks you a few questions about yourself first, then plays your replays
+back, reads their reports and keeps a training log, so later games are compared with earlier ones. Playing back a
+one-hour game takes about one and a half minutes; the first playback also downloads the engine, game version and map the replay needs, as the BAR lobby does.
 
 ## Usage
 
-All commands take `--bar-data-dir` (default `data`), the BAR data directory with `demos/`.
+Every command takes `--bar-data-dir "<BAR data>"`. A replay is the name of a file in `demos/` or a path to one. Every
+command explains its options with `--help`.
 
 ```sh
-# Read a replay: everything the tool reads (JSON), or only its setup script
-bar-replay-analytics-go replay inspect <replay>
-bar-replay-analytics-go replay script <replay>
+# Analyze replays
+bar-replay-analytics-go replay play <replay>...         # play back, several at a time
+bar-replay-analytics-go replay report <replay>          # the report (needs the playback)
+bar-replay-analytics-go replay script <replay>          # map, players, AIs and game options, no playback needed
+bar-replay-analytics-go replay inspect <replay>         # everything the replay file holds
 
-# The report of a replay (JSON): metadata and game options, teams, every player (name, faction, income bonus, AI)
-# and its economy, over the game and in intervals of 1 minute for the first 10 minutes and of 5 minutes after that
-bar-replay-analytics-go replay report <replay> \
-    [--opening-length 10m] [--opening-interval-length 1m] [--interval-length 5m]
+# Leaderboards and replays of strong players
+bar-replay-analytics-go leaderboard show [--game-type duel] [--top 20]
+bar-replay-analytics-go replay download-top [--game-type duel] [--top 10] [--days 7]
+bar-replay-analytics-go replay download <replay-id>...  # the ID from https://www.bar-rts.com/replays/<replay-id>
 
-# Play replays back in a headless engine at maximum speed, several at a time, with the analytics widget of
-# bar-replay-analytics logging each game to events/<replay name>_events.json in the widget's folder
-bar-replay-analytics-go replay play <replay>... \
-    [--parallel N] [--engine-threads 2] [--progress-interval 15s] [--unended]
-
-# Leaderboards of the BAR lobby server: seasons and game types, best players
-bar-replay-analytics-go leaderboard seasons
-bar-replay-analytics-go leaderboard show [--season N] [--game-type duel] [--top 20]
-
-# Download the games of the 10 best duel players of the last 7 days into data/demos/leaderboard/
-bar-replay-analytics-go replay download-top [--game-type duel] [--season N] [--top 10] [--days 7] [--dry-run]
-
-# Download replays by ID (as in https://www.bar-rts.com/replays/<replay-id>)
-bar-replay-analytics-go replay download <replay-id>...
+# Instructions for an AI coach
+bar-replay-analytics-go agents-md
 ```
 
-`replay play` needs the analytics widget (`dbg_replay_analytics.lua`) installed in `LuaUI/Widgets/` of the BAR data
-directory, by cloning or linking [bar-replay-analytics](https://github.com/backbone81/bar-replay-analytics) there. It
-downloads a missing engine (needs 7-Zip: `7z`, `7zz` or `7za` on `PATH`), game and map into the data directory, as the
-BAR lobby does. Each playback runs in a temporary write dir of its own with its own UDP port, so parallel playbacks do
-not get in each other's way and the data directory's `infolog.txt`, settings and `LuaUI/Config/` stay as they are.
-Every `--progress-interval`, stderr shows how far each playback has come in percent of the game. An engine needs about
-5 GB of memory and, with `--engine-threads 2` (the engine's `WorkerThreadCount`), about 1.5 CPU cores, so `--parallel`
-defaults to one playback per 2 CPUs, but at most one per 6 GB of available memory. The engine's own default of one
-thread per CPU is slower and burns about 5 cores per playback on idle threads. Replays without a game length in their
-header (the engine crashed or the game was not ended) are skipped unless `--unended` is given, as their stream can go
-on for hours.
+Good to know:
 
-`--game-type` is `duel`, `small-team`, `large-team` or `ffa`. `--season` 0 or omitted selects the active season.
+- **Playback needs about 5 GB of memory per replay.** `replay play` plays several replays at once, as many as your
+  CPU and memory allow; `--parallel` sets the number.
+- **Playback leaves your BAR install alone.** It adds only what it downloads (engines, game versions, maps), like the
+  lobby. Your settings, widgets and `infolog.txt` stay untouched.
+- **Games that crashed or did not end** (length 0:00 in the lobby) are skipped: their replay can run for hours.
+  `--unended` plays them anyway.
+- **Downloaded replays go to `demos/leaderboard/`**, so they don't crowd the replay list in the BAR lobby. Running
+  `download-top` again fetches only what is new. `--game-type` is `duel`, `small-team`, `large-team` or `ffa`.
 
-`replay download-top` keeps only the games of the leaderboard's game type, by the size of their allyteams as the lobby
-server decides it, without AIs and aborted games. Unrated games count too: the replay database does not tell them
-apart. Running it again downloads only what is missing: `index.json` in the directory records which file holds which
-replay. Files added or removed by hand are noticed on the next run. Replays are stored under the replay storage's file names in `demos/leaderboard/` (`--dir`), which the
-BAR lobby's replay list does not show. It goes through the players best first and downloads each player's missing
-replays one after the other, as the replay database lists them; requests to the lobby server and the replay database
-are limited to five per second.
+## Development
+
+Needs Go and Docker (for the linter).
+
+```sh
+make build   # tidy, format, vet, lint, then build ./bar-replay-analytics-go
+make test    # the same checks, then all tests
+make fuzz    # run the fuzz tests until they stop finding new inputs (see scripts/fuzz.sh)
+```
+
+The coaching instructions are `internal/coaching/AGENTS.md`, built into the binary.
