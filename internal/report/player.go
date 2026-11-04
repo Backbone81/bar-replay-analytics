@@ -54,6 +54,9 @@ type Player struct {
 	// left out, as in OpeningBuildOrder. Unit defs of the same name, like the Metal Extractor of Armada and Cortex,
 	// have an entry each.
 	FirstFinished []FirstFinishedEntry `json:"firstFinished"`
+
+	// Builders provides the commanders and constructors this player held, in the order it got them.
+	Builders []Builder `json:"builders"`
 }
 
 // AI describes an AI controlling a player.

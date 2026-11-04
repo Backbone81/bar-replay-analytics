@@ -13,7 +13,7 @@ import (
 
 var _ = Describe("MetalExtractors", func() {
 	It("counts the metal extractors each player held at the end of each interval", func() {
-		result, err := newMetalExtractorReport(newTestEventsFile())
+		result, err := newIntervalReport(newTestEventsFile())
 
 		Expect(err).NotTo(HaveOccurred())
 		// The metal extractor of player 0 is finished at 0:20 and dies at 1:40, that of player 1 is finished at 0:25.
@@ -38,7 +38,7 @@ var _ = Describe("MetalExtractors", func() {
 			},
 		)
 
-		result, err := newMetalExtractorReport(eventsFile)
+		result, err := newIntervalReport(eventsFile)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(metalExtractors(result.Players[0])).To(Equal([]report.MetalExtractors{
@@ -53,7 +53,7 @@ var _ = Describe("MetalExtractors", func() {
 			UnitGiven: &events.UnitGiven{UnitID: 201, UnitDefID: 6, NewTeam: 0, OldTeam: 1},
 		})
 
-		result, err := newMetalExtractorReport(eventsFile)
+		result, err := newIntervalReport(eventsFile)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(metalExtractors(result.Players[0])[1]).To(Equal(report.MetalExtractors{Tech1: 2}))
@@ -67,7 +67,7 @@ var _ = Describe("MetalExtractors", func() {
 			UnitGiven: &events.UnitGiven{UnitID: 201, UnitDefID: 6, NewTeam: 2, OldTeam: 1},
 		})
 
-		result, err := newMetalExtractorReport(eventsFile)
+		result, err := newIntervalReport(eventsFile)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(metalExtractors(result.Players[1])[1]).To(Equal(report.MetalExtractors{}))
@@ -78,7 +78,7 @@ var _ = Describe("MetalExtractors", func() {
 		eventsFile.Events[10].Frame = 1800
 		addEvents(eventsFile)
 
-		result, err := newMetalExtractorReport(eventsFile)
+		result, err := newIntervalReport(eventsFile)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(metalExtractors(result.Players[0])[:2]).To(Equal([]report.MetalExtractors{{Tech1: 1}, {}}))
@@ -91,7 +91,7 @@ var _ = Describe("MetalExtractors", func() {
 			UnitCreated: &events.UnitCreated{UnitID: 104, UnitDefID: 8, UnitTeam: 0, BuilderID: new(100)},
 		})
 
-		result, err := newMetalExtractorReport(eventsFile)
+		result, err := newIntervalReport(eventsFile)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(metalExtractors(result.Players[0])[3]).To(Equal(report.MetalExtractors{}))
@@ -101,7 +101,7 @@ var _ = Describe("MetalExtractors", func() {
 		eventsFile := newTestEventsFile()
 		eventsFile.UnitDefs[2] = events.UnitDef{Name: "cormex", ExtractsMetal: 0.001}
 
-		result, err := newMetalExtractorReport(eventsFile)
+		result, err := newIntervalReport(eventsFile)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(metalExtractors(result.Players[0])[0]).To(Equal(report.MetalExtractors{Tech1: 1}))
@@ -115,13 +115,13 @@ var _ = Describe("MetalExtractors", func() {
 			CustomParams:  map[string]string{"techlevel": "one"},
 		}
 
-		Expect(newMetalExtractorReport(eventsFile)).Error().To(HaveOccurred())
+		Expect(newIntervalReport(eventsFile)).Error().To(HaveOccurred())
 	})
 })
 
-// newMetalExtractorReport returns the report of a game of 150 s with eventsFile, with intervals of 30 s and no
+// newIntervalReport returns the report of a game of 150 s with eventsFile, with intervals of 30 s and no
 // opening: intervals end at 0:30, 1:00, 1:30, 2:00 and 2:30.
-func newMetalExtractorReport(eventsFile *events.File) (*report.Report, error) {
+func newIntervalReport(eventsFile *events.File) (*report.Report, error) {
 	replay := newTestDemo()
 	replay.FileHeader.GameTime = 150
 	replay.TeamStats = [][]demo.TeamStatistics{

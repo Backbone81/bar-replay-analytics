@@ -32,6 +32,11 @@ type EconomyInterval struct {
 
 	// MetalExtractors provides the metal extractors the player held at the end of this interval.
 	MetalExtractors MetalExtractors `json:"metalExtractors"`
+
+	// Builders provides how many of the player's commanders and constructors (see Builder) were alive and idle in this
+	// interval, by class. Next to the metal and energy not spent, it shows whether idle builders cost the player: an
+	// idle builder while resources pile up is wasted build power, while one whose player spends all it makes is not.
+	Builders BuilderClasses `json:"builders"`
 }
 
 // Resources provides amounts of metal and energy.
@@ -111,12 +116,13 @@ func teamStatistics(stats events.TeamStats) demo.TeamStatistics {
 	}
 }
 
-// newEconomy prepares the economy from a player's statistics history and metal extractor history. endFrame is the
-// frame the game ended at, config sets the intervals and must be valid (Config.Validate).
+// newEconomy prepares the economy from a player's statistics history, metal extractor history and builder activity.
+// endFrame is the frame the game ended at, config sets the intervals and must be valid (Config.Validate).
 // Returns nil if the statistics history is empty.
 func newEconomy(
 	history []demo.TeamStatistics,
 	metalExtractors metalExtractorHistory,
+	builders builderActivity,
 	endFrame int64,
 	config Config,
 ) *Economy {
@@ -139,6 +145,7 @@ func newEconomy(
 			Time:            frameInterval(start, end),
 			PerSecond:       resources(history[current]).sub(resources(history[first])).div(seconds(end - start)),
 			MetalExtractors: metalExtractors.at(end),
+			Builders:        builders.use(start, end),
 		})
 	}
 	return economy

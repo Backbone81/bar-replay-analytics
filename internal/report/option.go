@@ -32,3 +32,10 @@ func WithOpeningBuildOrderLength(openingBuildOrderLength time.Duration) Option {
 		config.OpeningBuildOrderLength = openingBuildOrderLength
 	}
 }
+
+// WithIdleStretchLength sets Config.IdleStretchLength.
+func WithIdleStretchLength(idleStretchLength time.Duration) Option {
+	return func(config *Config) {
+		config.IdleStretchLength = idleStretchLength
+	}
+}

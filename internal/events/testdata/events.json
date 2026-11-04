@@ -23,7 +23,8 @@
         "cmdOpts": 32,
         "playerID": 0,
         "fromSynced": false,
-        "fromLua": false
+        "fromLua": false,
+        "commandCount": 1
       }
     },
     {

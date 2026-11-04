@@ -23,6 +23,9 @@ type builtUnit struct {
 	// finishFrame is the frame the unit was finished at.
 	finishFrame int
 
+	// builderID is the unit ID of the builder or factory which started it.
+	builderID int
+
 	// builderDefID is the unit def of the builder or factory which started it, 0 if unknown.
 	builderDefID int
 }
@@ -51,6 +54,7 @@ func builtUnits(eventsFile *events.File, numPlayers int) iter.Seq[builtUnit] {
 				if created.BuilderID != nil {
 					started[created.UnitID] = builtUnit{
 						startFrame:   event.Frame,
+						builderID:    *created.BuilderID,
 						builderDefID: unitDefIDs[*created.BuilderID],
 					}
 				}

@@ -318,6 +318,32 @@ var _ = Describe("Report", func() {
 							{"time": "0:20", "name": "Metal Extractor"},
 							{"time": "1:30", "name": "Bot Lab"},
 							{"time": "5:10", "name": "Construction Bot"}
+						],
+						"builders": [
+							{
+								"name": "Cortex Commander 1",
+								"time": "0:00-5:10",
+								"idle": "0:00",
+								"idleFraction": 0,
+								"idleStretches": [],
+								"builds": [{"name": "Metal Extractor", "count": 1}, {"name": "Bot Lab", "count": 1}]
+							},
+							{
+								"name": "Cortex Commander 2",
+								"time": "1:50-5:10",
+								"idle": "0:00",
+								"idleFraction": 0,
+								"idleStretches": [],
+								"builds": []
+							},
+							{
+								"name": "Construction Bot 1",
+								"time": "5:10-5:10",
+								"idle": "0:00",
+								"idleFraction": 0,
+								"idleStretches": [],
+								"builds": []
+							}
 						]
 					},
 					{
@@ -337,6 +363,16 @@ var _ = Describe("Report", func() {
 						],
 						"firstFinished": [
 							{"time": "0:25", "name": "Metal Extractor"}
+						],
+						"builders": [
+							{
+								"name": "Armada Commander 1",
+								"time": "0:00-5:10",
+								"idle": "0:00",
+								"idleFraction": 0,
+								"idleStretches": [],
+								"builds": [{"name": "Metal Extractor", "count": 1}]
+							}
 						]
 					}
 				]

@@ -2,7 +2,6 @@ package report
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/events"
 )
@@ -59,5 +58,5 @@ func newOpeningBuildOrders(eventsFile *events.File, numPlayers int, config Confi
 // buildFrames must be positive.
 func buildRate(unitDef events.UnitDef, builder events.UnitDef, buildFrames int) float64 {
 	nominalFrames := unitDef.BuildTime / builder.BuildSpeed * GameSpeed
-	return math.Round(nominalFrames/float64(buildFrames)*100) / 100
+	return roundTo2(nominalFrames / float64(buildFrames))
 }

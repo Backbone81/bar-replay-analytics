@@ -26,6 +26,9 @@ type Config struct {
 	// finished before then. It does not depend on OpeningLength. Zero means no opening build order. Must not be
 	// negative.
 	OpeningBuildOrderLength time.Duration
+
+	// IdleStretchLength is the shortest idle stretch of a builder Builder.IdleStretches lists. Must be positive.
+	IdleStretchLength time.Duration
 }
 
 // DefaultConfig is the configuration NewReport starts from.
@@ -37,11 +40,15 @@ type Config struct {
 // OpeningBuildOrderLength is 5 minutes, shorter than the opening: by then the commander's first queue, the first
 // factory and the first constructors are done, and what follows is mostly units of the factories and more of the same
 // economy buildings, which the economy intervals show better.
+//
+// IdleStretchLength is 1 minute: shorter gaps between orders are normal, while a builder idle for a minute or more is
+// one the player forgot, which is what a coach points at.
 var DefaultConfig = Config{
 	OpeningLength:           10 * time.Minute,
 	OpeningIntervalLength:   time.Minute,
 	IntervalLength:          5 * time.Minute,
 	OpeningBuildOrderLength: 5 * time.Minute,
+	IdleStretchLength:       time.Minute,
 }
 
 // Validate returns an error if a length of the configuration is invalid.
@@ -57,6 +64,9 @@ func (c Config) Validate() error {
 	}
 	if c.OpeningBuildOrderLength < 0 {
 		return fmt.Errorf("opening build order length: got %v, want >= 0", c.OpeningBuildOrderLength)
+	}
+	if c.IdleStretchLength <= 0 {
+		return fmt.Errorf("idle stretch length: got %v, want > 0", c.IdleStretchLength)
 	}
 	return nil
 }

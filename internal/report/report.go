@@ -75,12 +75,23 @@ func NewReport(
 	if err != nil {
 		return nil, fmt.Errorf("events: %w", err)
 	}
+	builderActivities, err := newBuilderActivities(eventsFile, len(players))
+	if err != nil {
+		return nil, fmt.Errorf("events: %w", err)
+	}
 	endFrame := int64(replay.FileHeader.GameTime) * GameSpeed
 	for i := range players {
 		players[i].setFactionFromStartUnit(eventsFile)
-		players[i].Economy = newEconomy(economyHistory(replay, eventsFile, i), metalExtractors[i], endFrame, config)
+		players[i].Economy = newEconomy(
+			economyHistory(replay, eventsFile, i),
+			metalExtractors[i],
+			builderActivities[i],
+			endFrame,
+			config,
+		)
 		players[i].OpeningBuildOrder = buildOrders[i]
 		players[i].FirstFinished = firstFinished[i]
+		players[i].Builders = builderActivities[i].builders(eventsFile.UnitDefs, config)
 	}
 	for _, player := range players {
 		teams[player.TeamID].PlayerIDs = append(teams[player.TeamID].PlayerIDs, player.PlayerID)

@@ -28,6 +28,7 @@ var _ = Describe("Config", func() {
 			Entry("zero opening interval length", report.WithOpeningIntervalLength(0)),
 			Entry("negative opening interval length", report.WithOpeningIntervalLength(-time.Minute)),
 			Entry("negative opening build order length", report.WithOpeningBuildOrderLength(-time.Minute)),
+			Entry("zero idle stretch length", report.WithIdleStretchLength(0)),
 		)
 
 		It("accepts any opening interval length without an opening", func() {

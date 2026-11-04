@@ -16,9 +16,11 @@ type UnitIdle struct {
 	UnitTeam int `json:"unitTeam"`
 }
 
-// UnitCommand is written by widget:UnitCommand: a unit was given a command, before it enters the command queue. Not
-// every command does: states (fire state, move state, on/off ...), stop and remove change the queue or the unit, but
-// are no orders. The command has no tag yet, so a UnitCmdDone cannot be matched to it by tag.
+// UnitCommand is written by widget:UnitCommand: a unit was given a command. Not every command enters the command
+// queue: states (fire state, move state, on/off ...), stop and remove change the queue or the unit, but are no orders.
+// The engine calls the call-in before it queues the command, so the widget writes the event at the start of the next
+// frame, with the queue length then (CommandCount). The command has no tag in the call-in, so a UnitCmdDone cannot be
+// matched to it by tag.
 type UnitCommand struct {
 	// UnitID is the unit's ID.
 	UnitID int `json:"unitID"` //nolint:tagliatelle // the engine's name
@@ -49,6 +51,11 @@ type UnitCommand struct {
 
 	// FromLua is true if Lua code gave the command.
 	FromLua bool `json:"fromLua"`
+
+	// CommandCount is the number of commands in the unit's queue after the engine queued this command (a factory's: its
+	// build queue). 0 means that the command left an idle unit idle, or that the unit was gone by then: the command came
+	// after the unit died (a dying unit stays until its death animation ends), so its UnitDestroyed came before.
+	CommandCount int `json:"commandCount"`
 }
 
 // UnitCmdDone is written by widget:UnitCmdDone: a unit finished a command, or it was removed from the front of its
