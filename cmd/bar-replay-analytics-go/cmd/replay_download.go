@@ -7,18 +7,14 @@ import (
 	"io/fs"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/spf13/cobra"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/barlive"
 )
 
-// The flags shared by replayDownloadCmd and replayDownloadTopCmd.
-var (
-	replayDownloadDir      string
-	replayDownloadParallel int
-)
+// replayDownloadDir is the --dir flag shared by replayDownloadCmd and replayDownloadTopCmd.
+var replayDownloadDir string
 
 // replayDownloadCmd downloads replays by their IDs.
 var replayDownloadCmd = &cobra.Command{
@@ -31,11 +27,14 @@ https://www.bar-rts.com/replays/<replay-id>.
 See 'replay download-top' for where the replays are stored and how existing ones are found.`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		replays := make([]replayToDownload, len(args))
-		for i, id := range args {
-			replays[i] = replayToDownload{ID: id}
+		downloader, err := newReplayDownloader(barlive.NewClient(barlive.WithOnRequest(printRequest)), false)
+		if err != nil {
+			return err
 		}
-		return downloadReplays(cmd.Context(), barlive.NewClient(barlive.WithOnRequest(printRequest)), replays, false)
+		for _, id := range args {
+			downloader.download(cmd.Context(), replayToDownload{ID: id})
+		}
+		return downloader.finish(nil)
 	},
 }
 
@@ -51,12 +50,6 @@ func addReplayDownloadFlags(cmd *cobra.Command) {
 		"dir",
 		"",
 		"The directory to store the replays in. Empty selects demos/leaderboard/ in the BAR data directory.",
-	)
-	cmd.Flags().IntVar(
-		&replayDownloadParallel,
-		"parallel",
-		4,
-		"The number of replays to download at the same time.",
 	)
 }
 
@@ -77,94 +70,99 @@ func downloadDir() string {
 	return filepath.Join(barDataDir, "demos", "leaderboard")
 }
 
-// downloadReplays downloads the replays the download directory does not hold yet, and prints a line for each and a
-// summary. With dryRun, it only lists them. The directory's barlive.ReplayIndex tells which it holds; it is saved
-// even if downloads fail or the context is cancelled. It returns an error if any replay failed.
-func downloadReplays(ctx context.Context, client *barlive.Client, replays []replayToDownload, dryRun bool) (err error) {
-	if replayDownloadParallel < 1 {
-		return fmt.Errorf("--parallel: got %d, want >= 1", replayDownloadParallel)
-	}
+// replayDownloader downloads replays into the download directory one after the other, as a download command is asked
+// for them, prints a line for each it does not hold yet, and counts them for the summary. The directory's
+// barlive.ReplayIndex tells which replays it holds.
+type replayDownloader struct {
+	client *barlive.Client
+	index  *barlive.ReplayIndex
 
-	dir := downloadDir()
-	replayIndex, err := barlive.OpenReplayIndex(dir)
+	// dryRun makes it only list the missing replays.
+	dryRun bool
+
+	// seen holds the IDs of the replays it was asked for, so a replay asked for twice (a game of two of the best
+	// players) counts once.
+	seen map[string]bool
+
+	// present counts the replays the directory held already, missing those it did not, failed those of them that
+	// failed to download.
+	present int
+	missing int
+	failed  int
+}
+
+// newReplayDownloader returns a replayDownloader for the directory --dir selects. With dryRun, it only lists the
+// missing replays.
+func newReplayDownloader(client *barlive.Client, dryRun bool) (*replayDownloader, error) {
+	index, err := barlive.OpenReplayIndex(downloadDir())
 	if err != nil {
-		return err
+		return nil, err
+	}
+	return &replayDownloader{
+		client: client,
+		index:  index,
+		dryRun: dryRun,
+		seen:   make(map[string]bool),
+	}, nil
+}
+
+// download downloads replay unless it was asked for before or the directory holds it, and prints a line for it if
+// the directory did not hold it. With dryRun, it only prints the line.
+func (d *replayDownloader) download(ctx context.Context, replay replayToDownload) {
+	if d.seen[replay.ID] {
+		return
+	}
+	d.seen[replay.ID] = true
+
+	if d.index.Has(replay.ID) {
+		d.present++
+		return
+	}
+	d.missing++
+
+	if d.dryRun {
+		printReplayLine("missing", replay.ID, replay.Description)
+		return
 	}
 
-	var missing []replayToDownload
-	for _, replay := range replays {
-		if !replayIndex.Has(replay.ID) {
-			missing = append(missing, replay)
-		}
+	result, err := d.index.Fetch(ctx, d.client, replay.ID)
+	switch {
+	case errors.Is(err, fs.ErrExist):
+		d.failed++
+		printReplayLine("failed", replay.ID, "another game's replay has the same file name: "+err.Error())
+	case err != nil:
+		d.failed++
+		printReplayLine("failed", replay.ID, err.Error())
+	case result.Downloaded:
+		printReplayLine("downloaded", result.FileName, replay.Description)
+	default:
+		// The file was there, but not in the index.
+		printReplayLine("indexed", result.FileName, replay.Description)
 	}
+}
 
-	failed := 0
-	if dryRun {
-		for _, replay := range missing {
-			printReplayLine("missing", replay.ID, replay.Description)
-		}
-	} else {
-		defer func() {
-			err = errors.Join(err, replayIndex.Save())
-		}()
-		failed = fetchMissing(ctx, client, replayIndex, missing)
+// finish saves the index unless dryRun and prints the summary, also if err, the error which stopped the command
+// before it asked for every replay, is not nil. It returns err, joined with an error if the index cannot be saved or
+// any replay failed.
+func (d *replayDownloader) finish(err error) error {
+	if !d.dryRun {
+		err = errors.Join(err, d.index.Save())
 	}
 
 	fmt.Println()
-	printField("dir", dir)
-	printField("replays", len(replays))
-	printField("present", len(replays)-len(missing))
-	if dryRun {
-		printField("missing", len(missing))
-		return nil
+	printField("dir", downloadDir())
+	printField("replays", len(d.seen))
+	printField("present", d.present)
+	if d.dryRun {
+		printField("missing", d.missing)
+		return err
 	}
-	printField("fetched", len(missing)-failed)
-	printField("failed", failed)
-	if failed != 0 {
-		return fmt.Errorf("%d of %d replays failed", failed, len(missing))
+	printField("fetched", d.missing-d.failed)
+	printField("failed", d.failed)
+	if d.failed != 0 {
+		err = errors.Join(err, fmt.Errorf("%d of %d replays failed", d.failed, d.missing))
 	}
-	return nil
-}
-
-// fetchMissing fetches replays into the directory of index with --parallel at a time, prints a line for each and
-// returns the number of failed ones.
-func fetchMissing(
-	ctx context.Context, client *barlive.Client, index *barlive.ReplayIndex, replays []replayToDownload,
-) int {
-	queue := make(chan replayToDownload)
-	var mutex sync.Mutex
-	failed := 0
-
-	var waitGroup sync.WaitGroup
-	for range min(replayDownloadParallel, len(replays)) {
-		waitGroup.Go(func() {
-			for replay := range queue {
-				result, err := index.Fetch(ctx, client, replay.ID)
-
-				mutex.Lock()
-				switch {
-				case errors.Is(err, fs.ErrExist):
-					failed++
-					printReplayLine("failed", replay.ID, "another game's replay has the same file name: "+err.Error())
-				case err != nil:
-					failed++
-					printReplayLine("failed", replay.ID, err.Error())
-				case result.Downloaded:
-					printReplayLine("downloaded", result.FileName, replay.Description)
-				default:
-					// The file was there, but not in the index.
-					printReplayLine("indexed", result.FileName, replay.Description)
-				}
-				mutex.Unlock()
-			}
-		})
-	}
-	for _, replay := range replays {
-		queue <- replay
-	}
-	close(queue)
-	waitGroup.Wait()
-	return failed
+	return err
 }
 
 // printReplayLine prints the outcome for one replay.

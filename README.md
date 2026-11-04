@@ -50,5 +50,6 @@ on for hours.
 server decides it, without AIs and aborted games. Unrated games count too: the replay database does not tell them
 apart. Running it again downloads only what is missing: `index.json` in the directory records which file holds which
 replay. Files added or removed by hand are noticed on the next run. Replays are stored under the replay storage's file names in `demos/leaderboard/` (`--dir`), which the
-BAR lobby's replay list does not show. `--parallel` sets the number of downloads at a time (default 4); requests to
-the lobby server and the replay database are limited to five per second.
+BAR lobby's replay list does not show. It goes through the players best first and downloads each player's missing
+replays one after the other, as the replay database lists them; requests to the lobby server and the replay database
+are limited to five per second.

@@ -3,9 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -48,13 +46,23 @@ holds the replay's game, so an interrupted run leaves no partial replay under th
 		}
 
 		client := barlive.NewClient(barlive.WithOnRequest(printRequest))
-		replays, err := findTopReplays(cmd.Context(), client)
+		selection, err := selectTopPlayers(cmd.Context(), client)
 		if err != nil {
 			return err
 		}
 
-		fmt.Println()
-		return downloadReplays(cmd.Context(), client, replays, replayDownloadTopDryRun)
+		downloader, err := newReplayDownloader(client, replayDownloadTopDryRun)
+		if err != nil {
+			return err
+		}
+
+		for i, player := range selection.players {
+			err = selection.downloadPlayerReplays(cmd.Context(), downloader, i+1, player)
+			if err != nil {
+				break
+			}
+		}
+		return downloader.finish(err)
 	},
 }
 
@@ -105,9 +113,21 @@ func checkDownloadTopFlags() error {
 	return nil
 }
 
-// findTopReplays returns the recent replays of the best players the flags select, each once, and prints the players
-// with their number of replays.
-func findTopReplays(ctx context.Context, client *barlive.Client) ([]replayToDownload, error) {
+// topPlayers is what the flags of replayDownloadTopCmd select: the best players of a leaderboard, and which of their
+// games to download.
+type topPlayers struct {
+	// gameType is the game type of the leaderboard and the games.
+	gameType barlive.GameType
+
+	// since is the time from which on games are downloaded.
+	since time.Time
+
+	// players are the best players, best first.
+	players []barlive.LeaderboardPlayer
+}
+
+// selectTopPlayers returns the best players the flags select, and prints the selection.
+func selectTopPlayers(ctx context.Context, client *barlive.Client) (*topPlayers, error) {
 	season, err := client.LeaderboardSeason(ctx, replayDownloadTopSeason)
 	if err != nil {
 		return nil, err
@@ -127,35 +147,37 @@ func findTopReplays(ctx context.Context, client *barlive.Client) ([]replayToDown
 		return nil, err
 	}
 
-	players := leaderboard.Players[:min(replayDownloadTopTop, len(leaderboard.Players))]
-	since := time.Now().Add(-time.Duration(replayDownloadTopDays) * 24 * time.Hour)
+	selection := &topPlayers{
+		gameType: gameType,
+		since:    time.Now().Add(-time.Duration(replayDownloadTopDays) * 24 * time.Hour),
+		players:  leaderboard.Players[:min(replayDownloadTopTop, len(leaderboard.Players))],
+	}
 
 	printField("season", season.Season)
 	printField("game type", gameTypeFlagName(gameType))
-	printField("since", since.UTC().Format("2006-01-02 15:04 MST"))
+	printField("since", selection.since.UTC().Format("2006-01-02 15:04 MST"))
+	printField("players", len(selection.players))
+	return selection, nil
+}
+
+// downloadPlayerReplays has downloader download the selected games of player, who has rank on the leaderboard, one
+// after the other as bar-db returns them, and prints the player and their number of games.
+func (t *topPlayers) downloadPlayerReplays(
+	ctx context.Context, downloader *replayDownloader, rank int, player barlive.LeaderboardPlayer,
+) error {
 	fmt.Println()
+	printField("player", fmt.Sprintf("%d. %s", rank, player.Name))
 
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(writer, "rank\tplayer\treplays")
-
-	var replays []replayToDownload
-	seen := make(map[string]bool)
-	for i, player := range players {
-		count := 0
-		for replay, err := range client.RecentReplays(ctx, player.Name, gameType, since) {
-			if err != nil {
-				_ = writer.Flush()
-				return nil, fmt.Errorf("replays of %s: %w", player.Name, err)
-			}
-			count++
-			if !seen[replay.ID] {
-				seen[replay.ID] = true
-				replays = append(replays, replayToDownload{ID: replay.ID, Description: describeReplay(&replay)})
-			}
+	count := 0
+	for replay, err := range downloader.client.RecentReplays(ctx, player.Name, t.gameType, t.since) {
+		if err != nil {
+			return fmt.Errorf("replays of %s: %w", player.Name, err)
 		}
-		_, _ = fmt.Fprintf(writer, "%d\t%s\t%d\n", i+1, player.Name, count)
+		count++
+		downloader.download(ctx, replayToDownload{ID: replay.ID, Description: describeReplay(&replay)})
 	}
-	return replays, writer.Flush()
+	printField("replays", count)
+	return nil
 }
 
 // describeReplay returns the start time, map and players of replay.
