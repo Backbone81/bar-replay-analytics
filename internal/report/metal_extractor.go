@@ -124,8 +124,8 @@ func (h metalExtractorHistory) add(frame int, isTech2 bool, delta int) metalExtr
 }
 
 // at returns the metal extractors held at the end of frame: after the changes in frame.
-func (h metalExtractorHistory) at(frame int32) MetalExtractors {
-	i := sort.Search(len(h), func(i int) bool { return h[i].frame > int(frame) })
+func (h metalExtractorHistory) at(frame int) MetalExtractors {
+	i := sort.Search(len(h), func(i int) bool { return h[i].frame > frame })
 	if i == 0 {
 		return MetalExtractors{}
 	}

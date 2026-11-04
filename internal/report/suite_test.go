@@ -100,6 +100,7 @@ func newTestEventsFile() *events.File {
 			2: {
 				Name:                "cormex",
 				TranslatedHumanName: "Metal Extractor",
+				MetalCost:           50,
 				BuildTime:           5700,
 				ExtractsMetal:       0.001,
 				CustomParams:        map[string]string{"techlevel": "1"},
@@ -107,6 +108,7 @@ func newTestEventsFile() *events.File {
 			3: {
 				Name:                "corlab",
 				TranslatedHumanName: "Bot Lab",
+				MetalCost:           500,
 				BuildTime:           36000,
 				IsFactory:           true,
 				IsBuilder:           true,
@@ -116,6 +118,7 @@ func newTestEventsFile() *events.File {
 			4: {
 				Name:                "corck",
 				TranslatedHumanName: "Construction Bot",
+				MetalCost:           110,
 				BuildTime:           4500,
 				IsBuilder:           true,
 				CanMove:             true,
@@ -133,6 +136,7 @@ func newTestEventsFile() *events.File {
 			6: {
 				Name:                "armmex",
 				TranslatedHumanName: "Metal Extractor",
+				MetalCost:           50,
 				BuildTime:           5700,
 				ExtractsMetal:       0.001,
 				CustomParams:        map[string]string{"techlevel": "1"},

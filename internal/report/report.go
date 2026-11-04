@@ -79,16 +79,19 @@ func NewReport(
 	if err != nil {
 		return nil, fmt.Errorf("events: %w", err)
 	}
-	endFrame := int64(replay.FileHeader.GameTime) * GameSpeed
+	combatHistories := newCombatHistories(eventsFile, players)
+	endFrame := int(replay.FileHeader.GameTime) * GameSpeed
+	spans := newIntervalSpans(endFrame, int(replay.FileHeader.TeamStatPeriod), config)
 	for i := range players {
 		players[i].setFactionFromStartUnit(eventsFile)
 		players[i].Economy = newEconomy(
 			economyHistory(replay, eventsFile, i),
 			metalExtractors[i],
 			builderActivities[i],
+			spans,
 			endFrame,
-			config,
 		)
+		players[i].Combat = newCombat(combatHistories[i], spans)
 		players[i].OpeningBuildOrder = buildOrders[i]
 		players[i].FirstFinished = firstFinished[i]
 		players[i].Builders = builderActivities[i].builders(eventsFile.UnitDefs, config)

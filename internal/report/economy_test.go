@@ -198,15 +198,22 @@ var _ = Describe("Economy", func() {
 		})
 
 		It("averages each interval and ends the last one with the game", func() {
-			result, err := report.NewReport(newTestDemo(), newTestSetupScript(), newTestEventsFile(),
+			replay := newTestDemo()
+			replay.TeamStats[0] = []demo.TeamStatistics{
+				{Frame: 0},
+				{Frame: 1350, MetalProduced: 90, MetalUsed: 45, EnergyProduced: 900, EnergyExcess: 180},
+				{Frame: 1800, MetalProduced: 420, MetalUsed: 360, EnergyProduced: 2400, EnergyExcess: 240},
+			}
+
+			result, err := report.NewReport(replay, newTestSetupScript(), newTestEventsFile(),
 				report.WithOpeningLength(0),
-				report.WithIntervalLength(50*time.Second),
+				report.WithIntervalLength(45*time.Second),
 			)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Players[0].Economy.Intervals).To(Equal([]report.EconomyInterval{
 				{
-					Time: report.Interval{Start: 0, End: report.Duration(50 * time.Second)},
+					Time: report.Interval{Start: 0, End: report.Duration(45 * time.Second)},
 					PerSecond: report.Resources{
 						Metal:  report.Resource{Produced: 2, Used: 1},
 						Energy: report.Resource{Produced: 20, Wasted: 4},
@@ -215,10 +222,10 @@ var _ = Describe("Economy", func() {
 					Builders:        report.BuilderClasses{Commander: report.BuilderUse{Alive: 1}},
 				},
 				{
-					Time: report.Interval{Start: report.Duration(50 * time.Second), End: report.Duration(60 * time.Second)},
+					Time: report.Interval{Start: report.Duration(45 * time.Second), End: report.Duration(60 * time.Second)},
 					PerSecond: report.Resources{
-						Metal:  report.Resource{Produced: 32, Used: 31},
-						Energy: report.Resource{Produced: 140, Wasted: 4},
+						Metal:  report.Resource{Produced: 22, Used: 21},
+						Energy: report.Resource{Produced: 100, Wasted: 4},
 					},
 					MetalExtractors: report.MetalExtractors{Tech1: 1},
 					Builders:        report.BuilderClasses{Commander: report.BuilderUse{Alive: 1}},
@@ -281,42 +288,38 @@ var _ = Describe("Economy", func() {
 			Expect(economy.Intervals[0].PerSecond.Metal.Produced).To(BeNumerically("~", 8.4))
 		})
 
-		It("does not end the game before the entry before the totals", func() {
-			replay := newTestDemo()
-			replay.FileHeader.GameTime = 50
-			replay.TeamStats[0] = []demo.TeamStatistics{
-				{Frame: 0},
-				{Frame: 1515, MetalProduced: 101},
-				{Frame: 1965, MetalProduced: 202},
-			}
-
-			result, err := report.NewReport(replay, newTestSetupScript(), newTestEventsFile(), report.WithOpeningLength(0))
-
-			Expect(err).NotTo(HaveOccurred())
-			economy := result.Players[0].Economy
-			Expect(economy.Intervals).To(HaveLen(1))
-			Expect(economy.Intervals[0].Time.End).To(Equal(report.Duration(1515 * time.Second / report.GameSpeed)))
-			Expect(economy.PerSecond.Metal.Produced).To(BeNumerically("~", 4))
-		})
-
-		It("skips entries of the same frame", func() {
+		It("takes the latest of the entries recorded at the same frame", func() {
 			replay := newTestDemo()
 			replay.TeamStats[0] = []demo.TeamStatistics{
 				{Frame: 0},
-				{Frame: 0, MetalProduced: 1},
-				{Frame: 1500, MetalProduced: 31},
+				{Frame: 450, MetalProduced: 10},
+				{Frame: 450, MetalProduced: 15},
+				{Frame: 1950, MetalProduced: 60},
 			}
 
 			result, err := report.NewReport(
 				replay,
 				newTestSetupScript(),
 				newTestEventsFile(),
-				report.WithIntervalLength(time.Second),
+				report.WithOpeningLength(0),
+				report.WithIntervalLength(15*time.Second),
 			)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(intervalTimes(result.Players[0].Economy.Intervals)).To(Equal([]string{"0:00-0:50"}))
-			Expect(result.Players[0].Economy.Intervals[0].PerSecond.Metal.Produced).To(BeNumerically("~", 0.62))
+			intervals := result.Players[0].Economy.Intervals
+			Expect(intervalTimes(intervals)).To(Equal([]string{"0:00-0:15", "0:15-0:30", "0:30-0:45", "0:45-1:00"}))
+			Expect(intervals[0].PerSecond.Metal.Produced).To(BeNumerically("~", 1))
+		})
+
+		It("reports no intervals if the history holds only the totals", func() {
+			replay := newTestDemo()
+			replay.TeamStats[0] = []demo.TeamStatistics{{Frame: 1950, MetalProduced: 60}}
+
+			result, err := report.NewReport(replay, newTestSetupScript(), newTestEventsFile())
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.Players[0].Economy.Total.Metal.Produced).To(BeNumerically("==", 60))
+			Expect(result.Players[0].Economy.Intervals).To(BeEmpty())
 		})
 
 		It("does not change the statistics of the demo", func() {

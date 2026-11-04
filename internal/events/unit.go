@@ -73,6 +73,16 @@ type UnitDestroyed struct {
 	WeaponDefID int `json:"weaponDefID"` //nolint:tagliatelle // the engine's name
 }
 
+// Environmental damage types (Game.envDamageTypes): the negative UnitDestroyed.WeaponDefID of a unit no weapon killed,
+// see CSolidObject::DamageType in rts/Sim/Objects/SolidObject.h.
+const (
+	// EnvDamageReclaimed is a unit a builder reclaimed: its metal went to the builder's team.
+	EnvDamageReclaimed = -12
+
+	// EnvDamageKilledByLua is a unit a gadget killed (Spring.DestroyUnit).
+	EnvDamageKilledByLua = -21
+)
+
 // UnitGiven is written by widget:UnitGiven: a unit changes team.
 type UnitGiven struct {
 	// UnitID is the unit's ID.

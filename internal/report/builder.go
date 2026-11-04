@@ -90,15 +90,6 @@ type BuilderUse struct {
 	Idle float64 `json:"idle"`
 }
 
-// frameSpan is a span of frames, from start to end.
-type frameSpan struct {
-	// start is the first frame of the span.
-	start int
-
-	// end is the frame the span ends at.
-	end int
-}
-
 // builderLife is one builder while a player held it.
 type builderLife struct {
 	// unitID is the builder's unit ID.
@@ -318,14 +309,13 @@ func (l builderLife) buildCounts(unitDefs map[int]events.UnitDef) []BuildCount {
 	return counts
 }
 
-// use returns how the player's builders were used from the frame start to the frame end, see BuilderClasses.
-func (a builderActivity) use(start int32, end int32) BuilderClasses {
+// use returns how the player's builders were used in span, see BuilderClasses.
+func (a builderActivity) use(span frameSpan) BuilderClasses {
 	var use BuilderClasses
-	if end <= start {
+	if span.end <= span.start {
 		return use
 	}
-	span := frameSpan{start: int(start), end: int(end)}
-	length := float64(end - start)
+	length := float64(span.end - span.start)
 	for _, life := range a.lives {
 		classUse := use.of(life.class)
 		classUse.Alive += float64(life.span.overlap(span)) / length
@@ -351,17 +341,6 @@ func (c *BuilderClasses) of(class builderClass) *BuilderUse {
 		return &c.Tech2
 	}
 	panic(fmt.Sprintf("unknown builder class %q", class))
-}
-
-// interval returns the span as an Interval.
-func (s frameSpan) interval() Interval {
-	//nolint:gosec // The engine counts frames in an int32.
-	return frameInterval(int32(s.start), int32(s.end))
-}
-
-// overlap returns the number of frames s and other have in common.
-func (s frameSpan) overlap(other frameSpan) int {
-	return max(0, min(s.end, other.end)-max(s.start, other.start))
 }
 
 // builderClassOf returns the class of a unit def and true if it is a commander or constructor (see Builder), else

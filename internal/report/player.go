@@ -43,6 +43,10 @@ type Player struct {
 	// Is nil if neither has statistics of the player: the engine writes them to the replay only at game over.
 	Economy *Economy `json:"economy"`
 
+	// Combat provides the units this player killed and lost, with their metal, over the game and in the same intervals
+	// as Economy.
+	Combat Combat `json:"combat"`
+
 	// OpeningBuildOrder provides the units and buildings this player built in the first Config.OpeningBuildOrderLength
 	// of the game, in the order they were finished. Units which were not built, such as the commander at the start, are
 	// left out. Is empty if Config.OpeningBuildOrderLength is 0.
