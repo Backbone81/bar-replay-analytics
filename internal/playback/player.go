@@ -2,7 +2,6 @@ package playback
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"path/filepath"
 	"sync"
@@ -11,8 +10,12 @@ import (
 // AnalyticsWidgetFile is the file name of the analytics widget of bar-replay-analytics, which logs the playback.
 const AnalyticsWidgetFile = "dbg_replay_analytics.lua"
 
+// analyticsWidgetFolder is the folder in LuaUI/Widgets/ the analytics widget goes into if it is not installed in the
+// data dir: the name of the repository it comes from.
+const analyticsWidgetFolder = "bar-replay-analytics"
+
 // widgetsDir is the folder of the user widgets in a data dir, as BAR names it (WIDGET_DIRNAME in luaui/barwidgets.lua).
-// The analytics widget's events folder is linked into each playback's write dir under the same path.
+// Each playback's write dir gets the analytics widget and a link to its events folder under the same path.
 var widgetsDir = filepath.Join("LuaUI", "Widgets")
 
 // Player plays replays back in one data dir. Its methods may be called from several goroutines at once.
@@ -23,15 +26,19 @@ type Player struct {
 	// dataDir is the absolute path of the data dir.
 	dataDir string
 
-	// analyticsDir is the folder in LuaUI/Widgets/ which holds the analytics widget.
+	// analyticsDir is the folder in the data dir's LuaUI/Widgets/ which holds the installed analytics widget, or
+	// LuaUI/Widgets/bar-replay-analytics/ if none is installed. Its events/ holds the events and log files.
 	analyticsDir string
+
+	// analyticsInstalled is whether the analytics widget is installed in analyticsDir.
+	analyticsInstalled bool
 
 	// prepareMutex lets one Prepare run at a time, so a download is not run twice at once.
 	prepareMutex sync.Mutex
 }
 
-// NewPlayer returns a Player for the data dir dataDir. It returns an error if the analytics widget is not installed
-// there.
+// NewPlayer returns a Player for the data dir dataDir. The analytics widget need not be installed there: each playback
+// gets the embedded one (see Play).
 func NewPlayer(dataDir string, options ...Option) (*Player, error) {
 	config := DefaultConfig
 	for _, option := range options {
@@ -49,15 +56,15 @@ func NewPlayer(dataDir string, options ...Option) (*Player, error) {
 		return nil, err
 	}
 	if !found {
-		return nil, fmt.Errorf("the analytics widget is not installed: no %s in a folder of %s; clone or link "+
-			"bar-replay-analytics there", AnalyticsWidgetFile, widgets)
+		analyticsDir = filepath.Join(widgets, analyticsWidgetFolder)
 	}
 
 	return &Player{
-		config:       config,
-		httpClient:   &http.Client{Transport: config.Transport},
-		dataDir:      absoluteDataDir,
-		analyticsDir: analyticsDir,
+		config:             config,
+		httpClient:         &http.Client{Transport: config.Transport},
+		dataDir:            absoluteDataDir,
+		analyticsDir:       analyticsDir,
+		analyticsInstalled: found,
 	}, nil
 }
 
@@ -66,12 +73,14 @@ func (p *Player) DataDir() string {
 	return p.dataDir
 }
 
-// AnalyticsWidgetDir returns the folder in the data dir's LuaUI/Widgets/ which holds the analytics widget.
-func (p *Player) AnalyticsWidgetDir() string {
-	return p.analyticsDir
+// AnalyticsWidgetDir returns the folder in the data dir's LuaUI/Widgets/ which holds the installed analytics widget,
+// and whether one is installed. If none is, it returns LuaUI/Widgets/bar-replay-analytics/, where the events go.
+func (p *Player) AnalyticsWidgetDir() (string, bool) {
+	return p.analyticsDir, p.analyticsInstalled
 }
 
-// EventsDir returns the folder the events and log files go to: events/ in the analytics widget's folder.
+// EventsDir returns the folder the events and log files go to: events/ in the analytics widget's folder (see
+// AnalyticsWidgetDir).
 func (p *Player) EventsDir() string {
 	return filepath.Join(p.analyticsDir, "events")
 }

@@ -31,8 +31,6 @@ If none of them holds a `demos/` folder, ask the player. Note the path in `playe
 
 `replay play` needs:
 
-- the analytics widget: a clone of https://github.com/backbone81/bar-replay-analytics in `LuaUI/Widgets/` of the data
-  directory. It is active only in a headless playback and does nothing in the player's games.
 - 7-Zip (`7z`, `7zz` or `7za`) on `PATH`, to unpack an engine it downloads.
 - about 5 GB of memory and 1.5 CPU cores per replay played back at the same time.
 
@@ -61,8 +59,9 @@ BAR saves every game as a `.sdfz` file in `demos/` of the data directory. Comman
 2. **Read the setup.** `replay report` needs a playback (step 3), but `replay script <replay>` works at once: map, game
    version, players, teams, AIs and game options. Find the player by name. If several humans could be the player, ask.
 3. **Play it back.** `replay play <replay>...` runs the game in a headless engine at maximum speed (a few minutes per
-   game; several replays run in parallel) and writes `events/<replay name>_events.json` in the analytics widget's
-   folder. It downloads a missing engine, game version or map into the data directory, as the BAR lobby does.
+   game; several replays run in parallel) and writes `events/<replay name>_events.json` in
+   `LuaUI/Widgets/bar-replay-analytics/` of the data directory (or in the folder of an analytics widget installed
+   there). It downloads a missing engine, game version or map into the data directory, as the BAR lobby does.
 4. **Get the report.** `replay report <replay> > work/<replay name>.json`: the game aggregated for coaching (see "What
    the report holds"). Start every analysis from the report.
 5. **Dig deeper if needed.** The events file holds every unit's creation, completion, death (with position and killer)

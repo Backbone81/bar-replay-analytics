@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/events"
+	"github.com/backbone81/bar-replay-analytics-go/internal/newfiles"
+	"github.com/backbone81/bar-replay-analytics-go/internal/playback/widget"
 )
 
 // analyticsFailed is the analytics widget's message when it cannot open its events file.
@@ -74,7 +76,7 @@ func (p *Player) Play(ctx context.Context, replay *Replay) (*Result, error) {
 		return nil, err
 	}
 
-	writeDir, err := p.makeWriteDir()
+	writeDir, err := p.MakeWriteDir()
 	if err != nil {
 		return nil, err
 	}
@@ -101,11 +103,16 @@ func (p *Player) Play(ctx context.Context, replay *Replay) (*Result, error) {
 	return result, nil
 }
 
-// makeWriteDir creates the write dir of a playback: a temporary folder with a copy of the data dir's archive cache, so
-// the engine does not scan all archives again, settings of its own (see writeSettings), and a link to the analytics
-// widget's events folder, so its events file lands there. The engine reads the data dir as an additional data dir.
-// The caller removes the folder.
-func (p *Player) makeWriteDir() (string, error) {
+// MakeWriteDir creates the write dir of a playback: a temporary folder with a copy of the data dir's archive cache, so
+// the engine does not scan all archives again, settings of its own (see writeSettings), the embedded analytics widget
+// (widget.Template) and a link to the events folder in it, so the events file lands there. The engine reads the data
+// dir as an additional data dir. The caller removes the folder.
+//
+// The widget goes into the folder the installed widget has in the data dir's LuaUI/Widgets/, if one is installed: the
+// engine lists a path in the write dir and a data dir once, from the write dir, so the embedded widget replaces the
+// installed one, which may be of another version. In another folder, BAR would load the two by the order of their
+// paths and reject the second as a duplicate name.
+func (p *Player) MakeWriteDir() (string, error) {
 	writeDir, err := os.MkdirTemp("", "bar-replay-analytics-*")
 	if err != nil {
 		return "", err
@@ -118,7 +125,7 @@ func (p *Player) makeWriteDir() (string, error) {
 	return writeDir, nil
 }
 
-// fillWriteDir implements makeWriteDir for the folder writeDir.
+// fillWriteDir implements MakeWriteDir for the folder writeDir.
 func (p *Player) fillWriteDir(writeDir string) error {
 	archiveCaches, err := filepath.Glob(filepath.Join(p.dataDir, "cache", "ArchiveCache*.lua"))
 	if err != nil {
@@ -142,7 +149,7 @@ func (p *Player) fillWriteDir(writeDir string) error {
 	}
 
 	widgetDir := filepath.Join(writeDir, widgetsDir, filepath.Base(p.analyticsDir))
-	if err := os.MkdirAll(widgetDir, dirPermissions); err != nil {
+	if _, err := newfiles.Write(widget.Template, widgetDir); err != nil {
 		return err
 	}
 	return os.Symlink(p.EventsDir(), filepath.Join(widgetDir, "events"))

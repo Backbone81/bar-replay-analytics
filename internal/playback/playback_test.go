@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -23,20 +24,34 @@ func writeFile(filePath string, content []byte) {
 	Expect(os.WriteFile(filePath, content, 0o600)).To(Succeed())
 }
 
-// expectEmbeddedWidget expects widgetDir to hold every file of widget.Template with its embedded content.
-func expectEmbeddedWidget(widgetDir string) {
+// templateFiles returns the paths of the files of widget.Template, joined to dir.
+func templateFiles(dir string) []string {
 	var filePaths []string
 	Expect(fs.WalkDir(widget.Template, ".", func(name string, entry fs.DirEntry, err error) error {
 		if err != nil || entry.IsDir() {
 			return err
 		}
-		filePaths = append(filePaths, name)
-		expected, err := fs.ReadFile(widget.Template, name)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(os.ReadFile(filepath.Join(widgetDir, filepath.FromSlash(name)))).To(Equal(expected))
+		filePaths = append(filePaths, filepath.Join(dir, filepath.FromSlash(name)))
 		return nil
 	})).To(Succeed())
-	Expect(filePaths).To(ContainElements(playback.AnalyticsWidgetFile, "LICENSE"))
+	return filePaths
+}
+
+// expectEmbeddedWidget expects widgetDir to hold every file of widget.Template with its embedded content.
+func expectEmbeddedWidget(widgetDir string) {
+	filePaths := templateFiles(widgetDir)
+	Expect(filePaths).To(ContainElements(
+		filepath.Join(widgetDir, playback.AnalyticsWidgetFile),
+		filepath.Join(widgetDir, "README.md"),
+		filepath.Join(widgetDir, "LICENSE"),
+	))
+	for _, filePath := range filePaths {
+		name, err := filepath.Rel(widgetDir, filePath)
+		Expect(err).NotTo(HaveOccurred())
+		expected, err := fs.ReadFile(widget.Template, filepath.ToSlash(name))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(os.ReadFile(filePath)).To(Equal(expected))
+	}
 }
 
 // gzipped returns text compressed with gzip.
@@ -161,34 +176,71 @@ var _ = Describe("Playback", func() {
 	})
 
 	Context("NewPlayer", func() {
-		It("fails if the analytics widget is not installed", func() {
-			Expect(playback.NewPlayer(GinkgoT().TempDir())).Error().To(HaveOccurred())
+		It("puts the events into LuaUI/Widgets/bar-replay-analytics/ if the analytics widget is not installed", func() {
+			dataDir := GinkgoT().TempDir()
+
+			player, err := playback.NewPlayer(dataDir)
+
+			Expect(err).NotTo(HaveOccurred())
+			widgetDir := filepath.Join(dataDir, "LuaUI", "Widgets", "bar-replay-analytics")
+			Expect(player.AnalyticsWidgetDir()).To(Equal(widgetDir))
+			Expect(player.EventsDir()).To(Equal(filepath.Join(widgetDir, "events")))
 		})
 
-		It("finds the analytics widget and its events folder", func() {
+		It("finds an installed analytics widget and its events folder", func() {
 			dataDir := GinkgoT().TempDir()
 			writeFile(filepath.Join(dataDir, "LuaUI", "Widgets", "analytics", playback.AnalyticsWidgetFile), nil)
 
 			player, err := playback.NewPlayer(dataDir)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(player.AnalyticsWidgetDir()).To(Equal(filepath.Join(dataDir, "LuaUI", "Widgets", "analytics")))
+			widgetDir, installed := player.AnalyticsWidgetDir()
+			Expect(widgetDir).To(Equal(filepath.Join(dataDir, "LuaUI", "Widgets", "analytics")))
+			Expect(installed).To(BeTrue())
 			Expect(player.EventsDir()).To(Equal(filepath.Join(dataDir, "LuaUI", "Widgets", "analytics", "events")))
 		})
 	})
 
+	Context("MakeWriteDir", func() {
+		It("writes the embedded analytics widget and links its events folder", func() {
+			dataDir := GinkgoT().TempDir()
+			player, err := playback.NewPlayer(dataDir)
+			Expect(err).NotTo(HaveOccurred())
+
+			writeDir, err := player.MakeWriteDir()
+
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(os.RemoveAll, writeDir)
+			widgetDir := filepath.Join(writeDir, "LuaUI", "Widgets", "bar-replay-analytics")
+			expectEmbeddedWidget(widgetDir)
+			Expect(os.Readlink(filepath.Join(widgetDir, "events"))).To(Equal(player.EventsDir()))
+		})
+
+		It("writes the embedded analytics widget into the folder of an installed one, so it replaces it", func() {
+			dataDir := GinkgoT().TempDir()
+			installedFile := filepath.Join(dataDir, "LuaUI", "Widgets", "analytics", playback.AnalyticsWidgetFile)
+			writeFile(installedFile, []byte("-- old version"))
+			player, err := playback.NewPlayer(dataDir)
+			Expect(err).NotTo(HaveOccurred())
+
+			writeDir, err := player.MakeWriteDir()
+
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(os.RemoveAll, writeDir)
+			expectEmbeddedWidget(filepath.Join(writeDir, "LuaUI", "Widgets", "analytics"))
+			Expect(os.ReadFile(installedFile)).To(Equal([]byte("-- old version")))
+		})
+	})
+
 	Context("InstallAnalyticsWidget", func() {
-		It("installs the widget and its license into a new folder", func() {
+		It("installs the widget, its README and its license into a new folder", func() {
 			dataDir := GinkgoT().TempDir()
 
 			widgetDir, created, err := playback.InstallAnalyticsWidget(dataDir)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(widgetDir).To(Equal(filepath.Join(dataDir, "LuaUI", "Widgets", "bar-replay-analytics")))
-			Expect(created).To(ConsistOf(
-				filepath.Join(widgetDir, playback.AnalyticsWidgetFile),
-				filepath.Join(widgetDir, "LICENSE"),
-			))
+			Expect(created).To(ConsistOf(templateFiles(widgetDir)))
 			expectEmbeddedWidget(widgetDir)
 			Expect(playback.NewPlayer(dataDir)).Error().NotTo(HaveOccurred())
 		})
@@ -205,7 +257,9 @@ var _ = Describe("Playback", func() {
 			Expect(errors.As(err, &existErr)).To(BeTrue())
 			Expect(existErr.FilePaths).To(Equal([]string{widgetFile}))
 			Expect(widgetDir).To(Equal(installed))
-			Expect(created).To(Equal([]string{filepath.Join(installed, "LICENSE")}))
+			Expect(created).To(ConsistOf(slices.DeleteFunc(templateFiles(installed), func(filePath string) bool {
+				return filePath == widgetFile
+			})))
 			Expect(os.ReadFile(widgetFile)).To(Equal([]byte("-- old version")))
 		})
 	})

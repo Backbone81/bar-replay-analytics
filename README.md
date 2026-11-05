@@ -13,8 +13,8 @@ instructions for that agent.
 
 ## Quick start
 
-You need [Go](https://go.dev/dl/), [Git](https://git-scm.com/downloads) and [7-Zip](https://www.7-zip.org/). 7-Zip
-must be on your `PATH` as `7z`, `7zz` or `7za`; on Windows, add `C:\Program Files\7-Zip` to it.
+You need [Go](https://go.dev/dl/) and [7-Zip](https://www.7-zip.org/). 7-Zip must be on your `PATH` as `7z`, `7zz` or
+`7za`; on Windows, add `C:\Program Files\7-Zip` to it.
 
 **1. Install the tool.**
 
@@ -34,13 +34,7 @@ It lands in `go/bin/` in your home folder. Add that folder to your `PATH` if `ba
 
 Below, `<BAR data>` stands for that folder.
 
-**3. Install the analytics widget** into BAR. It records the playback and does nothing in your own games.
-
-```sh
-git clone https://github.com/backbone81/bar-replay-analytics.git "<BAR data>/LuaUI/Widgets/bar-replay-analytics"
-```
-
-**4. Get coached.** Make a folder for your coaching, set it up for the agent and start your AI agent there:
+**3. Get coached.** Make a folder for your coaching, set it up for the agent and start your AI agent there:
 
 ```sh
 bar-replay-analytics-go init
@@ -79,7 +73,8 @@ Good to know:
 - **Playback needs about 5 GB of memory per replay.** `replay play` plays several replays at once, as many as your
   CPU and memory allow; `--parallel` sets the number.
 - **Playback leaves your BAR install alone.** It adds only what it downloads (engines, game versions, maps), like the
-  lobby. Your settings, widgets and `infolog.txt` stay untouched.
+  lobby, and its results in `LuaUI/Widgets/bar-replay-analytics/events/`. Its analytics widget is built in and runs
+  only in the playback. Your settings, widgets and `infolog.txt` stay untouched.
 - **Games that crashed or did not end** (length 0:00 in the lobby) are skipped: their replay can run for hours.
   `--unended` plays them anyway.
 - **Downloaded replays go to `demos/leaderboard/`**, so they don't crowd the replay list in the BAR lobby. Running

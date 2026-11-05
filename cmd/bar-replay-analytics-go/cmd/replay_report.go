@@ -68,8 +68,7 @@ file of the replay's playback (see "replay play").
 }
 
 // replayEventsPath returns the path of the events file the playback of the replay file filePath wrote, in the events
-// folder of the analytics widget in the BAR data directory.
-// Returns an error if the analytics widget is not installed there.
+// folder in the BAR data directory (see playback.Player.EventsDir).
 func replayEventsPath(filePath string) (string, error) {
 	player, err := playback.NewPlayer(barDataDir)
 	if err != nil {

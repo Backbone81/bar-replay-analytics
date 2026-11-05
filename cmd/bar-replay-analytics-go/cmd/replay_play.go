@@ -88,7 +88,11 @@ or the game was not ended, and its recorded stream can go on for hours of game t
 			return err
 		}
 		printField("data dir", player.DataDir())
-		printField("analytics", player.AnalyticsWidgetDir())
+		analytics := "built in"
+		if analyticsDir, installed := player.AnalyticsWidgetDir(); installed {
+			analytics = "built in, replaces the one in " + analyticsDir
+		}
+		printField("analytics", analytics)
 		advisorDir, found, err := playback.FindWidgetDir(filepath.Join(player.DataDir(), "LuaUI", "Widgets"),
 			advisorWidgetFile)
 		if err != nil {

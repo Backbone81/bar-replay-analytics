@@ -2,11 +2,13 @@
 // widget of bar-replay-analytics (dbg_replay_analytics.lua) logs the game to an events file (see package events).
 //
 // A Player works in a BAR data dir, the folder with demos/, engine/, maps/, the game packages (rapid/, packages/,
-// pool/) and LuaUI/Widgets/. The analytics widget must be installed there like any user widget, by cloning or
-// linking bar-replay-analytics into LuaUI/Widgets/. The widget does the work inside the engine: it is active only in
-// a headless replay, raises the speed limit, skips to the end of the replay, and quits the engine when the game is
-// over or the replay stops advancing. It writes events/<replay name>_events.json in its own folder; the engine output
-// goes next to it as <replay name>.log.
+// pool/) and LuaUI/Widgets/. The analytics widget is embedded (package widget) and written into each playback's write
+// dir, so it need not be installed in the data dir; if it is, the embedded one replaces it in the playback. The widget
+// does the work inside the engine: it is active only in a headless replay, raises the speed limit, skips to the end of
+// the replay, and quits the engine when the game is over or the replay stops advancing. It writes
+// events/<replay name>_events.json in its own folder, which is linked to events/ in the installed widget's folder in
+// the data dir, or in LuaUI/Widgets/bar-replay-analytics/ if none is installed; the engine output goes next to it as
+// <replay name>.log.
 //
 // Prepare reads the replay's engine version, game version (the setup script's gametype) and map, and downloads what
 // the data dir is missing, as the BAR lobby does: the engine's release build from BAR's CDN (GitHub releases of
@@ -18,8 +20,8 @@
 // temporary folder, and reads the data dir as an additional data dir (SPRING_DATADIR). The engine writes its
 // infolog.txt, _script.txt, settings, archive cache and the widgets' LuaUI/Config/ there, so parallel playbacks do
 // not overwrite each other's files, and the data dir is not changed except for the events and log files. Its
-// settings let the system pick the UDP port of the local server which plays the replay. Only the
-// analytics widget's events/ folder is linked into the write dir, so its events file lands in the widget's folder.
+// settings let the system pick the UDP port of the local server which plays the replay. The write dir holds the
+// analytics widget with its events/ folder linked to the data dir's, so the events file lands there.
 // The write dir starts with a copy of the data dir's archive cache, so the engine does not scan every map and game
 // again, and is removed afterwards.
 //
