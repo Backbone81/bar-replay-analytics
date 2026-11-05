@@ -3,6 +3,7 @@ package playback_test
 import (
 	"bytes"
 	"compress/gzip"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
@@ -11,12 +12,25 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/playback"
+	"github.com/backbone81/bar-replay-analytics-go/internal/playback/widget"
 )
 
 // writeFile writes content to filePath, creating its folder.
 func writeFile(filePath string, content []byte) {
 	Expect(os.MkdirAll(filepath.Dir(filePath), 0o750)).To(Succeed())
 	Expect(os.WriteFile(filePath, content, 0o600)).To(Succeed())
+}
+
+// expectEmbeddedWidget expects widgetDir to hold every file of widget.Files with its embedded content.
+func expectEmbeddedWidget(widgetDir string) {
+	entries, err := fs.ReadDir(widget.Files, ".")
+	Expect(err).NotTo(HaveOccurred())
+	Expect(entries).NotTo(BeEmpty())
+	for _, entry := range entries {
+		expected, err := widget.Files.ReadFile(entry.Name())
+		Expect(err).NotTo(HaveOccurred())
+		Expect(os.ReadFile(filepath.Join(widgetDir, entry.Name()))).To(Equal(expected))
+	}
 }
 
 // gzipped returns text compressed with gzip.
@@ -154,6 +168,31 @@ var _ = Describe("Playback", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(player.AnalyticsWidgetDir()).To(Equal(filepath.Join(dataDir, "LuaUI", "Widgets", "analytics")))
 			Expect(player.EventsDir()).To(Equal(filepath.Join(dataDir, "LuaUI", "Widgets", "analytics", "events")))
+		})
+	})
+
+	Context("InstallAnalyticsWidget", func() {
+		It("installs the widget and its license into a new folder", func() {
+			dataDir := GinkgoT().TempDir()
+
+			widgetDir, err := playback.InstallAnalyticsWidget(dataDir)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(widgetDir).To(Equal(filepath.Join(dataDir, "LuaUI", "Widgets", "bar-replay-analytics")))
+			expectEmbeddedWidget(widgetDir)
+			Expect(playback.NewPlayer(dataDir)).Error().NotTo(HaveOccurred())
+		})
+
+		It("updates the folder of an installed widget", func() {
+			dataDir := GinkgoT().TempDir()
+			installed := filepath.Join(dataDir, "LuaUI", "Widgets", "analytics")
+			writeFile(filepath.Join(installed, playback.AnalyticsWidgetFile), []byte("-- old version"))
+
+			widgetDir, err := playback.InstallAnalyticsWidget(dataDir)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(widgetDir).To(Equal(installed))
+			expectEmbeddedWidget(widgetDir)
 		})
 	})
 
