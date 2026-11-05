@@ -13,8 +13,7 @@ instructions for that agent.
 
 ## Quick start
 
-You need [Go](https://go.dev/dl/) and [7-Zip](https://www.7-zip.org/). 7-Zip must be on your `PATH` as `7z`, `7zz` or
-`7za`; on Windows, add `C:\Program Files\7-Zip` to it.
+You need [Go](https://go.dev/dl/).
 
 **1. Install the tool.**
 

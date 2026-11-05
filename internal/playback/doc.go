@@ -12,9 +12,9 @@
 //
 // Prepare reads the replay's engine version, game version (the setup script's gametype) and map, and downloads what
 // the data dir is missing, as the BAR lobby does: the engine's release build from BAR's CDN (GitHub releases of
-// RecoilEngine as a fallback), unpacked with 7-Zip into engine/<version folder>, and the game and map with the
-// engine's pr-downloader and the BAR launcher's settings. Prepare calls of one Player run one at a time, so replays
-// needing the same engine, game or map download it once.
+// RecoilEngine as a fallback), unpacked into engine/<version folder> in Go (no 7-Zip needed), and the game and map
+// with the engine's pr-downloader and the BAR launcher's settings. Prepare calls of one Player run one at a time, so
+// replays needing the same engine, game or map download it once.
 //
 // Play runs the engine. Several Play calls may run at the same time: each playback gets its own write dir, a
 // temporary folder, and reads the data dir as an additional data dir (SPRING_DATADIR). The engine writes its

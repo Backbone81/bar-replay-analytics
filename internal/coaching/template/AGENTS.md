@@ -29,10 +29,7 @@ Every command takes `--bar-data-dir`, the player's BAR data directory: the folde
 
 If none of them holds a `demos/` folder, ask the player. Note the path in `player.md`.
 
-`replay play` needs:
-
-- 7-Zip (`7z`, `7zz` or `7za`) on `PATH`, to unpack an engine it downloads.
-- about 5 GB of memory and 1.5 CPU cores per replay played back at the same time.
+`replay play` needs about 5 GB of memory and 1.5 CPU cores per replay played back at the same time.
 
 Ask the player before you install anything or download more than a few replays.
 

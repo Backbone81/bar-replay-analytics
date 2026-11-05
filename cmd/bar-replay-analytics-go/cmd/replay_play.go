@@ -32,17 +32,18 @@ var replayPlayCmd = &cobra.Command{
 	Short: "Play replays back in a headless engine at maximum speed",
 	Long: `Plays replays back in spring-headless at maximum speed, with the analytics widget of bar-replay-analytics
 (dbg_replay_analytics.lua) logging the game to events/<replay name>_events.json in the widget's folder. The engine
-log goes next to it as <replay name>.log. --parallel replays are played back at the
-same time.
+log goes next to it as <replay name>.log. --parallel replays are played back at the same time.
 
-The widget must be installed in LuaUI/Widgets/ of the BAR data directory, by cloning or linking bar-replay-analytics
-there. Other widgets installed there run during playback too, so their log lines show what a widget would have done
-in the game, e.g. the [reminder] lines of bar-advisor.
+The widget is built into this program and written into each playback's write dir; it need not be installed in the
+BAR data directory, and replaces one installed there. The events go to the installed widget's folder, or to
+LuaUI/Widgets/bar-replay-analytics/ if none is installed. Other widgets installed in LuaUI/Widgets/ run during
+playback too, so their log lines show what a widget would have done in the game, e.g. the [reminder] lines of
+bar-advisor.
 
 The engine, game and map versions a replay needs are downloaded into the BAR data directory if they are missing, as
-the BAR lobby does: the engine from BAR's CDN (needs 7-Zip: 7z, 7zz or 7za on PATH), the game and map with the
-engine's pr-downloader. Each playback has a temporary write dir of its own, so playbacks do not change the data
-directory's infolog.txt, settings or widget config (LuaUI/Config/), and parallel ones do not overwrite each other's.
+the BAR lobby does: the engine from BAR's CDN, the game and map with the engine's pr-downloader. Each playback has a
+temporary write dir of its own, so playbacks do not change the data directory's infolog.txt, settings or widget
+config (LuaUI/Config/), and parallel ones do not overwrite each other's.
 
 An engine playing a replay back needs about 5 GB of memory (4.8 GB for a 1v1 replay of 27 minutes) and, with the
 default --engine-threads 2, about 1.5 CPU cores, so --parallel defaults to one playback per 2 CPUs, but at most one

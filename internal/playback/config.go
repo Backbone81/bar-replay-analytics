@@ -21,10 +21,6 @@ type Config struct {
 	// PRDownloaderEnv is added to the environment of pr-downloader, which downloads games and maps.
 	PRDownloaderEnv []string
 
-	// SevenZip is the 7-Zip command line tool which unpacks engines. Empty selects the first of 7z, 7zz and 7za on
-	// PATH.
-	SevenZip string
-
 	// StallTimeout is how long the events file (or, while the engine loads, its log) may stop growing before Play
 	// stops the engine.
 	StallTimeout time.Duration

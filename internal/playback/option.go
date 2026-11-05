@@ -29,13 +29,6 @@ func WithEngineReleaseURL(engineReleaseURL string) Option {
 	}
 }
 
-// WithSevenZip sets Config.SevenZip.
-func WithSevenZip(sevenZip string) Option {
-	return func(config *Config) {
-		config.SevenZip = sevenZip
-	}
-}
-
 // WithStallTimeout sets Config.StallTimeout.
 func WithStallTimeout(stallTimeout time.Duration) Option {
 	return func(config *Config) {

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -16,9 +15,6 @@ import (
 
 // springHeadless is the file name of the headless engine, which plays replays without a window.
 var springHeadless = executableName("spring-headless")
-
-// sevenZipNames are the names 7-Zip's command line tool goes by, in the order they are looked for on PATH.
-var sevenZipNames = []string{"7z", "7zz", "7za"}
 
 // EngineFolderName returns the folder name in engine/ which the BAR lobby uses for engineVersion, so a BAR install's
 // data dir works. It follows BYAR-Chobby gui_steam_coop_handler.lua, GetEnginePath: "2025.01.6" is
@@ -68,11 +64,6 @@ func (p *Player) findOrDownloadEngine(ctx context.Context, engineVersion string)
 // downloadEngine downloads the engine archive and unpacks it into engineDir, which must not exist yet. It unpacks next
 // to engineDir and renames at the end, so an interrupted download leaves no half engine behind.
 func (p *Player) downloadEngine(ctx context.Context, engineVersion string, engineDir string) error {
-	sevenZip, err := p.findSevenZip()
-	if err != nil {
-		return err
-	}
-
 	urls := []string{
 		p.engineURL(p.config.EngineCDNURL, engineVersion),
 	}
@@ -107,34 +98,14 @@ func (p *Player) downloadEngine(ctx context.Context, engineVersion string, engin
 
 	unpacked := filepath.Join(tempDir, "engine")
 
-	//nolint:gosec // sevenZip is the configured or found 7-Zip, the paths are the package's own.
-	output, err := exec.CommandContext(ctx, sevenZip, "x", "-y", "-o"+unpacked, archive).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("unpacking %s: %w\n%s", archive, err, output)
+	if err := Unpack7z(ctx, archive, unpacked); err != nil {
+		return err
 	}
 
 	if !isFile(filepath.Join(unpacked, springHeadless)) {
 		return fmt.Errorf("the archive of engine %s has no %s", engineVersion, springHeadless)
 	}
-
-	// 7-Zip may create it private, like the temporary folder around it.
-	if err := os.Chmod(unpacked, dirPermissions); err != nil {
-		return err
-	}
 	return os.Rename(unpacked, engineDir)
-}
-
-// findSevenZip returns Config.SevenZip, or the first of sevenZipNames on PATH.
-func (p *Player) findSevenZip() (string, error) {
-	if p.config.SevenZip != "" {
-		return p.config.SevenZip, nil
-	}
-	for _, name := range sevenZipNames {
-		if sevenZip, err := exec.LookPath(name); err == nil {
-			return sevenZip, nil
-		}
-	}
-	return "", errors.New("unpacking the engine needs 7-Zip: install 7z (p7zip-full or 7zip)")
 }
 
 // downloadFile downloads fileURL to filePath, which it creates or truncates.

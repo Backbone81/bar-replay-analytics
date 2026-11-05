@@ -3,6 +3,7 @@ package playback_test
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"errors"
 	"io/fs"
 	"os"
@@ -198,6 +199,29 @@ var _ = Describe("Playback", func() {
 			Expect(widgetDir).To(Equal(filepath.Join(dataDir, "LuaUI", "Widgets", "analytics")))
 			Expect(installed).To(BeTrue())
 			Expect(player.EventsDir()).To(Equal(filepath.Join(dataDir, "LuaUI", "Widgets", "analytics", "events")))
+		})
+	})
+
+	Context("Unpack7z", func() {
+		It("unpacks folders and files with their permissions", func() {
+			destination := filepath.Join(GinkgoT().TempDir(), "engine")
+
+			Expect(playback.Unpack7z(context.Background(), filepath.Join("testdata", "engine.7z"), destination)).
+				To(Succeed())
+
+			Expect(os.ReadFile(filepath.Join(destination, "spring-headless"))).To(Equal([]byte("#!/bin/sh\n")))
+			Expect(os.ReadFile(filepath.Join(destination, "AI", "config.json"))).To(Equal([]byte("data\n")))
+			info, err := os.Stat(filepath.Join(destination, "spring-headless"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(info.Mode().Perm() & 0o111).NotTo(BeZero())
+		})
+
+		It("stops when the context is cancelled", func() {
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			Expect(playback.Unpack7z(ctx, filepath.Join("testdata", "engine.7z"), GinkgoT().TempDir())).
+				To(MatchError(context.Canceled))
 		})
 	})
 
