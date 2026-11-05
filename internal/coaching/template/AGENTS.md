@@ -56,8 +56,9 @@ BAR saves every game as a `.sdfz` file in `demos/` of the data directory. Comman
 
 1. **Pick the replay.** Usually the newest in `demos/`, or the one the player names. A replay with a length of 0:00
    (the game crashed or was not ended) is skipped by `replay play`; tell the player instead of analyzing it.
-2. **Read the setup.** `replay report` needs a playback (step 3), but `replay script <replay>` works at once: map, game
-   version, players, teams, AIs and game options. Find the player by name. If several humans could be the player, ask.
+2. **Read the setup.** `replay report` needs a playback (step 3), but `replay inspect <replay>` and
+   `replay script <replay>` work at once: map, game version, players, teams, AIs and game options. Find the player by
+   name. If several humans could be the player, ask.
 3. **Play it back.** `replay play <replay>...` runs the game in a headless engine at maximum speed (a few minutes per
    game; several replays run in parallel) and writes `events/<replay name>_events.json` in
    `LuaUI/Widgets/bar-replay-analytics/` of the data directory (or in the folder of an analytics widget installed
