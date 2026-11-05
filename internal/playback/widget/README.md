@@ -1,7 +1,8 @@
 # Widget
 
-This folder contains a Beyond All Reason user widget for detailed log output during replays. The file is embedded into
-the binary and can be emitted as needed.
+This folder contains the template of the analytics widget's folder: `template/` holds a Beyond All Reason user widget
+for detailed log output during replays, and its license. The template is embedded into the binary, and
+`bar-replay-analytics-go install-widget` writes all of it into `LuaUI/Widgets/` of the BAR data directory.
 
-The files in this folder are licensed under GPL-2.0-or-later (see LICENSE), like BAR's own widgets, as the widget runs
-inside the game.
+The files in `template/` are licensed under GPL-2.0-or-later (see `template/LICENSE`), like BAR's own widgets, as the
+widget runs inside the game.

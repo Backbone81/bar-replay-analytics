@@ -23,16 +23,20 @@ func writeFile(filePath string, content []byte) {
 	Expect(os.WriteFile(filePath, content, 0o600)).To(Succeed())
 }
 
-// expectEmbeddedWidget expects widgetDir to hold every file of widget.Files with its embedded content.
+// expectEmbeddedWidget expects widgetDir to hold every file of widget.Template with its embedded content.
 func expectEmbeddedWidget(widgetDir string) {
-	entries, err := fs.ReadDir(widget.Files, ".")
-	Expect(err).NotTo(HaveOccurred())
-	Expect(entries).NotTo(BeEmpty())
-	for _, entry := range entries {
-		expected, err := widget.Files.ReadFile(entry.Name())
+	var filePaths []string
+	Expect(fs.WalkDir(widget.Template, ".", func(name string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return err
+		}
+		filePaths = append(filePaths, name)
+		expected, err := fs.ReadFile(widget.Template, name)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(os.ReadFile(filepath.Join(widgetDir, entry.Name()))).To(Equal(expected))
-	}
+		Expect(os.ReadFile(filepath.Join(widgetDir, filepath.FromSlash(name)))).To(Equal(expected))
+		return nil
+	})).To(Succeed())
+	Expect(filePaths).To(ContainElements(playback.AnalyticsWidgetFile, "LICENSE"))
 }
 
 // gzipped returns text compressed with gzip.

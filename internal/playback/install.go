@@ -11,8 +11,9 @@ import (
 // it is not installed yet: the name of the repository it comes from.
 const analyticsWidgetFolder = "bar-replay-analytics"
 
-// InstallAnalyticsWidget writes the embedded analytics widget and its license (widget.Files) into LuaUI/Widgets/ of the
-// data dir dataDir. It returns the folder it wrote into and the files it created.
+// InstallAnalyticsWidget writes the embedded template of the analytics widget's folder (widget.Template: the widget and
+// its license) into LuaUI/Widgets/ of the data dir dataDir. It returns the folder it wrote into and the files it
+// created.
 //
 // If the widget is installed already, InstallAnalyticsWidget uses that folder, so BAR does not load two copies.
 // Otherwise it creates LuaUI/Widgets/bar-replay-analytics/. It never overwrites a file: it creates the missing ones and
@@ -26,6 +27,6 @@ func InstallAnalyticsWidget(dataDir string) (string, []string, error) {
 	if !found {
 		widgetDir = filepath.Join(widgets, analyticsWidgetFolder)
 	}
-	created, err := newfiles.Write(widget.Files, widgetDir)
+	created, err := newfiles.Write(widget.Template, widgetDir)
 	return widgetDir, created, err
 }
