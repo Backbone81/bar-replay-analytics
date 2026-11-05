@@ -11,19 +11,18 @@ var installWidgetCmd = &cobra.Command{
 	Use:   "install-widget",
 	Short: "Install the analytics widget into the BAR data directory",
 	Long: `Installs the analytics widget (dbg_replay_analytics.lua), which logs a replay's playback, and its license into
-LuaUI/Widgets/ of the BAR data directory. The widget is built into this program; installing it again updates it.
+LuaUI/Widgets/ of the BAR data directory. The widget is built into this program.
 
-If the widget is installed already, its folder is updated, otherwise LuaUI/Widgets/bar-replay-analytics/ is created.
+If the widget is installed already, its folder is used, otherwise LuaUI/Widgets/bar-replay-analytics/ is created.
+Existing files are never overwritten: only missing files are created, and existing ones are reported as an error.
+To update the widget, delete its files first.
 
 The widget is active only in a headless playback and does nothing in your own games.`,
 	Args: cobra.NoArgs,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		widgetDir, err := playback.InstallAnalyticsWidget(barDataDir)
-		if err != nil {
-			return err
-		}
-		printField("installed", widgetDir)
-		return nil
+		_, created, err := playback.InstallAnalyticsWidget(barDataDir)
+		printCreated(created)
+		return err
 	},
 }
 

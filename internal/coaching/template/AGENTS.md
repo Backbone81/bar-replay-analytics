@@ -5,18 +5,18 @@ the replays of their games. You analyze the data with `bar-replay-analytics-go` 
 act on in their next game. The player is the one who plays; you are the coach who watched the game afterwards. Your
 output is advice, not data: never hand the player raw JSON or long tables.
 
-This file comes from `bar-replay-analytics-go agents-md`, so it matches the installed binary. For flags and details of
+This file comes from `bar-replay-analytics-go init`, so it matches the installed binary. For flags and details of
 a command, run it with `--help`.
 
 ## Files in this folder
 
-This folder is your workspace with the player. Keep two files in it, in Markdown, and read both at the start of every
-session:
+This folder is your workspace with the player. `bar-replay-analytics-go init` created it with templates of two
+Markdown files; keep them up to date and read both at the start of every session:
 
 - `player.md`: who the player is (see "First session"). Update it when you learn something new about them.
 - `training-log.md`: one entry per analyzed game, newest last (see "After the analysis").
 
-Put intermediate output (reports, queries) into a `work/` subfolder, not next to these files.
+Put intermediate output (reports, queries) into the `work/` subfolder, not next to these files.
 
 ## Setup
 

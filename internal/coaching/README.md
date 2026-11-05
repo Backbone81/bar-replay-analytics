@@ -1,4 +1,5 @@
 # Coaching
 
-This folder contains instructions for AI agents about how to conduct coaching sessions. The instructions are embedded
-into the binary and can be emitted as required.
+This folder contains the template of the workspace of an AI agent that conducts coaching sessions: `template/` holds its
+instructions (`AGENTS.md`) and templates of the files and folders those tell it to keep (`work/.keep` keeps the empty
+folder). The template is embedded into the binary, and `bar-replay-analytics-go init` writes it into the current folder.

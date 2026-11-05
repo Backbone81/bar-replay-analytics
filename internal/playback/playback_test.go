@@ -3,6 +3,7 @@ package playback_test
 import (
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/backbone81/bar-replay-analytics-go/internal/newfiles"
 	"github.com/backbone81/bar-replay-analytics-go/internal/playback"
 	"github.com/backbone81/bar-replay-analytics-go/internal/playback/widget"
 )
@@ -175,24 +177,32 @@ var _ = Describe("Playback", func() {
 		It("installs the widget and its license into a new folder", func() {
 			dataDir := GinkgoT().TempDir()
 
-			widgetDir, err := playback.InstallAnalyticsWidget(dataDir)
+			widgetDir, created, err := playback.InstallAnalyticsWidget(dataDir)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(widgetDir).To(Equal(filepath.Join(dataDir, "LuaUI", "Widgets", "bar-replay-analytics")))
+			Expect(created).To(ConsistOf(
+				filepath.Join(widgetDir, playback.AnalyticsWidgetFile),
+				filepath.Join(widgetDir, "LICENSE"),
+			))
 			expectEmbeddedWidget(widgetDir)
 			Expect(playback.NewPlayer(dataDir)).Error().NotTo(HaveOccurred())
 		})
 
-		It("updates the folder of an installed widget", func() {
+		It("adds missing files to the folder of an installed widget without overwriting it", func() {
 			dataDir := GinkgoT().TempDir()
 			installed := filepath.Join(dataDir, "LuaUI", "Widgets", "analytics")
-			writeFile(filepath.Join(installed, playback.AnalyticsWidgetFile), []byte("-- old version"))
+			widgetFile := filepath.Join(installed, playback.AnalyticsWidgetFile)
+			writeFile(widgetFile, []byte("-- old version"))
 
-			widgetDir, err := playback.InstallAnalyticsWidget(dataDir)
+			widgetDir, created, err := playback.InstallAnalyticsWidget(dataDir)
 
-			Expect(err).NotTo(HaveOccurred())
+			var existErr *newfiles.ExistError
+			Expect(errors.As(err, &existErr)).To(BeTrue())
+			Expect(existErr.FilePaths).To(Equal([]string{widgetFile}))
 			Expect(widgetDir).To(Equal(installed))
-			expectEmbeddedWidget(widgetDir)
+			Expect(created).To(Equal([]string{filepath.Join(installed, "LICENSE")}))
+			Expect(os.ReadFile(widgetFile)).To(Equal([]byte("-- old version")))
 		})
 	})
 

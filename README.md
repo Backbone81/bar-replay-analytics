@@ -40,11 +40,14 @@ Below, `<BAR data>` stands for that folder.
 git clone https://github.com/backbone81/bar-replay-analytics.git "<BAR data>/LuaUI/Widgets/bar-replay-analytics"
 ```
 
-**4. Get coached.** Make a folder for your coaching, put the agent's instructions in it and start your AI agent there:
+**4. Get coached.** Make a folder for your coaching, set it up for the agent and start your AI agent there:
 
 ```sh
-bar-replay-analytics-go agents-md > AGENTS.md
+bar-replay-analytics-go init
 ```
+
+This writes the agent's instructions (`AGENTS.md`), templates of the player profile and training log it keeps, and a
+`work/` folder. It never overwrites a file: existing ones are reported as an error.
 
 Ask the agent to analyze your last game. It asks you a few questions about yourself first, then plays your replays
 back, reads their reports and keeps a training log, so later games are compared with earlier ones. Playing back a
@@ -67,8 +70,8 @@ bar-replay-analytics-go leaderboard show [--game-type duel] [--top 20]
 bar-replay-analytics-go replay download-top [--game-type duel] [--top 10] [--days 7]
 bar-replay-analytics-go replay download <replay-id>...  # the ID from https://www.bar-rts.com/replays/<replay-id>
 
-# Instructions for an AI coach
-bar-replay-analytics-go agents-md
+# Set up the current folder for an AI coach
+bar-replay-analytics-go init
 ```
 
 Good to know:
@@ -92,4 +95,5 @@ make test    # the same checks, then all tests
 make fuzz    # run the fuzz tests until they stop finding new inputs (see scripts/fuzz.sh)
 ```
 
-The coaching instructions are `internal/coaching/AGENTS.md`, built into the binary.
+The template of the coaching agent's workspace that `init` writes is `internal/coaching/template/`, built into
+the binary.
