@@ -30,32 +30,17 @@ var (
 var replayPlayCmd = &cobra.Command{
 	Use:   "play <replay>...",
 	Short: "Play replays back in a headless engine at maximum speed",
-	Long: `Plays replays back in spring-headless at maximum speed, with the analytics widget of bar-replay-analytics
-(dbg_replay_analytics.lua) logging the game to <replay name>_events.json next to the replay file. The engine's output
-goes next to it as <replay name>.log. BAR's replay browser lists only the .sdfz files, so it does not show them.
---parallel replays are played back at the same time.
+	Long: `Plays replays back in spring-headless at maximum speed with the analytics widget built into this program,
+which replaces an installed copy. Writes <replay name>_events.json (the widget's events) and <replay name>.log (the
+engine's output) next to each replay. Other widgets in LuaUI/Widgets/ run too, so their log lines show what they would
+have done in the game, such as the [reminder] lines of bar-advisor.
 
-The widget is built into this program and written into each playback's write dir; it need not be installed in the
-BAR data directory, and replaces one installed there. Other widgets installed in LuaUI/Widgets/ run during playback
-too, so their log lines show what a widget would have done in the game, e.g. the [reminder] lines of bar-advisor.
+Missing engines, games and maps are downloaded into the BAR data directory as the BAR lobby does. Each playback has a
+temporary write dir, so the data directory's infolog.txt, settings and LuaUI/Config/ stay unchanged.
 
-The engine, game and map versions a replay needs are downloaded into the BAR data directory if they are missing, as
-the BAR lobby does: the engine from BAR's CDN, the game and map with the engine's pr-downloader. Each playback has a
-temporary write dir of its own, so playbacks do not change the data directory's infolog.txt, settings or widget
-config (LuaUI/Config/), and parallel ones do not overwrite each other's. The playback adds nothing else to the data
-directory.
-
-An engine playing a replay back needs about 5 GB of memory (4.8 GB for a 1v1 replay of 27 minutes) and, with the
-default --engine-threads 2, about 1.5 CPU cores, so --parallel defaults to one playback per 2 CPUs, but at most one
-per 6 GB of the memory available at the start. The engine's own default thread pool of one thread per CPU is slower
-and uses 5 cores per playback on a 32-core computer, mostly waking and parking idle threads.
-
-Every --progress-interval, a line on stderr tells how far each running playback has come, in percent of the game.
-A playback is stopped if the events file (or, while the engine loads, its log) has not grown for a minute. A replay
-counts as played back if its events file ends with the game over.
-
-A replay without the length of the game in its header (shown as 0:00 by the lobby) is skipped: the engine crashed,
-or the game was not ended, and its recorded stream can go on for hours of game time.
+A playback is stopped if its output has not grown for a minute, and fails unless its events file ends with the game
+over. A replay without a game length in its header (0:00 in the lobby: the engine crashed or the game was not ended)
+is skipped.
 
 <replay> is a path to a .sdfz file, or the name of a file in the demos/ folder of the BAR data directory.`,
 	Args: cobra.MinimumNArgs(1),

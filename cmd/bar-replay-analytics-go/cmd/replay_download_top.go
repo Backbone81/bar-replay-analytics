@@ -26,26 +26,19 @@ var (
 var replayDownloadTopCmd = &cobra.Command{
 	Use:   "download-top",
 	Short: "Download the recent replays of the best players of a leaderboard",
-	Long: `Downloads the replays of the games which the best players of a leaderboard played in the last days, for the
-game type of the leaderboard only. A game counts as that game type if bar-db's preset fits and its allyteams have the
-size the lobby server decides the game type by: duel 1v1, small-team two allyteams of up to 5 players, large-team two
-allyteams of more, ffa more than two allyteams of 1 player. Games with AIs and aborted games are left out; unrated
-games are included, as bar-db does not tell them apart.
+	Long: `Downloads the replays of the games the --top players of a leaderboard played in the last --days, of the
+leaderboard's game type only: bar-db's preset must fit, and the allyteams must have the shape the lobby server decides
+the game type by (duel 1v1, small-team two allyteams of up to 5 players, large-team two of more, ffa more than two of
+1 player). Games with AIs and aborted games are left out; unrated ones are included, as bar-db does not tell them
+apart.
 
---map selects only the games on that map, given as the mapname of the start script ('replay script' shows it), such
-as "Argent Strata 1.1". The name must match exactly, case and map version included: another version of a map is
-another map. Repeat --map to select games on any of several maps. Fewer games are played on one map, so raise --days
-to find enough of them.
+--map takes the exact mapname of the start script ('replay script' shows it), version included, such as "Argent Strata
+1.1". Repeat it for several maps.
 
-The replays are stored under the file names of the replay storage in demos/leaderboard/ of the BAR data directory
-(see --dir). The BAR lobby lists only the replays directly in demos/, so these do not crowd its replay list.
-
-Running it again downloads only the replays the directory does not hold yet. The file index.json in the directory
-records which file holds which replay; a replay counts as present if it is recorded and its file exists. Otherwise its
-file name is looked up in bar-db: a file of that name which holds the replay's game is recorded without a download,
-any other replay is downloaded. So files added or removed by hand are noticed, and entries of removed files are
-dropped. A download goes to the file name with .part appended first, which is renamed only once it is complete and
-holds the replay's game, so an interrupted run leaves no partial replay under the replay's name.`,
+The replays keep the file names of the replay storage. The default --dir, demos/leaderboard/, is not shown in the BAR
+lobby's replay list. index.json there records which file holds which replay, so a new run downloads only the missing
+ones and notices files added or removed by hand. A download is written to a .part file first, so an interrupted run
+leaves no partial replay.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := checkDownloadTopFlags(); err != nil {

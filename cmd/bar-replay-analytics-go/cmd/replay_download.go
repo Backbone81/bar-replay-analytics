@@ -20,11 +20,10 @@ var replayDownloadDir string
 var replayDownloadCmd = &cobra.Command{
 	Use:   "download <replay-id>...",
 	Short: "Download replays by their IDs",
-	Long: `Downloads the replays with the given IDs from the replay storage behind https://bar-rts.com, unless the
-download directory already holds them. A replay ID is the game ID in hex, as in the URL of the replay's page:
-https://www.bar-rts.com/replays/<replay-id>.
+	Long: `Downloads replays from the replay storage behind https://bar-rts.com into --dir, skipping those it holds
+already. A replay ID is the game ID in hex, as in https://www.bar-rts.com/replays/<replay-id>.
 
-See 'replay download-top' for where the replays are stored and how existing ones are found.`,
+Uses the same directory and index.json as 'replay download-top'.`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		downloader, err := newReplayDownloader(barlive.NewClient(barlive.WithOnRequest(printRequest)), false)

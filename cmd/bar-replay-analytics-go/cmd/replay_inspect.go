@@ -10,8 +10,8 @@ import (
 var replayInspectCmd = &cobra.Command{
 	Use:   "inspect <replay>",
 	Short: "Print the content of a replay as JSON",
-	Long: `Prints the content of a replay as JSON: file header, start script, winning allyteams, player statistics and
-team statistics. The recorded game itself is not included.
+	Long: `Prints the file header, start script, winning allyteams, player statistics and team statistics of a replay as
+JSON. The recorded game itself is not included.
 
 <replay> is a path to a .sdfz file, or the name of a file in the demos/ folder of the BAR data directory.`,
 	Args: cobra.ExactArgs(1),

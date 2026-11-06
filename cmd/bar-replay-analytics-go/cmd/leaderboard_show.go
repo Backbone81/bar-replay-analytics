@@ -21,10 +21,10 @@ var (
 // leaderboardShowCmd prints the best players of a season.
 var leaderboardShowCmd = &cobra.Command{
 	Use:   "show",
-	Short: "Print the best players of the leaderboards",
-	Long: `Prints the best players of each leaderboard of a season, or of one game type with --game-type. The lobby
-server lists at most the 100 best players who played a rated game in the 35 days before now (active season) or before
-the end of the season (earlier seasons).`,
+	Short: "Print the best players of the leaderboards of a season",
+	Long: `Prints the best players of each leaderboard of a season, or of one with --game-type. The lobby server lists at
+most 100 players, and only those whose rating changed in the 35 days before now, or before the end of an earlier
+season.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if leaderboardShowTop < 1 {

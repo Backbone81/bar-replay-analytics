@@ -11,11 +11,11 @@ import (
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Set up the current folder as the workspace of an AI coaching agent",
-	Long: `Writes the workspace of an AI agent that coaches a player from the analytics of their replays into the current
-folder: AGENTS.md with the agent's instructions, the templates player.md and training-log.md the agent fills in, and
-the folder work/ for its intermediate output. Start your agent in this folder afterwards.
+	Long: `Writes the workspace of an AI coaching agent into the current folder: AGENTS.md (the agent's instructions),
+the templates player.md and training-log.md, and work/ for intermediate output. Start the agent in this folder
+afterwards.
 
-Existing files are never overwritten: only missing files are created, and existing ones are reported as an error.`,
+Only missing files are created; existing ones are left unchanged and reported as errors.`,
 	Args: cobra.NoArgs,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		created, err := newfiles.Write(coaching.Template, ".")

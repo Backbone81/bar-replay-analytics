@@ -14,7 +14,7 @@ import (
 // replayCmd groups the commands which read or download replays.
 var replayCmd = &cobra.Command{
 	Use:   "replay",
-	Short: "Work with replays",
+	Short: "Read, play back, report and download replays",
 }
 
 func init() {

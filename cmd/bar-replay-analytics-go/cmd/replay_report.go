@@ -26,9 +26,8 @@ var (
 var replayReportCmd = &cobra.Command{
 	Use:   "report <replay>",
 	Short: "Write the report of a replay as JSON next to the replay",
-	Long: `Writes the report of a replay as JSON to <replay name>_report.json next to the replay file: the game aggregated
-for coaching, readable as it is. It replaces an existing report. It needs the events file of the replay's playback,
-<replay name>_events.json next to the replay file (see "replay play").
+	Long: `Writes the game aggregated for coaching to <replay name>_report.json next to the replay, replacing an existing
+report. Needs <replay name>_events.json from 'replay play'.
 
 <replay> is a path to a .sdfz file, or the name of a file in the demos/ folder of the BAR data directory.`,
 	Args: cobra.ExactArgs(1),

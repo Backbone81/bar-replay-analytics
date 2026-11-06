@@ -14,8 +14,8 @@ import (
 var leaderboardSeasonsCmd = &cobra.Command{
 	Use:   "seasons",
 	Short: "List the seasons and their game types",
-	Long: `Lists the seasons for which the BAR lobby server has leaderboards, with the game types as --game-type names
-them. The last season is the active one.`,
+	Long: `Lists the seasons with leaderboards on the BAR lobby server and their game types as --game-type takes them.
+The last season is the active one.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		seasons, err := barlive.NewClient(barlive.WithOnRequest(printRequest)).LeaderboardSeasons(cmd.Context())

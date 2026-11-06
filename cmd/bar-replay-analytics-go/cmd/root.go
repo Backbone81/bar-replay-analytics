@@ -19,8 +19,8 @@ var barDataDir string
 var rootCmd = &cobra.Command{
 	Use:   "bar-replay-analytics-go",
 	Short: "Analyze replays of Beyond All Reason",
-	Long: `Reads replays (demo files) of Beyond All Reason, shows the leaderboards of the BAR lobby server and downloads
-the replays of top players from the replay database behind https://bar-rts.com.`,
+	Long: `Analyzes replays of Beyond All Reason for coaching: reads them, plays them back headless and reports on the
+game. Also shows the leaderboards of the BAR lobby server and downloads replays from https://bar-rts.com.`,
 	SilenceUsage: true,
 }
 
