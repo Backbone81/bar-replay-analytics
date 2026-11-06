@@ -12,33 +12,29 @@ import (
 	"unicode/utf8"
 )
 
-// Demo is a demo file's content in the order it appears in the file. The demo stream (the recorded network messages)
-// is skipped.
+// Demo is a demo file's content in file order, without the demo stream. Fields are named after the members of
+// CDemoReader (rts/System/LoadSave/DemoReader.h).
 //
-// The fields are named after the members of CDemoReader in the Recoil engine source: rts/System/LoadSave/DemoReader.h.
+// The statistics fields are nil if the engine crashed while recording (DemoStreamSize 0).
 type Demo struct {
-	// FileHeader provides metadata about this file.
+	// FileHeader holds the format version, engine version, game duration and section sizes.
 	FileHeader DemoFileHeader `json:"fileHeader"`
 
-	// SetupScript provides the setup script: map, game, players, teams, allyteams and AIs.
+	// SetupScript is the start script: map, game, players, teams, allyteams and AIs.
 	SetupScript string `json:"setupScript"`
 
-	// WinningAllyTeams provides the allyteams which have won, as the game's Lua passed them to Spring.GameOver: an
-	// allyteam may be listed twice, and Gaia's allyteam is accepted as well. The header holds no allyteam count to
-	// check them against.
-	// Is nil if the engine crashed while recording the demo.
+	// WinningAllyTeams are the allyteams as the game's Lua passed them to Spring.GameOver, unchecked: one may appear
+	// twice or be Gaia's, and the header has no allyteam count to check them against.
 	WinningAllyTeams []uint8 `json:"winningAllyTeams"`
 
-	// PlayerStats provides statistics per player.
-	// Is nil if the engine crashed while recording the demo.
+	// PlayerStats are indexed by player ID, spectators included.
 	PlayerStats []PlayerStatistics `json:"playerStats"`
 
-	// PlayerStatsByteSwapped is true if the demo held PlayerStats in big-endian byte order, as engines before
+	// PlayerStatsByteSwapped is true if the demo held PlayerStats big-endian, as engines before
 	// PlayerStatsByteOrderFixedVersion wrote them on some Linux hosts. PlayerStats holds the corrected values.
 	PlayerStatsByteSwapped bool `json:"playerStatsByteSwapped"`
 
-	// TeamStats provides statistics per team.
-	// Is nil if the engine crashed while recording the demo.
+	// TeamStats are each team's history in frame order, indexed by team ID, Gaia excluded.
 	TeamStats [][]TeamStatistics `json:"teamStats"`
 }
 
@@ -68,8 +64,8 @@ func (d Demo) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// Read decompresses a demo file from reader into memory, parses and validates it.
-// Returns an error if validation fails.
+// Read decompresses, parses and validates a demo file. It holds the decompressed file in memory, at most
+// MaxDecompressedSize bytes.
 func Read(reader io.Reader) (*Demo, error) {
 	gzipReader, err := gzip.NewReader(reader)
 	if err != nil {
@@ -80,10 +76,9 @@ func Read(reader io.Reader) (*Demo, error) {
 	return ReadUncompressed(gzipReader)
 }
 
-// ReadUncompressed reads an already decompressed demo file from reader into memory, parses and validates it.
-// Returns an error if validation fails.
+// ReadUncompressed is Read for an already decompressed demo file.
 func ReadUncompressed(reader io.Reader) (*Demo, error) {
-	// We read one byte more than the max, so we can detect if there would have been more than the max number of bytes.
+	// One byte over the limit tells a file of exactly MaxDecompressedSize bytes from a larger one.
 	data, err := io.ReadAll(io.LimitReader(reader, MaxDecompressedSize+1))
 	if err != nil {
 		return nil, fmt.Errorf("reading demo: %w", err)
@@ -94,8 +89,7 @@ func ReadUncompressed(reader io.Reader) (*Demo, error) {
 	return parse(data)
 }
 
-// ReadFile opens the demo file named by filePath and reads it with Read.
-// Returns an error if the file cannot be opened or validation fails.
+// ReadFile reads the demo file at filePath with Read.
 func ReadFile(filePath string) (*Demo, error) {
 	file, err := os.Open(filePath) //nolint:gosec // Opening the file the caller names is the purpose of ReadFile.
 	if err != nil {
@@ -105,7 +99,7 @@ func ReadFile(filePath string) (*Demo, error) {
 	return Read(file)
 }
 
-// parse parses a decompressed demo file.
+// parse parses and validates a decompressed demo file.
 //
 //nolint:funlen // One section after the other, in file order, reads best in one function.
 func parse(data []byte) (*Demo, error) {
@@ -183,8 +177,8 @@ func parse(data []byte) (*Demo, error) {
 	}, nil
 }
 
-// nextSection returns the next size bytes of buffer, without copying. Section sizes come from the DemoFileHeader,
-// whose validation ensures size >= 0: Next panics on a negative size.
+// nextSection returns the next size bytes of buffer without copying. size must be >= 0 (Next panics otherwise), which
+// the DemoFileHeader validation ensures.
 func nextSection(buffer *bytes.Buffer, name string, size int32) ([]byte, error) {
 	section := buffer.Next(int(size))
 	if len(section) < int(size) {
@@ -193,7 +187,7 @@ func nextSection(buffer *bytes.Buffer, name string, size int32) ([]byte, error) 
 	return section, nil
 }
 
-// readSetupScript validates the setup script. The engine strips trailing NULs before writing it.
+// readSetupScript rejects NUL bytes (the engine strips trailing ones before writing) and invalid UTF-8.
 func readSetupScript(setupScriptData []byte) (string, error) {
 	if i := bytes.IndexByte(setupScriptData, 0); i >= 0 {
 		return "", fmt.Errorf("setup script: NUL byte at offset %d", i)
@@ -204,15 +198,14 @@ func readSetupScript(setupScriptData []byte) (string, error) {
 	return string(setupScriptData), nil
 }
 
-// readPlayerStatistics reads numPlayers PlayerStatistics. The header validation made len(data) match numPlayers.
+// readPlayerStatistics reads numPlayers PlayerStatistics (the header validation made len(data) match) and reports
+// whether they were big-endian.
 //
-// Engines before PlayerStatsByteOrderFixedVersion wrote the player statistics in big-endian byte order on some Linux
-// hosts, such as the autohosts which record the replays of bar-db: rts/System/Platform/byteorder.h compared
-// __BYTE_ORDER with __BIG_ENDIAN without including <endian.h>, so where neither macro was defined, both were 0 and
-// PlayerStatistics::swab swapped the bytes (fixed by commit 8e77748d54, "fix endianness of stats in demos produced on
-// Linux", #3358). The rest of such a demo is little-endian. A swapped value is out of range for any realistic count,
-// so if the statistics of a demo by such an engine fail validation, they are read again in big-endian, all players
-// at once, as one engine wrote them all. It reports whether it did. If both byte orders fail, the error names both.
+// Engines before PlayerStatsByteOrderFixedVersion wrote them big-endian on some Linux hosts, such as the autohosts that
+// record bar-db's replays: rts/System/Platform/byteorder.h compared __BYTE_ORDER with __BIG_ENDIAN without including
+// <endian.h>, so both were 0 and PlayerStatistics::swab swapped the bytes (fixed in #3358). The rest of such a demo is
+// little-endian. A swapped count is negative or implausibly large, so if little-endian fails validation for such an
+// engine, all players are read again big-endian. If both fail, the error names both.
 func readPlayerStatistics(
 	playerStatsData []byte, numPlayers int, engineVersion string,
 ) ([]PlayerStatistics, bool, error) {
@@ -250,10 +243,10 @@ func readAllPlayerStatistics(
 	return stats, nil
 }
 
-// readTeamStatistics reads the number of TeamStatistics per team (one uint32 each), then each team's history.
+// readTeamStatistics reads the entry count of each team (uint32), then each team's history.
 //
-// This follows the writer, CDemoRecorder::WriteTeamStats. The engine's reader, CDemoReader::LoadStats, reads only
-// numTeams bytes of counts instead of numTeams uint32s, so its team statistics are wrong in every demo with a team.
+// This follows the writer, CDemoRecorder::WriteTeamStats. The engine's reader, CDemoReader::LoadStats, reads numTeams
+// bytes of counts instead of numTeams uint32s, so it gets the team statistics wrong in every demo with a team.
 func readTeamStatistics(teamStatsData []byte, numTeams int) ([][]TeamStatistics, error) {
 	countsSize := numTeams * 4
 	if len(teamStatsData) < countsSize {

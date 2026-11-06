@@ -12,14 +12,15 @@
 //     Gaia is not included.
 //
 // The layout comment in rts/System/LoadSave/demofile.h leaves out the winning allyteams; the order above is the
-// writer's. All numbers are in ByteOrder.
+// writer's. All numbers are in ByteOrder, except the player statistics of some older engines, see
+// Demo.PlayerStatsByteSwapped.
 //
 // A demoStreamSize of 0 marks a demo whose engine crashed while recording: the demo stream runs to the end of the file
 // and there are no statistics. Current engines write the whole file when the game ends, so a crash leaves an empty
-// file instead.
+// file instead, which Read rejects.
 //
 // A team's statistics are recorded every teamStatPeriod seconds and hold totals since the start of the game. The last
-// entry holds the totals at the end of the game, see TeamStatistics.Frame for its frame.
+// entry holds the totals at the end, see TeamStatistics.Frame for its frame.
 //
 // Read validates every field and rejects the whole file on the first invalid one.
 package demo

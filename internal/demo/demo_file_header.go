@@ -15,62 +15,62 @@ import (
 	"unicode/utf8"
 )
 
-// DemoFileHeader is the header at the start of every demo file. It holds the sizes of all following sections.
+// DemoFileHeader is the header at the start of a demo file. It holds the sizes of all following sections.
 //
 // See rts/System/LoadSave/demofile.h.
 type DemoFileHeader struct {
 	// Magic is DemofileMagic.
 	Magic [16]byte `json:"magic"`
 
-	// Version is DemofileVersion, the major version of the file format.
+	// Version is the major version of the file format, DemofileVersion.
 	Version int32 `json:"version"`
 
-	// HeaderSize is the size of the DemoFileHeader, the minor version of the file format.
+	// HeaderSize is the size of the header in the file, the minor version of the file format.
 	HeaderSize int32 `json:"headerSize"`
 
 	// VersionString is the engine version, NUL-terminated, e.g. "2026.07.04".
 	VersionString [256]byte `json:"versionString"`
 
-	// GameID is the unique game identifier. Identical for each player of the game.
+	// GameID identifies the game; it is the same in every player's demo of it.
 	GameID [16]byte `json:"gameID"` //nolint:tagliatelle
 
-	// UnixTime is the Unix time when the game was started.
+	// UnixTime is when the game was started, in seconds since the Unix epoch.
 	UnixTime uint64 `json:"unixTime"`
 
-	// ScriptSize is the size of the setup script.
+	// ScriptSize is the size of the setup script section.
 	ScriptSize int32 `json:"scriptSize"`
 
-	// DemoStreamSize is the size of the demo stream; 0 if the engine crashed while recording.
+	// DemoStreamSize is the size of the demo stream section; 0 if the engine crashed while recording.
 	DemoStreamSize int32 `json:"demoStreamSize"`
 
-	// GameTime is the total number of seconds game time.
+	// GameTime is the game's length in game seconds.
 	GameTime int32 `json:"gameTime"`
 
-	// WallclockTime is the total number of seconds wallclock time.
+	// WallclockTime is the game's length in real seconds.
 	WallclockTime int32 `json:"wallclockTime"`
 
-	// NumPlayers is the number of players for which stats are saved, spectators included.
+	// NumPlayers is the number of PlayerStatistics, spectators included.
 	NumPlayers int32 `json:"numPlayers"`
 
-	// PlayerStatSize is the size of the entire player statistics chunk.
+	// PlayerStatSize is the size of the player statistics section.
 	PlayerStatSize int32 `json:"playerStatSize"`
 
 	// PlayerStatElemSize is sizeof(PlayerStatistics).
 	PlayerStatElemSize int32 `json:"playerStatElemSize"`
 
-	// NumTeams is the number of teams for which stats are saved.
+	// NumTeams is the number of team histories, Gaia excluded.
 	NumTeams int32 `json:"numTeams"`
 
-	// TeamStatSize is the size of the entire team statistics chunk.
+	// TeamStatSize is the size of the team statistics section.
 	TeamStatSize int32 `json:"teamStatSize"`
 
 	// TeamStatElemSize is sizeof(TeamStatistics).
 	TeamStatElemSize int32 `json:"teamStatElemSize"`
 
-	// TeamStatPeriod is the interval (in seconds) between team stats.
+	// TeamStatPeriod is the time between two TeamStatistics entries, in game seconds.
 	TeamStatPeriod int32 `json:"teamStatPeriod"`
 
-	// WinningAllyTeamsSize is the size of the list of winning allyteams.
+	// WinningAllyTeamsSize is the number of winning allyteams, one byte each.
 	WinningAllyTeamsSize int32 `json:"winningAllyTeamsSize"`
 }
 
@@ -86,11 +86,10 @@ func ReadDemoFileHeader(data []byte) (DemoFileHeader, error) {
 	return header, nil
 }
 
-// ReadDemoFileHeaderFromFilePath reads and validates only the DemoFileHeader of the demo file named by filePath. It
-// decompresses no more than the header, so it is cheap even for a large demo, but it does not notice a demo which is
-// damaged further on.
+// ReadDemoFileHeaderFromFilePath reads and validates only the DemoFileHeader of the demo file at filePath. It
+// decompresses only the header, so it is cheap, but does not notice damage further on.
 func ReadDemoFileHeaderFromFilePath(filePath string) (DemoFileHeader, error) {
-	file, err := os.Open(filePath) //nolint:gosec // Opening the file the caller names is the purpose of ReadFileHeader.
+	file, err := os.Open(filePath) //nolint:gosec // Opening the file the caller names is the purpose.
 	if err != nil {
 		return DemoFileHeader{}, err
 	}
@@ -132,8 +131,8 @@ func (h *DemoFileHeader) GameIDAsString() string {
 	return hex.EncodeToString(h.GameID[:])
 }
 
-// MarshalJSON writes Magic and VersionString as strings without their NUL bytes and GameID as a hex string. Go would
-// write the byte arrays as arrays of numbers.
+// MarshalJSON writes Magic and VersionString as strings without NULs and GameID as hex, instead of Go's arrays of
+// numbers.
 func (h DemoFileHeader) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		Magic                string `json:"magic"`
@@ -186,7 +185,7 @@ func (h *DemoFileHeader) validate() error {
 		return fmt.Errorf("version: got %d, want %d", h.Version, DemofileVersion)
 	}
 
-	// A newer engine may append fields to the header (headerSize is the minor version). parse skips them.
+	// A newer engine may append fields to the header; parse skips them.
 	if int(h.HeaderSize) < demoFileHeaderSize {
 		return fmt.Errorf("headerSize: got %d, want >= %d", h.HeaderSize, demoFileHeaderSize)
 	}

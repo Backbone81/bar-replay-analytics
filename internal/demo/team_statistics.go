@@ -6,10 +6,10 @@ import (
 	"math"
 )
 
-// TeamStatistics is one entry of a team's statistics history. All values except Frame are cumulative since the start
-// of the game.
+// TeamStatistics is one entry of a team's statistics history. All values except Frame are totals since the start of
+// the game.
 //
-// Defined in the Recoil engine source: rts/Sim/Misc/TeamStatistics.h.
+// See rts/Sim/Misc/TeamStatistics.h.
 type TeamStatistics struct {
 	// Frame is the game frame this entry was recorded at (GAME_SPEED is 30 frames per second). The last entry is the
 	// exception: it holds the totals at the end of the game, but its frame is the one the next entry would have been
@@ -22,10 +22,10 @@ type TeamStatistics struct {
 	// EnergyUsed is the energy this team has spent.
 	EnergyUsed float32 `json:"energyUsed"`
 
-	// MetalProduced is this team's metal income.
+	// MetalProduced is the metal this team produced.
 	MetalProduced float32 `json:"metalProduced"`
 
-	// EnergyProduced is this team's energy income.
+	// EnergyProduced is the energy this team produced.
 	EnergyProduced float32 `json:"energyProduced"`
 
 	// MetalExcess is the metal lost because this team's storage was full, after sharing to allies.
@@ -54,7 +54,7 @@ type TeamStatistics struct {
 	// attacker.
 	DamageReceived float32 `json:"damageReceived"`
 
-	// UnitsProduced is the number of units, buildings included, this team has built.
+	// UnitsProduced is the number of units this team built, buildings included.
 	UnitsProduced int32 `json:"unitsProduced"`
 
 	// UnitsDied is the number of this team's units that died, for any reason.

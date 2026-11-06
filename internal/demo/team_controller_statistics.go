@@ -5,15 +5,15 @@ import (
 	"fmt"
 )
 
-// TeamControllerStatistics are the statistics shared by players and AIs. PlayerStatistics derives from it.
+// TeamControllerStatistics are the statistics players and AIs share; PlayerStatistics embeds them.
 //
-// Defined in the Recoil engine source: rts/Game/Players/TeamController.h.
+// See rts/Game/Players/TeamController.h.
 type TeamControllerStatistics struct {
-	// NumCommands is the total amount of commands issued.
+	// NumCommands is the number of commands given.
 	NumCommands int32 `json:"numCommands"`
 
-	// UnitCommands is the total amount of units affected by commands. Divide by NumCommands for average
-	// units/command.
+	// UnitCommands is the number of units the commands went to, summed over all commands. Divide by NumCommands for
+	// units per command.
 	UnitCommands int32 `json:"unitCommands"`
 }
 

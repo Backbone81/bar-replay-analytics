@@ -5,19 +5,19 @@ import (
 	"fmt"
 )
 
-// PlayerStatistics contains statistical data about a player concerning a single game.
+// PlayerStatistics are a player's command and input counts for the game.
 //
 // See rts/Game/Players/PlayerStatistics.h.
 type PlayerStatistics struct {
 	TeamControllerStatistics
 
-	// MousePixels reports how many pixels the mouse has traversed in total.
+	// MousePixels is the distance the mouse moved, in pixels.
 	MousePixels int32 `json:"mousePixels"`
 
-	// MouseClicks reports how many mouse clicks happened in total.
+	// MouseClicks is the number of mouse clicks.
 	MouseClicks int32 `json:"mouseClicks"`
 
-	// KeyPresses reports how many keyboard presses happened in total.
+	// KeyPresses is the number of key presses.
 	KeyPresses int32 `json:"keyPresses"`
 }
 
