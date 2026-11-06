@@ -13,13 +13,12 @@ import (
 	"strings"
 )
 
-// springHeadless is the file name of the headless engine, which plays replays without a window.
+// springHeadless is the file name of the headless engine.
 var springHeadless = executableName("spring-headless")
 
-// EngineFolderName returns the folder name in engine/ which the BAR lobby uses for engineVersion, so a BAR install's
-// data dir works. It follows BYAR-Chobby gui_steam_coop_handler.lua, GetEnginePath: "2025.01.6" is
-// "rel2501.2025.01.6", "2026.07.04" is "recoil_2026.07.04", and older versions are lower case with " BAR105" as
-// " bar".
+// EngineFolderName returns the folder in engine/ the BAR lobby uses for engineVersion (BYAR-Chobby
+// gui_steam_coop_handler.lua, GetEnginePath), so engines of a BAR install are found: "2025.01.6" is
+// "rel2501.2025.01.6", "2026.07.04" is "recoil_2026.07.04", older versions are lower case with " BAR105" as " bar".
 func EngineFolderName(engineVersion string) string {
 	if strings.HasPrefix(engineVersion, "2025.01") {
 		return strings.ToLower("rel" + engineVersion[2:4] + engineVersion[5:7] + "." + engineVersion)
@@ -36,16 +35,15 @@ func isRecoilTag(engineVersion string) bool {
 	return strings.HasPrefix(engineVersion, "2")
 }
 
-// engineURL returns urlTemplate with the placeholders of Config.EngineCDNURL replaced for engineVersion. The tag is
-// escaped for a query and a path alike: a space as %20, not +. BAR's CDN and RecoilEngine's releases name the
-// platforms as Go does (linux, windows).
+// engineURL fills the placeholders of Config.EngineCDNURL in urlTemplate. The tag is escaped for query and path alike
+// (space as %20, not +); both servers name platforms as runtime.GOOS does (linux, windows).
 func (p *Player) engineURL(urlTemplate string, engineVersion string) string {
 	tag := strings.ReplaceAll(url.QueryEscape(engineVersion), "+", "%20")
 	return strings.NewReplacer("{platform}", runtime.GOOS, "{tag}", tag).Replace(urlTemplate)
 }
 
-// findOrDownloadEngine returns the path of spring-headless in the data dir's engine/<EngineFolderName>, downloaded if
-// missing.
+// findOrDownloadEngine returns spring-headless in engine/<EngineFolderName>, downloaded if missing. An existing folder
+// without it is an error rather than overwritten.
 func (p *Player) findOrDownloadEngine(ctx context.Context, engineVersion string) (string, error) {
 	engineDir := filepath.Join(p.dataDir, "engine", EngineFolderName(engineVersion))
 	engine := filepath.Join(engineDir, springHeadless)
@@ -61,8 +59,9 @@ func (p *Player) findOrDownloadEngine(ctx context.Context, engineVersion string)
 	return engine, nil
 }
 
-// downloadEngine downloads the engine archive and unpacks it into engineDir, which must not exist yet. It unpacks next
-// to engineDir and renames at the end, so an interrupted download leaves no half engine behind.
+// downloadEngine downloads the engine archive (CDN first, then the release, for a RecoilEngine tag) and unpacks it
+// into engineDir, which must not exist. It unpacks next to engineDir and renames at the end, so an interrupted
+// download leaves no half engine.
 func (p *Player) downloadEngine(ctx context.Context, engineVersion string, engineDir string) error {
 	urls := []string{
 		p.engineURL(p.config.EngineCDNURL, engineVersion),

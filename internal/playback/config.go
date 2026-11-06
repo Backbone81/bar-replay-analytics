@@ -14,8 +14,8 @@ type Config struct {
 	// engine version, URL-escaped) replaced.
 	EngineCDNURL string
 
-	// EngineReleaseURL is the URL a RecoilEngine release tag (such as 2026.07.04) is downloaded from if EngineCDNURL
-	// fails, with the same placeholders. Empty downloads from EngineCDNURL only.
+	// EngineReleaseURL is the fallback for a RecoilEngine release tag (such as 2026.07.04) if EngineCDNURL fails,
+	// with the same placeholders. Empty disables it.
 	EngineReleaseURL string
 
 	// PRDownloaderEnv is added to the environment of pr-downloader, which downloads games and maps.
@@ -63,9 +63,8 @@ var DefaultConfig = Config{
 	StallTimeout: time.Minute,
 	StopTimeout:  10 * time.Second,
 
-	// The engine's default of one thread per logical CPU is slower: a 1v1 replay of 27 minutes took 71 s on 32 CPUs
-	// and used 5.2 cores, mostly waking and parking idle threads, against 43 s and 1.4 cores with 2 threads (50 s
-	// with 1, 40 s with 4).
+	// The engine's default (one thread per CPU) is slower: a 27-minute 1v1 took 71 s and 5.2 cores on 32 CPUs, mostly
+	// waking and parking idle threads; with 2 threads 43 s and 1.4 cores (1: 50 s, 4: 40 s).
 	WorkerThreadCount: 2,
 
 	ProgressInterval: 5 * time.Second,

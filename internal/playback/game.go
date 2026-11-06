@@ -59,7 +59,7 @@ func readRapidVersions(versionsFile string, gameType string) ([]string, error) {
 	var md5s []string
 	scanner := bufio.NewScanner(gzipReader)
 	for scanner.Scan() {
-		// The name may contain commas, the other fields do not.
+		// Only the name may contain commas. The md5 becomes a file name, so it must not hold a path.
 		fields := strings.SplitN(scanner.Text(), ",", rapidVersionsFields)
 		if len(fields) == rapidVersionsFields && fields[3] == gameType && fields[1] != "" &&
 			filepath.Base(fields[1]) == fields[1] {

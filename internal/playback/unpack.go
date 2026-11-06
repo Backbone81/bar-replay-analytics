@@ -11,10 +11,9 @@ import (
 	"github.com/bodgit/sevenzip"
 )
 
-// Unpack7z unpacks the 7z archive archivePath into the folder destination, which it creates. Files keep the
-// permissions stored in the archive, so the engine's executables stay executable. It rejects entries whose names
-// leave destination and entries that are neither files nor folders, such as links: engine archives have neither.
-// Cancelling ctx stops it between files.
+// Unpack7z unpacks the 7z archive archivePath into destination, which it creates. Files keep their stored
+// permissions, so the engine stays executable. It rejects names that leave destination and entries other than files
+// and folders, such as links; engine archives have neither. Cancelling ctx stops it between files.
 func Unpack7z(ctx context.Context, archivePath string, destination string) error {
 	archive, err := sevenzip.OpenReader(archivePath)
 	if err != nil {

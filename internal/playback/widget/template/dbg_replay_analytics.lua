@@ -12,30 +12,29 @@ function widget:GetInfo()
 	}
 end
 
--- Logs the events of a replay played back in spring-headless. Unsynced, so it cannot desync.
--- Active only in a headless replay; in a normal client, also when watching a replay, it removes itself.
--- Writes events/<replay name>_events.json in the widget's own folder (BAR lets user widgets write only under
--- LuaUI/Config/ and LuaUI/Widgets/), one JSON object:
+-- Logs a replay played back in spring-headless. Unsynced, so it cannot desync. In any other client, also when
+-- watching a replay, it removes itself.
+--
+-- Writes events/<replay name>_events.json in its own folder (user widgets may write only under LuaUI/Config/ and
+-- LuaUI/Widgets/), one JSON object:
 --   {"events":[...],"game":{...},"sides":[...],"teams":[...],"teamStats":{"<teamID>":[...]},
 --    "unitDefs":{"<unitDefID>":{...}},"end":{"frame":...,"reason":...}}
--- Each event is {"frame":...,"<event name>":{...}}, one per line, named and with fields named after the call-in or
--- Spring function it comes from. All events come from call-ins, nothing is sampled; only "unitCommand" is written at
--- the start of the next frame, with the unit's queue length then (the engine queues a command after the call-in), see
--- writePendingCommands. What does not change
--- during the game is written once, after the events: the game, the sides, the teams, each team's statistics history
--- (Spring.GetTeamStatsHistory, every 15 s) and the unit defs the events refer to. "end" is written when logging stops,
--- also when the replay stalls;
--- its reason is "gameover" only if the game ended. A file without it is incomplete: the engine crashed or was stopped.
--- Switches to full view, raises the speed limit (the pre-game start position phase of a replay otherwise plays in real
--- time), skips to the end of the replay once the game runs, and quits the engine when the game is over or the replay
--- stops advancing.
+-- Each event is {"frame":...,"<event name>":{...}} on a line of its own, named, like its fields, after the call-in or
+-- Spring function it comes from. Events come from call-ins only, nothing is sampled. Everything after "events" is
+-- written once at the end: teamStats is Spring.GetTeamStatsHistory (every 15 s), unitDefs only those the events
+-- refer to. "end" is written whenever logging stops; its reason is "gameover" only if the game ended. A file without
+-- it is incomplete: the engine crashed or was stopped.
+--
+-- To play at full speed it switches to full view, raises the speed limit (the start position phase otherwise plays
+-- in real time), skips to the end once the game runs, and quits the engine at game over or when the replay stalls.
 
 --------------------------------------------------------------------------------
 -- Configuration
 --------------------------------------------------------------------------------
 
-local STALL_QUIT_SECONDS = 20 -- the replay has ended when frames stop advancing
-local PREGAME_QUIT_SECONDS = 300
+-- Quit when the game frame has not advanced for this long: the replay has ended (or, before frame 1, never starts).
+local STALL_QUIT_SECONDS = 20
+local PREGAME_QUIT_SECONDS = 300 -- loading and the start position phase take longer
 
 --------------------------------------------------------------------------------
 -- Engine API and state
@@ -96,7 +95,7 @@ local function jsonObject(value)
 	return setmetatable(value, objectMetatable)
 end
 
--- Own encoder: BAR's Json.encode writes NaN and infinity as invalid JSON and floats with 14 digits.
+-- Own encoder: BAR's Json.encode writes NaN and infinity as invalid JSON, and floats with 14 digits (here 3).
 local function encodeJson(value)
 	local valueType = type(value)
 	if valueType == "number" then
@@ -140,13 +139,12 @@ local function writeEventAt(frame, name, fields)
 	eventsFile:write(separator, stringFormat('{"frame":%d,%s:%s}', frame, encodeJson(name), encodeJson(fields)))
 end
 
--- Writes the pending "unitCommand" events given before beforeFrame, or all with beforeFrame nil, with commandCount:
--- the number of commands in the unit's queue now (a factory's: its build queue), 0 if the unit is gone. The engine
--- calls UnitCommand before it queues the command (CCommandAI::GiveCommand), so the queue holds it only after the
--- call-in. A unit is gone only if the command came after it died (the engine keeps a dying unit until its death
--- animation ends, and a gadget may still give it states), so its "unitDestroyed" event comes first. They are written at the first event of a later frame, so the events stay in the order of their frames:
--- in a frame, the game's synced gadgets run before this widget's GameFrame. A command which is no order (a state,
--- stop, remove ...) leaves the queue of an idle unit empty.
+-- Writes the pending "unitCommand" events of frames before beforeFrame (all if nil) with commandCount, the unit's
+-- queue length now (a factory's build queue). The engine calls UnitCommand before it queues the command
+-- (CCommandAI::GiveCommand), so the count is taken at the next frame's first event, which keeps the events in frame
+-- order (synced gadgets run before this widget's GameFrame). The count is 0 for a command that is no order (state,
+-- stop, remove ...) to an idle unit, and for a unit that is gone: a dying unit can still get commands until its death
+-- animation ends, so its "unitDestroyed" comes first.
 local function writePendingCommands(beforeFrame)
 	local count = 0
 	for _, pending in ipairs(pendingCommands) do

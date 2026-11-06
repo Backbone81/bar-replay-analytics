@@ -1,35 +1,23 @@
-// Package playback plays replays back in a headless engine (spring-headless) at maximum speed, so that the analytics
-// widget of bar-replay-analytics (dbg_replay_analytics.lua) logs the game to an events file (see package events).
+// Package playback plays replays back in spring-headless at maximum speed, so that the analytics widget
+// (dbg_replay_analytics.lua, embedded from package widget) logs each game to an events file (see package events).
 //
-// A Player works in a BAR data dir, the folder with demos/, engine/, maps/, the game packages (rapid/, packages/,
-// pool/) and LuaUI/Widgets/. The analytics widget is embedded (package widget) and written into each playback's write
-// dir, so it need not be installed in the data dir; if it is, the embedded one replaces it in the playback. The widget
-// does the work inside the engine: it is active only in a headless replay, raises the speed limit, skips to the end of
-// the replay, and quits the engine when the game is over or the replay stops advancing. It writes
-// events/<replay name>_events.json in its own folder, which is linked to events/ in the installed widget's folder in
-// the data dir, or in LuaUI/Widgets/bar-replay-analytics/ if none is installed; the engine output goes next to it as
-// <replay name>.log.
+// A Player works in a BAR data dir: demos/, engine/, maps/, the game packages (rapid/, packages/, pool/) and
+// LuaUI/Widgets/.
 //
-// Prepare reads the replay's engine version, game version (the setup script's gametype) and map, and downloads what
-// the data dir is missing, as the BAR lobby does: the engine's release build from BAR's CDN (GitHub releases of
-// RecoilEngine as a fallback), unpacked into engine/<version folder> in Go (no 7-Zip needed), and the game and map
-// with the engine's pr-downloader and the BAR launcher's settings. Prepare calls of one Player run one at a time, so
-// replays needing the same engine, game or map download it once.
+// Prepare reads the replay's engine version, gametype and mapname and downloads what the data dir lacks, as the BAR
+// lobby does: the engine's release build from BAR's CDN (RecoilEngine's GitHub releases as fallback), unpacked in Go
+// into engine/<EngineFolderName>, and the game and map with the engine's pr-downloader and the BAR launcher's
+// settings. Prepare calls run one at a time, so a download shared by several replays runs once. The names come from
+// an untrusted file and end up in paths and command lines, so Prepare rejects any that is not a plain name.
 //
-// Play runs the engine. Several Play calls may run at the same time: each playback gets its own write dir, a
-// temporary folder, and reads the data dir as an additional data dir (SPRING_DATADIR). The engine writes its
-// infolog.txt, _script.txt, settings, archive cache and the widgets' LuaUI/Config/ there, so parallel playbacks do
-// not overwrite each other's files, and the data dir is not changed except for the events and log files. Its
-// settings let the system pick the UDP port of the local server which plays the replay. The write dir holds the
-// analytics widget with its events/ folder linked to the data dir's, so the events file lands there.
-// The write dir starts with a copy of the data dir's archive cache, so the engine does not scan every map and game
-// again, and is removed afterwards.
+// Play runs the engine with a temporary write dir of its own (see MakeWriteDir) and the data dir as additional data
+// dir (SPRING_DATADIR), so playbacks can run in parallel and the data dir gets only the events and log files. These
+// go to events/ in the folder of the analytics widget installed in the data dir, or in
+// LuaUI/Widgets/bar-replay-analytics/ if none is (see Player.EventsDir): <replay name>_events.json and
+// <replay name>.log. The widget is active only in a headless replay; it raises the speed limit, skips to the end and
+// quits the engine when the game is over or the replay stops advancing.
 //
-// Play reports the progress every Config.ProgressInterval: the game frame of the last event, which the replay's
-// header turns into a percentage of the game. It stops the engine if the playback hangs: the events file (or, while
-// the engine loads, its log) has not grown for Config.StallTimeout, or the widget reported that it cannot write its
-// events file, as the replay would then play in real time.
-//
-// Names read from the replay (engine version, gametype, map name) end up in paths and command lines, so Prepare
-// rejects any that is not a plain name.
+// Play reports progress every Config.ProgressInterval as the frame of the last event. It stops the engine if the
+// events file (while loading: the log) has not grown for Config.StallTimeout, or the widget cannot write its events
+// file, as the replay would then play in real time.
 package playback

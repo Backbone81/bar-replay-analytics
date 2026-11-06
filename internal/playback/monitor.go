@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// monitor watches a running playback, see check.
+// monitor watches a running playback; Play calls check every monitorInterval.
 type monitor struct {
 	player     *Player
 	replay     *Replay
@@ -29,11 +29,10 @@ type monitor struct {
 	watchedSize int64
 }
 
-// check reports the progress every Config.ProgressInterval, and returns why the engine has to be stopped, or empty.
-//
-// The playback hangs when the events file has not grown for Config.StallTimeout, or, before the analytics widget has
-// created it while the engine loads, the engine log has not. The widget reports when it cannot write its file; then
-// the replay would play in real time, so the engine is stopped at once.
+// check reports the progress every Config.ProgressInterval and returns why the engine must be stopped, or "": the
+// watched file (the events file, or the engine log until the widget creates it) has not grown for
+// Config.StallTimeout, or the widget logged that it cannot write its events file. Without the widget the replay plays
+// in real time, so that stops the engine at once.
 func (m *monitor) check(now time.Time) string {
 	config := &m.player.config
 	eventsStarted := isFile(m.eventsFile)
@@ -71,8 +70,8 @@ func (m *monitor) check(now time.Time) string {
 	return ""
 }
 
-// logContains reports whether the engine log contains text. It reads the whole file, so it is meant for while the
-// engine loads, when the log is small.
+// logContains reports whether the engine log contains text. It reads the whole log, so check calls it only while the
+// engine loads.
 func (m *monitor) logContains(text string) bool {
 	data, err := os.ReadFile(m.logFile)
 	return err == nil && bytes.Contains(data, []byte(text))

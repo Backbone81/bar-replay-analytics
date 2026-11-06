@@ -18,8 +18,8 @@ var mapArchiveExtensions = []string{".sd7", ".sdz"}
 // nonAlphanumericPattern matches a run of characters which NormalizeMapName replaces.
 var nonAlphanumericPattern = regexp.MustCompile(`[^a-z0-9]+`)
 
-// NormalizeMapName returns a map name or a map archive's file name without extension in the form in which both
-// match, as they differ in case and punctuation: "Argent Strata 1.1" and "argent_strata_1.1" are "argent_strata_1_1".
+// NormalizeMapName makes a map name and its archive's file name (without extension) comparable, as they differ in
+// case and punctuation: "Argent Strata 1.1" and "argent_strata_1.1" are both "argent_strata_1_1".
 func NormalizeMapName(name string) string {
 	return strings.Trim(nonAlphanumericPattern.ReplaceAllString(strings.ToLower(name), "_"), "_")
 }
@@ -60,9 +60,9 @@ func FindMapArchive(mapsDir string, mapName string) (string, bool, error) {
 	return "", false, nil
 }
 
-// findOrDownloadMap returns the map archive of mapName in the data dir's maps/, downloaded with pr-downloader if
-// missing. A downloaded archive whose file name does not match the map name is renamed to the normalized map name,
-// so FindMapArchive finds it next time; the engine reads the map's name from inside the archive.
+// findOrDownloadMap returns the archive of mapName in maps/, downloaded with pr-downloader if missing. A download
+// whose file name does not match is renamed to NormalizeMapName(mapName), so FindMapArchive finds it; the engine
+// reads the map name from inside the archive, not from the file name.
 func (p *Player) findOrDownloadMap(ctx context.Context, mapName string, engine string) (string, error) {
 	mapsDir := filepath.Join(p.dataDir, "maps")
 	if archive, found, err := FindMapArchive(mapsDir, mapName); err != nil || found {

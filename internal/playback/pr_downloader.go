@@ -10,15 +10,14 @@ import (
 	"strings"
 )
 
-// prDownloader is the file name of the engine's downloader of games and maps.
+// prDownloader is the file name of the downloader of games and maps that ships with the engine.
 var prDownloader = executableName("pr-downloader")
 
 // prDownloaderErrorLines is the number of pr-downloader's last lines which an error of prDownload includes.
 const prDownloaderErrorLines = 20
 
-// prDownload downloads a map or game (kind "map" or "game") into the data dir with the pr-downloader next to the
-// engine, with Config.PRDownloaderEnv. If it fails, the error holds pr-downloader's last lines without its progress
-// bars.
+// prDownload downloads a map or game (kind "map" or "game") into the data dir with the pr-downloader next to engine
+// and Config.PRDownloaderEnv. On failure the error holds its last lines.
 func (p *Player) prDownload(ctx context.Context, engine string, kind string, name string) error {
 	program := filepath.Join(filepath.Dir(engine), prDownloader)
 	if !isFile(program) {
@@ -36,8 +35,8 @@ func (p *Player) prDownload(ctx context.Context, engine string, kind string, nam
 	return nil
 }
 
-// lastLines returns the last prDownloaderErrorLines non-empty lines of output, leaving out pr-downloader's progress
-// bars, which it redraws with \r: "[Progress]  41% [=====     ] 13893524/34023778".
+// lastLines returns the last prDownloaderErrorLines non-empty lines of output without the progress bars, which
+// pr-downloader redraws with \r: "[Progress]  41% [=====     ] 13893524/34023778".
 func (p *Player) lastLines(output []byte) string {
 	var lines []string
 	for _, line := range bytes.FieldsFunc(output, func(r rune) bool { return r == '\n' || r == '\r' }) {

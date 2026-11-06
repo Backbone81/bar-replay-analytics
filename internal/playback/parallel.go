@@ -8,23 +8,21 @@ import (
 	"strings"
 )
 
-// cpusPerPlayback is the number of CPUs DefaultParallel counts per playback. With the WorkerThreadCount of
-// DefaultConfig, a playback used 1.4 to 1.7 cores, measured with a 1v1 replay of 27 minutes alone and four at a time.
+// cpusPerPlayback is the CPUs DefaultParallel counts per playback: with DefaultConfig's WorkerThreadCount, a 27-minute
+// 1v1 used 1.4 to 1.7 cores, alone and four at a time.
 const cpusPerPlayback = 2
 
-// memoryPerPlayback is the memory DefaultParallel counts per playback. The engine used 4.8 GB (resident) for that
-// replay; larger maps and team games likely need more, so this leaves room.
+// memoryPerPlayback is the memory DefaultParallel counts per playback: the engine used 4.8 GB resident for that
+// replay, and larger maps and team games likely need more.
 const memoryPerPlayback = 6 * 1024 * 1024 * 1024
 
-// DefaultParallel returns how many playbacks can run at the same time on this computer: one per cpusPerPlayback
-// CPUs, but at most one per memoryPerPlayback of the memory available now, and at least one. The available memory is
-// known on Linux only (MemAvailable in /proc/meminfo); elsewhere only the CPUs count.
+// DefaultParallel returns how many playbacks to run at once here: one per cpusPerPlayback CPUs, at most one per
+// memoryPerPlayback of available memory, at least one. Available memory is known on Linux only (MemAvailable).
 func DefaultParallel() int {
 	return ParallelFor(runtime.NumCPU(), availableMemory())
 }
 
-// ParallelFor returns DefaultParallel for cpus CPUs and availableMemory bytes of available memory, which is ignored
-// if it is 0 (not known).
+// ParallelFor computes DefaultParallel for cpus CPUs and availableMemory bytes; 0 means unknown and is ignored.
 func ParallelFor(cpus int, availableMemory int64) int {
 	parallel := cpus / cpusPerPlayback
 	if availableMemory > 0 {

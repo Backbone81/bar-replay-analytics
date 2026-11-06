@@ -1,10 +1,8 @@
-// Package widget holds the template of the analytics widget's folder: the BAR user widget which logs a replay's
-// playback to an events file (see package events), a README explaining it to whoever finds the folder, and its
-// license. It is embedded into the binary, and written into each playback's write dir, or by
-// bar-replay-analytics-go install-widget into LuaUI/Widgets/ of the BAR data directory.
+// Package widget embeds the template of the analytics widget's folder: the BAR user widget that logs a playback to an
+// events file (see package events), a README and the license. It is written into each playback's write dir, and by
+// install-widget into the data dir's LuaUI/Widgets/.
 //
-// The widget is licensed under GPL-2.0-or-later, like BAR's own widgets, as it runs inside the game. Whoever gets the
-// widget gets its license too, so the two are written out together.
+// The widget is GPL-2.0-or-later like BAR's widgets, as it runs inside the game; the LICENSE is written with it.
 package widget
 
 import (
@@ -12,13 +10,12 @@ import (
 	"io/fs"
 )
 
-// templateFiles holds the template under template/. The all: prefix includes files whose names start with a dot.
+// templateFiles holds template/. all: includes the dot files (.stylua.toml, .gitattributes).
 //
 //go:embed all:template
 var templateFiles embed.FS
 
-// Template provides the files of the widget folder's template under their paths in it, e.g. dbg_replay_analytics.lua,
-// README.md and LICENSE.
+// Template holds the files of the widget folder: dbg_replay_analytics.lua, README.md, LICENSE and the dot files.
 var Template = mustSub(templateFiles, "template")
 
 // mustSub returns the subtree dir of fsys. It panics if dir is not a valid path, which the embed directive rules out.

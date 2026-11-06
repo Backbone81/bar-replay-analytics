@@ -25,7 +25,7 @@ const analyticsFailed = "Replay Analytics: cannot write"
 // monitorInterval is how often Play looks at the events file and the engine log.
 const monitorInterval = time.Second
 
-// lastFrameWindow is how much of the end of the events file lastFrame reads: large enough for several events.
+// lastFrameWindow is how much of the events file's tail monitor.lastFrame reads: several events.
 const lastFrameWindow = 64 * 1024
 
 // Result is the outcome of a playback.
@@ -103,15 +103,13 @@ func (p *Player) Play(ctx context.Context, replay *Replay) (*Result, error) {
 	return result, nil
 }
 
-// MakeWriteDir creates the write dir of a playback: a temporary folder with a copy of the data dir's archive cache, so
-// the engine does not scan all archives again, settings of its own (see writeSettings), the embedded analytics widget
-// (widget.Template) and a link to the events folder in it, so the events file lands there. The engine reads the data
-// dir as an additional data dir. The caller removes the folder.
+// MakeWriteDir creates a playback's write dir, a temporary folder the caller removes. It holds a copy of the data
+// dir's archive cache (so the engine does not rescan every archive), the settings of writeSettings, and the embedded
+// analytics widget with its events/ linked to EventsDir.
 //
-// The widget goes into the folder the installed widget has in the data dir's LuaUI/Widgets/, if one is installed: the
-// engine lists a path in the write dir and a data dir once, from the write dir, so the embedded widget replaces the
-// installed one, which may be of another version. In another folder, BAR would load the two by the order of their
-// paths and reject the second as a duplicate name.
+// The widget goes into the same folder name as an installed one: the engine lists a path present in both the write
+// dir and a data dir once, from the write dir, so the embedded widget replaces the installed one. Under another name
+// BAR would load both and reject the second as a duplicate.
 func (p *Player) MakeWriteDir() (string, error) {
 	writeDir, err := os.MkdirTemp("", "bar-replay-analytics-*")
 	if err != nil {
@@ -155,14 +153,11 @@ func (p *Player) fillWriteDir(writeDir string) error {
 	return os.Symlink(p.EventsDir(), filepath.Join(widgetDir, "events"))
 }
 
-// writeSettings writes the engine settings of a playback into its write dir writeDir: Config.WorkerThreadCount, and
-// HostPortDefault 0, so the system picks a free port.
+// writeSettings writes springsettings.cfg into writeDir: Config.WorkerThreadCount, and HostPortDefault 0.
 //
-// For a replay the engine starts a local server which plays it, with the viewer as a local client that does not
-// use the network; the server still binds a UDP port, for other players who might join to watch. The engine drops
-// the start script's HostPort and binds HostPortDefault (rts/Game/PreGame.cpp StartServerForDemo,
-// rts/Game/ClientSetup.cpp), 8452 unless set, so parallel playbacks would all bind the same port, and all but the
-// first exit with "bind: Address already in use".
+// A replay is played by a local server that binds a UDP port for spectators. It ignores the start script's HostPort
+// and binds HostPortDefault, 8452 unless set (rts/Game/PreGame.cpp StartServerForDemo, rts/Game/ClientSetup.cpp), so
+// parallel playbacks would collide ("bind: Address already in use"); 0 lets the system pick a free port.
 func (p *Player) writeSettings(writeDir string) error {
 	settings := "HostPortDefault = 0\n"
 	if p.config.WorkerThreadCount > 0 {
@@ -172,9 +167,9 @@ func (p *Player) writeSettings(writeDir string) error {
 	return os.WriteFile(filepath.Join(writeDir, "springsettings.cfg"), []byte(settings), filePermissions)
 }
 
-// runEngine runs the engine for replay in writeDir with its output to logFile, until it exits, ctx is cancelled or
-// the playback hangs (see monitor), and sets Result.StopReason and Result.ExitErr. It returns an error if the engine
-// could not be started.
+// runEngine runs the engine for replay in writeDir with its output to logFile until it exits, ctx is cancelled or
+// monitor.check stops it, and sets Result.StopReason and Result.ExitErr. It returns an error only if the engine could
+// not be started.
 func (p *Player) runEngine(
 	ctx context.Context, replay *Replay, writeDir string, logFile *os.File, result *Result,
 ) error {
@@ -217,7 +212,7 @@ func (p *Player) runEngine(
 		select {
 		case exitErr := <-exited:
 			if result.StopReason == "" && ctx.Err() == nil {
-				// Otherwise the engine was stopped, and its exit error tells nothing.
+				// An engine we stopped exits with an error that tells nothing.
 				result.ExitErr = exitErr
 			}
 			return nil
@@ -232,8 +227,8 @@ func (p *Player) runEngine(
 	}
 }
 
-// LastFrameIn returns the frame of the last complete event in data, the end of an events file, or 0 if it holds
-// none. The first and last line may be cut off or still being written; such lines are skipped.
+// LastFrameIn returns the frame of the last complete event in data, the tail of an events file (one event per line),
+// or 0 if there is none. Lines cut off by the tail's start or still being written are skipped.
 func LastFrameIn(data []byte) int {
 	lines := bytes.Split(data, []byte("\n"))
 	for _, line := range slices.Backward(lines) {
@@ -248,8 +243,8 @@ func LastFrameIn(data []byte) int {
 	return 0
 }
 
-// readEventsSummary returns the number of events and the end of the events file eventsFile. A file which is not
-// valid JSON is incomplete: it has no end and the number of events is not known, so both are zero.
+// readEventsSummary returns the number of events and the end of eventsFile. An incomplete file (invalid JSON, no
+// "end") is no error: it returns 0 and nil.
 func (p *Player) readEventsSummary(eventsFile string) (int, *events.End, error) {
 	data, err := os.ReadFile(eventsFile) //nolint:gosec // The events file of the playback.
 	if err != nil {
@@ -261,7 +256,7 @@ func (p *Player) readEventsSummary(eventsFile string) (int, *events.End, error) 
 		End    *events.End       `json:"end"`
 	}
 	if json.Unmarshal(data, &summary) != nil || summary.End == nil {
-		return 0, nil, nil //nolint:nilerr // we want to have a nil error here
+		return 0, nil, nil //nolint:nilerr // An incomplete file is a Result, not an error.
 	}
 	return len(summary.Events), summary.End, nil
 }
