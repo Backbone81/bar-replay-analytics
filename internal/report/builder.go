@@ -10,13 +10,11 @@ import (
 )
 
 // Builder is one commander or constructor of a player, while the player held it: from when it was finished or given to
-// the player until it died, was given away or the game ended. Nano turrets and factories are no builders here: nano
-// turrets often stand behind the front as repair stations, so their idle time is no mistake, and constructors are
-// what starts new buildings.
+// the player until it died, was given away or the game ended.
 //
-// A constructor is a mobile builder which is no factory and cannot resurrect, so resurrection bots are left out. The
-// events do not tell what a builder can build, so a minelayer or a spy, mobile builders which cannot build a metal
-// extractor, count as constructors.
+// A constructor is a mobile builder which is no factory and cannot resurrect. Nano turrets are left out: they often
+// stand behind the front as repair stations, so their idle time is no mistake. The events do not tell what a builder
+// can build, so minelayers and spies count as constructors.
 type Builder struct {
 	// Name is the name the BAR UI shows, numbered per name in the order the player got them, like "Construction Bot 3".
 	Name string `json:"name"`
@@ -36,13 +34,12 @@ type Builder struct {
 	// IdleStretches provides the spans this builder was idle for at least Config.IdleStretchLength, oldest first.
 	IdleStretches []Interval `json:"idleStretches"`
 
-	// Builds provides what this builder started building and was finished, counted per unit def, most first, of the
-	// same count the one first finished first. Resurrected units are left out (see OpeningBuildOrder).
+	// Builds provides the units this builder started which were finished, counted per unit def: most first, ties in
+	// the order their first unit was finished.
 	Builds []BuildCount `json:"builds"`
 }
 
-// builderClass is the kind of a builder, by which BuilderClasses adds up their use. The report does not show it per
-// builder: the name tells it, like "Advanced Construction Bot".
+// builderClass is the kind of a builder, by which BuilderClasses adds up their use. Per builder, its name tells it.
 type builderClass string
 
 const (

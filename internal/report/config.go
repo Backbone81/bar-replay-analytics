@@ -9,8 +9,8 @@ import (
 //
 // The report aggregates the game in intervals: of OpeningIntervalLength during the first OpeningLength of the game,
 // where economies grow fastest, and of IntervalLength after that. The interval lengths are rounded up to whole
-// statistics periods (demo.DemoFileHeader.TeamStatPeriod). The boundaries depend only on the configuration, not on the
-// game, so the intervals of different games can be compared.
+// statistics periods (demo.DemoFileHeader.TeamStatPeriod). The boundaries do not depend on the game, so the intervals
+// of different games can be compared.
 type Config struct {
 	// OpeningLength is the length of the opening, which the report aggregates in intervals of OpeningIntervalLength.
 	// No interval of the opening runs past its end. Zero means no opening. Must not be negative.
@@ -36,20 +36,17 @@ type Config struct {
 
 // DefaultConfig is the configuration NewReport starts from.
 //
-// The opening is 10 minutes in intervals of 1 minute: in the first 10 minutes the economies are built up, with metal
-// extractors, energy, the first converters and storage, before the switch to tech 2, and a minute still averages 4
-// statistics periods of 15 s. After the opening, intervals of 5 minutes are enough to follow the economy.
+// The opening is 10 minutes in intervals of 1 minute (4 statistics periods of 15 s): the economy build-up before
+// tech 2. After it, intervals of 5 minutes are enough to follow the economy.
 //
-// OpeningBuildOrderLength is 5 minutes, shorter than the opening: by then the commander's first queue, the first
-// factory and the first constructors are done, and what follows is mostly units of the factories and more of the same
-// economy buildings, which the economy intervals show better.
+// OpeningBuildOrderLength is 5 minutes: by then the commander's first queue, the first factory and the first
+// constructors are done; what follows is mostly more of the same, which the economy intervals show better.
 //
-// IdleStretchLength is 1 minute: shorter gaps between orders are normal, while a builder idle for a minute or more is
-// one the player forgot, which is what a coach points at.
+// IdleStretchLength is 1 minute: shorter gaps between orders are normal, a builder idle longer was forgotten.
 //
-// MapGridCellSize is 2048 elmos (4 map units of 512 elmos, as the lobby gives map sizes): the reach of one or two
-// defences, more than a cluster of metal spots, less than a base with its outer metal extractors. BAR's maps are 3072
-// to 16384 elmos along a side, so a grid has 2 to 8 columns and rows; a 1v1 map of 8192 x 8192 has 4 x 4.
+// MapGridCellSize is 2048 elmos (4 of the lobby's map size units of 512 elmos): the reach of one or two defences, more
+// than a cluster of metal spots, less than a base. BAR's maps are 3072 to 16384 elmos along a side, so a grid has 2 to
+// 8 columns and rows; a 1v1 map of 8192 x 8192 has 4 x 4.
 var DefaultConfig = Config{
 	OpeningLength:           10 * time.Minute,
 	OpeningIntervalLength:   time.Minute,

@@ -8,9 +8,8 @@ import (
 	"github.com/backbone81/bar-replay-analytics-go/internal/events"
 )
 
-// MetalExtractors provides the number of metal extractors a player held, by tech level. A tech 2 metal extractor
-// extracts four times as much as a tech 1 one, and is built on top of one, which it replaces, so the counts show
-// expanding and upgrading apart.
+// MetalExtractors provides the number of metal extractors a player held, by tech level, so that expanding and
+// upgrading show apart: a tech 2 metal extractor replaces a tech 1 one and extracts four times as much.
 type MetalExtractors struct {
 	// Tech1 is the number of tech 1 metal extractors: those with a tech level below 2, like Legion's Overcharged Metal
 	// Extractor (tech level 1, twice the extraction of a Metal Extractor).
@@ -22,7 +21,7 @@ type MetalExtractors struct {
 
 // metalExtractorChange is the metal extractors a player held from frame on.
 type metalExtractorChange struct {
-	// frame is the frame from which on the player held held.
+	// frame is the frame from which on the player held them.
 	frame int
 
 	// held is the metal extractors the player held.

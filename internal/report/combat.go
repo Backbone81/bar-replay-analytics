@@ -8,28 +8,22 @@ import (
 	"github.com/backbone81/bar-replay-analytics-go/internal/events"
 )
 
-// killedByLength is the most killers a UnitTypeCasualties lists: the few unit types which killed most of a unit type
-// show what counters it, the rest adds data but no insight.
+// killedByLength is the most killers UnitTypeCasualties.KilledBy lists: the top few show what counters a unit type.
 const killedByLength = 3
 
 // Combat is what a player killed and lost, from the units which died in the events.
 //
-// A unit is lost when it dies in any way: killed by an enemy, by an ally's or the player's own fire, self-destructed,
-// crushed, decayed as an abandoned nanoframe. Its metal is gone either way. Units whose metal came back are not lost:
-// those the player or an ally reclaimed, and metal extractors replaced by an upgrade, whose cost BAR refunds
-// (unit_mex_upgrade_reclaimer.lua). Units are counted unfinished too, with the metal of their build progress, as
-// partly built units cost what was spent on them. A reclaimed unit has build progress 0 when it dies, as the engine
-// takes it to 0 before it kills the unit (CUnit::AddBuildPower in rts/Sim/Units/Unit.cpp), so a finished one counts
-// its whole metal cost, an unfinished one 0: what it was built to before the reclaim is not known.
+// A unit is lost when it dies in any way (enemy or friendly fire, self-destructed, crushed, an abandoned nanoframe
+// decayed), unless its metal came back: reclaimed by the player or an ally, or a metal extractor replaced by an
+// upgrade, which BAR refunds (unit_mex_upgrade_reclaimer.lua). Unfinished units count with the metal of their build
+// progress. The engine takes a reclaimed unit to build progress 0 before it dies (CUnit::AddBuildPower in
+// rts/Sim/Units/Unit.cpp), so a finished one counts its whole metal cost, an unfinished one 0.
 //
-// A unit is killed by a player when one of the player's units killed it and it belonged to another team (or to Gaia),
-// in the same ways a unit is lost, reclaiming included: an enemy unit reclaimed is one the enemy lost.
+// A unit is killed by a player when one of the player's units killed it and it was not the player's or an ally's
+// (Gaia's counts), in the same ways, reclaiming included.
 //
-// Units removed because their player died (events.TeamDied: resigned, left or wiped out) are neither lost nor killed:
-// BAR removes them, they did not die in a fight.
-//
-// Casualties break the units killed and lost down by the player's unit types: which of them traded well, and which
-// enemy unit types killed them. When in the game shows in the intervals, how it added up over the game in the total.
+// Units of a player who died (events.TeamDied: resigned, left or wiped out) count neither way from then on: BAR
+// removes them.
 type Combat struct {
 	// Total provides what the player killed and lost over the whole game.
 	Total Casualties `json:"total"`
@@ -75,8 +69,8 @@ type UnitTypeCasualties struct {
 	Lost DeadUnits `json:"lost"`
 
 	// KilledBy provides the names of the unit types of other teams which killed most of Lost, at most killedByLength,
-	// the most metal first. Units which died without an attacker of another team, e.g. self-destructed, are left out.
-	// Which player the attacker belonged to does not matter: dead is dead.
+	// the most metal first, over all enemy players. Units which died without such an attacker, e.g. self-destructed,
+	// are left out.
 	KilledBy []string `json:"killedBy"`
 }
 

@@ -14,12 +14,10 @@ type BuildOrderEntry struct {
 	// Name is the name the BAR UI shows, like "Bot Lab".
 	Name string `json:"name"`
 
-	// BuildRate is how fast the unit was built, relative to the builder which started it building alone with enough
-	// resources: the unit's build time divided by the builder's build speed, over the time from start to finish,
-	// rounded to two decimals. 1 means there were enough resources. Below 1 means the team lacked metal or energy, the
-	// builder paused, or a gadget slowed the build steps (AllowUnitBuildStep, e.g. builder priority). Above 1 means
-	// other builders assisted. How much build power they added is unknown, so above 1 the rate does not tell whether
-	// there were enough resources for all of them.
+	// BuildRate is the unit's build time divided by the build speed of the builder which started it, over the time from
+	// start to finish, rounded to two decimals. 1 is that builder alone with enough resources. Below 1, the team lacked
+	// metal or energy, the builder paused, or a gadget slowed the build (AllowUnitBuildStep, e.g. builder priority).
+	// Above 1, other builders assisted; whether there were enough resources for all of them is then unknown.
 	BuildRate float64 `json:"buildRate"`
 }
 

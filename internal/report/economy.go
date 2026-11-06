@@ -9,7 +9,7 @@ import (
 )
 
 // Economy is what a player produced and used of metal and energy, from its TeamStatistics history (economyHistory),
-// and the metal extractors it held, from the events.
+// and per interval its metal extractors and builders, from the events.
 type Economy struct {
 	// Total provides the amounts over the whole game.
 	Total Resources `json:"total"`
@@ -17,10 +17,8 @@ type Economy struct {
 	// PerSecond provides the average amounts per second over the whole game.
 	PerSecond Resources `json:"perSecond"`
 
-	// Intervals provides the average amounts per second in consecutive intervals, oldest first: of
-	// Config.OpeningIntervalLength in the opening, of Config.IntervalLength after it, rounded up to whole statistics
-	// periods. The last interval ends with the game, so it may be shorter. Is empty if the statistics history holds only
-	// the totals.
+	// Intervals provides the economy in the intervals of Config, oldest first. The last one ends with the game, so it
+	// may be shorter. Is empty if the statistics history holds only the totals.
 	Intervals []EconomyInterval `json:"intervals"`
 }
 
@@ -36,8 +34,8 @@ type EconomyInterval struct {
 	MetalExtractors MetalExtractors `json:"metalExtractors"`
 
 	// Builders provides how many of the player's commanders and constructors (see Builder) were alive and idle in this
-	// interval, by class. Next to the metal and energy not spent, it shows whether idle builders cost the player: an
-	// idle builder while resources pile up is wasted build power, while one whose player spends all it makes is not.
+	// interval, by class. Idle builders while resources pile up are wasted build power; while all income is spent,
+	// they are not.
 	Builders BuilderClasses `json:"builders"`
 }
 
@@ -69,10 +67,8 @@ type Resource struct {
 }
 
 // economyHistory returns the statistics history of the player with playerID: the replay's, unless the events file has
-// more entries for it. A replay saved by the game itself holds an entry every 15 s, but one downloaded from the replay
-// database holds only the totals at the end, and a replay of a crashed game none. The playback records the history
-// anew (events.TeamStats), so the events file has every entry. Their last entry is labeled with the frame the widget
-// read them at, not with that of the next period, which statsAt handles alike.
+// more entries for it. A replay saved by the game holds an entry every 15 s, one downloaded from the replay database
+// only the totals, one of a crashed game none; the playback records the whole history (events.TeamStats).
 // Returns nil if neither has statistics of the player.
 func economyHistory(replay *demo.Demo, eventsFile *events.File, playerID int) []demo.TeamStatistics {
 	var history []demo.TeamStatistics

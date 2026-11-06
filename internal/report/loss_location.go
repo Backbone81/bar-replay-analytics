@@ -5,11 +5,8 @@ import (
 	"slices"
 )
 
-// LossLocationInterval is where a player lost units and buildings in one interval of the game, by the cells of the
-// MapGrid. The units lost are those of Combat.
-//
-// Losses in an enemy's start cell, killed by buildings, are an attack into a defended base; losses of buildings far
-// from the player's start, an expansion lost.
+// LossLocationInterval is where a player lost units and buildings (those of Combat) in one interval of the game, by
+// the cells of the MapGrid.
 type LossLocationInterval struct {
 	// Time is the span of the game this interval covers.
 	Time Interval `json:"time"`
@@ -30,8 +27,9 @@ type CellLosses struct {
 	// Buildings provides the buildings lost, factories included.
 	Buildings DeadUnits `json:"buildings"`
 
-	// KilledByBuildings provides the units and buildings lost which a building killed: a static defence, or a
-	// long-range weapon such as a long-range plasma cannon or a nuclear missile.
+	// KilledByBuildings provides the units and buildings lost which a building killed: a static defence or a long-range
+	// weapon such as a long-range plasma cannon or a nuke. Many of them in an enemy's start cell mean an attack into a
+	// defended base.
 	KilledByBuildings DeadUnits `json:"killedByBuildings"`
 }
 

@@ -6,9 +6,9 @@ import (
 	"github.com/backbone81/bar-replay-analytics-go/internal/events"
 )
 
-// MapGrid divides the map into cells, so that the report can tell where something happened, like LossLocations does,
-// without coordinates. The cells are at most Config.MapGridCellSize along each side, so that they are about the same
-// size in elmos on every map, as weapon ranges and bases are: a larger map has more cells, not larger ones.
+// MapGrid divides the map into cells, so that the report can tell where something happened (Player.LossLocations)
+// without coordinates. The cells are at most Config.MapGridCellSize along each side, so they are about the same size on
+// every map, as weapon ranges and bases are: a larger map has more cells, not larger ones.
 //
 // Columns are named A, B, ... from left to right (x), rows are numbered 1, 2, ... from top to bottom (z), as the
 // minimap shows the map: A1 is its top left cell.
@@ -25,8 +25,8 @@ type MapGrid struct {
 	// CellSize is the size of a cell in elmos, rounded down.
 	CellSize Size `json:"cellSize"`
 
-	// StartPositions provides where each player started, by player ID. A player of whom the events have no start unit
-	// is left out.
+	// StartPositions provides where each player started, sorted by player ID. A player of whom the events have no start
+	// unit is left out.
 	StartPositions []StartPosition `json:"startPositions"`
 }
 
