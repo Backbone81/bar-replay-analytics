@@ -7,13 +7,18 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/backbone81/bar-replay-analytics-go/internal/logger"
 	"github.com/spf13/cobra"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/datadir"
 )
 
-// barDataDir is the value of --bar-data-dir; use dataDir, which finds the BAR data dir if it is empty.
-var barDataDir string
+var (
+	// barDataDir is the value of --bar-data-dir; use dataDir, which finds the BAR data dir if it is empty.
+	barDataDir string
+
+	log = logger.New(os.Stderr)
+)
 
 // rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
