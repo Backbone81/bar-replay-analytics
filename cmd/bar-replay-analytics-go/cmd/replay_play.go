@@ -28,12 +28,13 @@ var (
 
 // replayPlayCmd plays replays back in a headless engine.
 var replayPlayCmd = &cobra.Command{
-	Use:   "play <replay>...",
-	Short: "Play replays back in a headless engine at maximum speed",
+	Use:         "play <replay>...",
+	Annotations: map[string]string{needsBarDataDir: "true"}, //nolint:goconst
+	Short:       "Play replays back in a headless engine at maximum speed",
 	Long: `Plays replays back in spring-headless at maximum speed with the analytics widget built into this program,
-which replaces an installed copy. Writes <replay name>_events.json (the widget's events) and <replay name>.log (the
-engine's output) next to each replay. Other widgets in LuaUI/Widgets/ run too, so their log lines show what they would
-have done in the game, such as the [reminder] lines of bar-advisor.
+which replaces one installed by install-widget. Writes <replay name>_events.json (the widget's events) and
+<replay name>.log (the engine's output) next to each replay. Other widgets in LuaUI/Widgets/ run too, so their log
+lines show what they would have done in the game, such as the [reminder] lines of bar-advisor.
 
 Missing engines, games and maps are downloaded into the BAR data directory as the BAR lobby does. Each playback has a
 temporary write dir, so the data directory's infolog.txt, settings and LuaUI/Config/ stay unchanged.
@@ -63,12 +64,8 @@ is skipped.
 			return err
 		}
 
-		dir, err := dataDir()
-		if err != nil {
-			return err
-		}
 		player, err := playback.NewPlayer(
-			dir,
+			barDataDir,
 			playback.WithProgressInterval(replayPlayProgressInterval),
 			playback.WithWorkerThreadCount(replayPlayEngineThreads),
 			playback.WithOnProgress(printProgress),
@@ -78,11 +75,7 @@ is skipped.
 			return err
 		}
 		printField("data dir", player.DataDir())
-		analytics := "built in"
-		if analyticsDir, installed := player.AnalyticsWidgetDir(); installed {
-			analytics = "built in, replaces the one in " + analyticsDir
-		}
-		printField("analytics", analytics)
+		printField("analytics", "built in")
 		advisorDir, found, err := playback.FindWidgetDir(filepath.Join(player.DataDir(), "LuaUI", "Widgets"),
 			advisorWidgetFile)
 		if err != nil {

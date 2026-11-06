@@ -110,10 +110,6 @@ func (p *Player) Play(ctx context.Context, log *slog.Logger, replay *Replay) (*R
 // MakeWriteDir creates a playback's write dir, a temporary folder the caller removes. It holds a copy of the data
 // dir's archive cache (so the engine does not rescan every archive), the settings of writeSettings, and the embedded
 // analytics widget, which writes its events file into events/ in its folder (see WriteDirEventsFile).
-//
-// The widget goes into the same folder name as an installed one: the engine lists a path present in both the write
-// dir and a data dir once, from the write dir, so the embedded widget replaces the installed one. Under another name
-// BAR would load both and reject the second as a duplicate.
 func (p *Player) MakeWriteDir(log *slog.Logger) (string, error) {
 	writeDir, err := os.MkdirTemp("", "bar-replay-analytics-*")
 	if err != nil {
@@ -155,7 +151,7 @@ func (p *Player) fillWriteDir(log *slog.Logger, writeDir string) error {
 
 // writeDirWidgetDir returns the folder of the embedded analytics widget in the write dir writeDir.
 func (p *Player) writeDirWidgetDir(writeDir string) string {
-	return filepath.Join(writeDir, widgetsDir, filepath.Base(p.analyticsDir))
+	return filepath.Join(writeDir, utils.WidgetsDir, utils.AnalyticsWidgetFolder)
 }
 
 // WriteDirEventsFile returns the path the analytics widget writes the events file of replay to in the write dir

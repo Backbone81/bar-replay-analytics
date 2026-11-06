@@ -24,8 +24,9 @@ var (
 
 // replayReportCmd writes the report of a replay.
 var replayReportCmd = &cobra.Command{
-	Use:   "report <replay>",
-	Short: "Write the report of a replay as JSON next to the replay",
+	Use:         "report <replay>",
+	Annotations: map[string]string{needsBarDataDir: "true"}, //nolint:goconst
+	Short:       "Write the report of a replay as JSON next to the replay",
 	Long: `Writes the game aggregated for coaching to <replay name>_report.json next to the replay, replacing an existing
 report. Needs <replay name>_events.json from 'replay play'.
 

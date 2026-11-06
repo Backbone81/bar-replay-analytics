@@ -24,8 +24,9 @@ var (
 
 // replayDownloadTopCmd downloads the recent replays of the best players of a leaderboard.
 var replayDownloadTopCmd = &cobra.Command{
-	Use:   "download-top",
-	Short: "Download the recent replays of the best players of a leaderboard",
+	Use:         "download-top",
+	Annotations: map[string]string{needsBarDataDir: "true"}, //nolint:goconst
+	Short:       "Download the recent replays of the best players of a leaderboard",
 	Long: `Downloads the replays of the games the --top players of a leaderboard played in the last --days, of the
 leaderboard's game type only: bar-db's preset must fit, and the allyteams must have the shape the lobby server decides
 the game type by (duel 1v1, small-team two allyteams of up to 5 players, large-team two of more, ffa more than two of

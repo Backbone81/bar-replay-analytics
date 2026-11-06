@@ -18,8 +18,9 @@ var replayDownloadDir string
 
 // replayDownloadCmd downloads replays by their IDs.
 var replayDownloadCmd = &cobra.Command{
-	Use:   "download <replay-id>...",
-	Short: "Download replays by their IDs",
+	Use:         "download <replay-id>...",
+	Annotations: map[string]string{needsBarDataDir: "true"}, //nolint:goconst
+	Short:       "Download replays by their IDs",
 	Long: `Downloads replays from the replay storage behind https://bar-rts.com into --dir, skipping those it holds
 already. A replay ID is the game ID in hex, as in https://www.bar-rts.com/replays/<replay-id>.
 
@@ -62,15 +63,11 @@ type replayToDownload struct {
 }
 
 // downloadDir returns the directory --dir selects.
-func downloadDir() (string, error) {
+func downloadDir() string {
 	if replayDownloadDir != "" {
-		return replayDownloadDir, nil
+		return replayDownloadDir
 	}
-	dir, err := dataDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(dir, "demos", "leaderboard"), nil
+	return filepath.Join(barDataDir, "demos", "leaderboard")
 }
 
 // replayDownloader downloads replays into the download directory one after the other, as a download command is asked
@@ -100,10 +97,7 @@ type replayDownloader struct {
 // newReplayDownloader returns a replayDownloader for the directory --dir selects. With dryRun, it only lists the
 // missing replays.
 func newReplayDownloader(client *barlive.Client, dryRun bool) (*replayDownloader, error) {
-	dir, err := downloadDir()
-	if err != nil {
-		return nil, err
-	}
+	dir := downloadDir()
 	index, err := barlive.OpenReplayIndex(dir)
 	if err != nil {
 		return nil, err

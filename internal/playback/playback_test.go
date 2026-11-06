@@ -17,6 +17,9 @@ import (
 	"github.com/backbone81/bar-replay-analytics-go/internal/playback/widget"
 )
 
+// analyticsWidgetFile is the file name of the analytics widget.
+const analyticsWidgetFile = "dbg_replay_analytics.lua"
+
 // discardLog is the logger for the functions under test; their log lines are not tested here.
 var discardLog = slog.New(slog.DiscardHandler)
 
@@ -43,7 +46,7 @@ func templateFiles(dir string) []string {
 func expectEmbeddedWidget(widgetDir string) {
 	filePaths := templateFiles(widgetDir)
 	Expect(filePaths).To(ContainElements(
-		filepath.Join(widgetDir, playback.AnalyticsWidgetFile),
+		filepath.Join(widgetDir, analyticsWidgetFile),
 		filepath.Join(widgetDir, "README.md"),
 		filepath.Join(widgetDir, "LICENSE"),
 	))
@@ -157,9 +160,9 @@ var _ = Describe("Playback", func() {
 	Context("FindWidgetDir", func() {
 		It("finds the folder of a widget one level deep", func() {
 			widgets := GinkgoT().TempDir()
-			writeFile(filepath.Join(widgets, "bar-replay-analytics", playback.AnalyticsWidgetFile), nil)
+			writeFile(filepath.Join(widgets, "bar-replay-analytics", analyticsWidgetFile), nil)
 
-			dir, found, err := playback.FindWidgetDir(widgets, playback.AnalyticsWidgetFile)
+			dir, found, err := playback.FindWidgetDir(widgets, analyticsWidgetFile)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(found).To(BeTrue())
@@ -168,37 +171,12 @@ var _ = Describe("Playback", func() {
 
 		It("does not find a widget deeper down", func() {
 			widgets := GinkgoT().TempDir()
-			writeFile(filepath.Join(widgets, "a", "b", playback.AnalyticsWidgetFile), nil)
+			writeFile(filepath.Join(widgets, "a", "b", analyticsWidgetFile), nil)
 
-			_, found, err := playback.FindWidgetDir(widgets, playback.AnalyticsWidgetFile)
+			_, found, err := playback.FindWidgetDir(widgets, analyticsWidgetFile)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(found).To(BeFalse())
-		})
-	})
-
-	Context("NewPlayer", func() {
-		It("selects LuaUI/Widgets/bar-replay-analytics/ if the analytics widget is not installed", func() {
-			dataDir := GinkgoT().TempDir()
-
-			player, err := playback.NewPlayer(dataDir)
-
-			Expect(err).NotTo(HaveOccurred())
-			widgetDir, installed := player.AnalyticsWidgetDir()
-			Expect(widgetDir).To(Equal(filepath.Join(dataDir, "LuaUI", "Widgets", "bar-replay-analytics")))
-			Expect(installed).To(BeFalse())
-		})
-
-		It("finds an installed analytics widget", func() {
-			dataDir := GinkgoT().TempDir()
-			writeFile(filepath.Join(dataDir, "LuaUI", "Widgets", "analytics", playback.AnalyticsWidgetFile), nil)
-
-			player, err := playback.NewPlayer(dataDir)
-
-			Expect(err).NotTo(HaveOccurred())
-			widgetDir, installed := player.AnalyticsWidgetDir()
-			Expect(widgetDir).To(Equal(filepath.Join(dataDir, "LuaUI", "Widgets", "analytics")))
-			Expect(installed).To(BeTrue())
 		})
 	})
 
@@ -251,47 +229,6 @@ var _ = Describe("Playback", func() {
 			Expect(filepath.Join(widgetDir, "events")).NotTo(BeAnExistingFile())
 			Expect(player.WriteDirEventsFile(writeDir, &playback.Replay{Name: "game"})).
 				To(Equal(filepath.Join(widgetDir, "events", "game_events.json")))
-		})
-
-		It("writes the embedded analytics widget into the folder of an installed one, so it replaces it", func() {
-			dataDir := GinkgoT().TempDir()
-			installedFile := filepath.Join(dataDir, "LuaUI", "Widgets", "analytics", playback.AnalyticsWidgetFile)
-			writeFile(installedFile, []byte("-- old version"))
-			player, err := playback.NewPlayer(dataDir)
-			Expect(err).NotTo(HaveOccurred())
-
-			writeDir, err := player.MakeWriteDir(discardLog)
-
-			Expect(err).NotTo(HaveOccurred())
-			DeferCleanup(os.RemoveAll, writeDir)
-			expectEmbeddedWidget(filepath.Join(writeDir, "LuaUI", "Widgets", "analytics"))
-			Expect(os.ReadFile(installedFile)).To(Equal([]byte("-- old version")))
-		})
-	})
-
-	Context("InstallAnalyticsWidget", func() {
-		It("installs the widget, its README and its license into a new folder", func() {
-			dataDir := GinkgoT().TempDir()
-
-			widgetDir, err := playback.InstallAnalyticsWidget(discardLog, dataDir)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(widgetDir).To(Equal(filepath.Join(dataDir, "LuaUI", "Widgets", "bar-replay-analytics")))
-			expectEmbeddedWidget(widgetDir)
-			Expect(playback.NewPlayer(dataDir)).Error().NotTo(HaveOccurred())
-		})
-
-		It("uses the folder of an installed widget and does not overwrite it", func() {
-			dataDir := GinkgoT().TempDir()
-			installed := filepath.Join(dataDir, "LuaUI", "Widgets", "analytics")
-			widgetFile := filepath.Join(installed, playback.AnalyticsWidgetFile)
-			writeFile(widgetFile, []byte("-- old version"))
-
-			widgetDir, err := playback.InstallAnalyticsWidget(discardLog, dataDir)
-
-			Expect(err).To(MatchError(fs.ErrExist))
-			Expect(widgetDir).To(Equal(installed))
-			Expect(os.ReadFile(widgetFile)).To(Equal([]byte("-- old version")))
 		})
 	})
 

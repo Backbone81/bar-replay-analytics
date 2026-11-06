@@ -8,8 +8,9 @@ import (
 
 // replayInspectCmd prints everything the tool reads from a replay.
 var replayInspectCmd = &cobra.Command{
-	Use:   "inspect <replay>",
-	Short: "Print the content of a replay as JSON",
+	Use:         "inspect <replay>",
+	Annotations: map[string]string{needsBarDataDir: "true"}, //nolint:goconst
+	Short:       "Print the content of a replay as JSON",
 	Long: `Prints the file header, start script, winning allyteams, player statistics and team statistics of a replay as
 JSON. The recorded game itself is not included.
 

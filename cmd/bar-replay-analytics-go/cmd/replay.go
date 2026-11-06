@@ -31,11 +31,7 @@ func replayPath(arg string) (string, error) {
 	if !errors.Is(err, fs.ErrNotExist) {
 		return "", err
 	}
-	dir, err := dataDir()
-	if err != nil {
-		return "", fmt.Errorf("%s is no file, and the demos/ folder to look for it in is unknown: %w", arg, err)
-	}
-	return filepath.Join(dir, "demos", arg), nil
+	return filepath.Join(barDataDir, "demos", arg), nil
 }
 
 // printField prints one "label: value" line to stdout, with the values of all such lines aligned.

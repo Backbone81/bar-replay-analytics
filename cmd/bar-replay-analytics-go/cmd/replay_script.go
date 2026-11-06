@@ -11,8 +11,9 @@ import (
 
 // replayScriptCmd prints the setup script of a replay.
 var replayScriptCmd = &cobra.Command{
-	Use:   "script <replay>",
-	Short: "Print the start script of a replay as JSON",
+	Use:         "script <replay>",
+	Annotations: map[string]string{needsBarDataDir: "true"}, //nolint:goconst
+	Short:       "Print the start script of a replay as JSON",
 	Long: `Prints the start script (script.txt) of a replay as JSON: map, game version, players, teams, allyteams, AIs
 and game options. Names are lowercased, values are strings.
 
