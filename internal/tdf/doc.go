@@ -17,15 +17,15 @@
 //     whitespace may. A "/*" without a closing "*/" is not a comment.
 //   - A key is one or more bytes which are neither whitespace nor "=". Spaces and tabs may surround the "=", a newline
 //     may not.
-//   - A value runs up to the next ";" on the same line and keeps trailing spaces. A value in double quotes may contain
-//     ";" and loses its quotes; if anything but spaces and tabs stands between the closing quote and the ";", the
-//     quotes are part of an unquoted value instead. One or more ";" end a value.
+//   - A value runs up to the next ";" on the same line and keeps trailing spaces. A value in double quotes on one line
+//     may contain ";" and loses its quotes; if anything but spaces and tabs stands between the closing quote and the
+//     ";", the quotes are part of an unquoted value instead. One or more ";" end a value.
 //   - A section name is one or more bytes which are not "]". Whitespace and comments may stand between the "]" and
 //     the "{".
 //   - Names of values and sections are lowercased (ASCII only, like Lua's string.lower); values keep their case.
 //   - Within a section, a name is either a value or a section. A later element replaces an earlier one with the same
 //     name, also if one is a value and the other a section; sections with the same name are not merged.
-//   - Every value is a string. What it means is up to the reader: the engine converts each key on its own.
+//   - Every value is a string; see Value for conversions.
 //
 // The engine passes the script to Lua as a long string, in which Lua turns "\r\n", "\n\r" and a lone "\r" into "\n".
 // Parse does the same, so a "\r" never reaches the grammar.
@@ -42,7 +42,7 @@
 // The order of elements is not kept: the engine keeps them in hash maps, so the order carries no meaning. Iterating a
 // Section yields names in sorted order.
 //
-// Values and sections are looked up by a location, names separated by LocationSeparator, the way the engine looks them
-// up: Value(`game\ai0\options\profile`). Lookups ignore case. A name containing the separator cannot be looked up by
+// Values and sections are looked up by a location, names separated by LocationSeparator, as in the engine:
+// Value(`game\ai0\options\profile`). Lookups ignore case. A name containing the separator cannot be looked up by
 // location, but is still yielded when iterating.
 package tdf

@@ -39,8 +39,8 @@ func (v Value) AsFloat() (float64, error) {
 	return result, nil
 }
 
-// AsBool returns the value as a boolean. The engine and the lobbies write booleans as "0" and "1".
-// Returns an error if it is anything else.
+// AsBool returns the value as a boolean: "0" or "1", as lobbies write them (the engine reads any integer, non-zero
+// as true). Returns an error if it is anything else.
 func (v Value) AsBool() (bool, error) {
 	switch v {
 	case "0":

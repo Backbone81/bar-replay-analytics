@@ -15,10 +15,10 @@ import (
 
 // Section is the content of a [name] { ... } block, or of a whole script.
 //
-// Every name is lowercased and is either a value or a section, never both: see TdfSection in
-// rts/System/TdfParser.h. Only Parse and UnmarshalJSON create sections, which keeps it that way.
+// Every name is lowercased and is either a value or a section, never both (see TdfSection in
+// rts/System/TdfParser.h); the methods that build sections keep it that way.
 //
-// A nil *Section reads as an empty section, so lookups can be chained without checks:
+// The zero value and a nil *Section are empty sections, so lookups can be chained without checks:
 // script.Section(`game\ai0`).Section("options") is nil if there is no ai0.
 type Section struct {
 	values   map[string]Value
@@ -65,12 +65,13 @@ func (s *Section) Sections() iter.Seq2[string, *Section] {
 	return sortedByName(s.sections)
 }
 
-// Indexed returns the numbered sections at location, sorted by number: `game\player` returns player0, player1, ... of
-// the section game. Numbers may have gaps, the engine numbers them anew without gaps. Like the engine, which looks them
-// up with "%i", only plain decimal numbers count: player01 and player+1 do not.
+// Indexed returns the numbered sections at location, sorted by number: `game\player` yields player0, player1, ... of
+// the section game. Only plain decimal numbers count, as the engine formats them with "%i": player01 and player+1 do
+// not.
 //
-// The engine reads players and AIs below MAX_PLAYERS (251), teams and allyteams below MAX_TEAMS (255), see
-// rts/Game/GameSetup.cpp. Indexed returns every number.
+// Indexed returns every number as written, gaps included. The engine (rts/Game/GameSetup.cpp) reads players and AIs
+// below MAX_PLAYERS (251), teams and allyteams below MAX_TEAMS (255), and renumbers players, teams and allyteams
+// without gaps, but not AIs.
 func (s *Section) Indexed(location string) iter.Seq2[int, *Section] {
 	section, prefix := s.parent(location)
 	return func(yield func(int, *Section) bool) {
@@ -115,10 +116,9 @@ func (s *Section) FilterValues(keep func(name string, value Value) bool) *Sectio
 	return &result
 }
 
-// MarshalJSON writes the section as one JSON object: a value as a string, a subsection as a nested object, e.g.
-// {"game":{"mapname":"Argent Strata 1.1","ai0":{"options":{"profile":"Hard"}}}}. A name is never both, so the object
-// is unambiguous. The receiver is a value, so that a Section held by value is written too; encoding/json writes a nil
-// *Section as null.
+// MarshalJSON writes the section as a JSON object, values as strings and subsections as nested objects:
+// {"game":{"mapname":"Argent Strata 1.1","ai0":{"options":{"profile":"Hard"}}}}. The value receiver makes a Section
+// held by value encode too; a nil *Section encodes as null.
 func (s Section) MarshalJSON() ([]byte, error) {
 	object := make(map[string]any)
 	for name, value := range s.Values() {
@@ -130,11 +130,10 @@ func (s Section) MarshalJSON() ([]byte, error) {
 	return json.Marshal(object)
 }
 
-// UnmarshalJSON reads a section as MarshalJSON writes it. Like Parse, it lowercases names, and a later name replaces
-// an earlier one which is the same after lowercasing. It accepts any names and values: they need not be ones a script
-// could hold. Like encoding/json, it leaves the section unchanged for null.
-// Returns an error for an empty name, for anything but strings and objects, for objects nested deeper than MaxDepth,
-// and for data after the object.
+// UnmarshalJSON reads a section as MarshalJSON writes it. Like Parse, it lowercases names and a later name replaces an
+// earlier one; names and values need not be ones a script could hold. null leaves the section unchanged.
+// Returns an error for an empty name, anything but strings and objects, nesting deeper than MaxDepth, and data after
+// the object.
 func (s *Section) UnmarshalJSON(data []byte) error {
 	if bytes.Equal(data, []byte("null")) {
 		return nil
