@@ -28,13 +28,13 @@ type ReplaysQuery struct {
 	// Preset selects replays of any of these presets.
 	Preset []ReplayPreset
 
-	// EndedNormally selects replays of games which ended normally (true) or were aborted (false).
+	// EndedNormally selects replays with (true) or without (false) a winner, see Replay.GameEndedNormally.
 	EndedNormally *bool
 
 	// HasBots selects replays with (true) or without (false) an AI.
 	HasBots *bool
 
-	// Reported selects replays in which someone wrote "!report" in the chat (true) or nobody did (false).
+	// Reported selects replays with (true) or without (false) Replay.Reported.
 	Reported *bool
 
 	// Players selects replays in which all of these players played; spectators do not count. bar-db looks the names
@@ -60,8 +60,8 @@ type ReplaysQuery struct {
 	ComputeTotalResults bool
 }
 
-// DateRange is a range of days in UTC, both ends inclusive. Only the dates of From and To count, not their times or
-// locations.
+// DateRange is a range of days, both ends inclusive. Only the dates of From and To in their locations count, not their
+// times; bar-db takes them as UTC days.
 type DateRange struct {
 	// From is the first day.
 	From time.Time

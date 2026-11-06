@@ -25,7 +25,8 @@ const (
 //
 // See src/model/db/demo.ts in beyond-all-reason/bar-db.
 type Replay struct {
-	// ID is the game ID from the replay file's header in hex, as demo.DemoFileHeader.GameID writes it to JSON.
+	// ID is the game ID from the replay file's header in lowercase hex, as demo.DemoFileHeader.GameIDAsString returns
+	// it.
 	ID string `json:"id"`
 
 	// FileName is the name of the replay file, see Client.DownloadDemo.
@@ -58,17 +59,18 @@ type Replay struct {
 	// SpadsSettings holds the settings of the SPADS autohost, or nil if the game was not hosted by SPADS.
 	SpadsSettings map[string]string `json:"spadsSettings"`
 
-	// GameEndedNormally is false if the game was aborted.
+	// GameEndedNormally is true if the replay names a winning allyteam; false for a game without a winner, such as an
+	// aborted or crashed one.
 	GameEndedNormally bool `json:"gameEndedNormally"`
 
 	// HasBots is true if an AI took part.
 	HasBots bool `json:"hasBots"`
 
-	// Preset is "duel", "team" or "ffa", see the ReplayPreset constants. bar-db takes it from the lobby's match data
-	// if it has any, else from the number of allyteams and players.
+	// Preset is "duel", "team" or "ffa", see the ReplayPreset constants. bar-db takes it from SLDB's match data if it
+	// has any, else "ffa" for more than 2 allyteams, "team" for more than 2 players and AIs, and "duel" otherwise.
 	Preset ReplayPreset `json:"preset"`
 
-	// Reported is true if someone wrote "!report" in the chat.
+	// Reported is true if a chat message contains "!report".
 	Reported bool `json:"reported"`
 
 	// Awards holds the awards the game sent at its end, or nil if the replay has none.
@@ -129,7 +131,7 @@ type AllyTeam struct {
 	// StartBox is the area the allyteam could start in, or nil if there was none.
 	StartBox *StartBox `json:"startBox"`
 
-	// WinningTeam is true if this allyteam won.
+	// WinningTeam is true if this allyteam won (the first winning allyteam of the replay).
 	WinningTeam bool `json:"winningTeam"`
 
 	// CreatedAt is when bar-db stored the allyteam.
@@ -175,7 +177,7 @@ type Player struct {
 	// Handicap is the resource bonus of the player's team in percent.
 	Handicap int `json:"handicap"`
 
-	// Faction is the player's side, such as "Armada" or "Cortex". It may differ from the side in the replay file.
+	// Faction is the player's side, such as "Armada" or "Cortex".
 	Faction string `json:"faction"`
 
 	// CountryCode is the player's country as an ISO 3166-1 alpha-2 code.
@@ -203,13 +205,13 @@ type Player struct {
 	// ClanID is the player's clan, or nil if the player has none.
 	ClanID *string `json:"clanId"`
 
-	// TrueSkillMuBefore is the player's skill before the game, or nil if bar-db has none.
+	// TrueSkillMuBefore is the player's skill before the game from SLDB, or nil if SLDB has none.
 	TrueSkillMuBefore *float64 `json:"trueSkillMuBefore"`
 
 	// TrueSkillSigmaBefore is the uncertainty of TrueSkillMuBefore, or nil if bar-db has none.
 	TrueSkillSigmaBefore *float64 `json:"trueSkillSigmaBefore"`
 
-	// TrueSkillMuAfter is the player's skill after the game, or nil if bar-db has none.
+	// TrueSkillMuAfter is the player's skill after the game from SLDB, or nil if SLDB has none.
 	TrueSkillMuAfter *float64 `json:"trueSkillMuAfter"`
 
 	// TrueSkillSigmaAfter is the uncertainty of TrueSkillMuAfter, or nil if bar-db has none.

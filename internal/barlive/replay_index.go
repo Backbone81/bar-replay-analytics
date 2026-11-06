@@ -22,9 +22,11 @@ const ReplayIndexFileName = "index.json"
 //
 // The index heals itself if files are added, renamed or removed by hand: an entry counts only while its file exists,
 // and Fetch looks up a replay which has no such entry, takes a file of its name into the index if that file holds its
-// game, and downloads it otherwise. Save drops the entries whose files are gone.
+// game, and downloads it otherwise. Save drops the entries whose files are gone. "Exists" means listed when
+// OpenReplayIndex read the directory or added by Fetch since; later changes by others are not seen.
 //
-// A ReplayIndex is safe for concurrent use.
+// A ReplayIndex is safe for concurrent use, except that two Fetches of the same replay at once may both download it
+// into the same .part file.
 type ReplayIndex struct {
 	dir string
 
@@ -33,7 +35,7 @@ type ReplayIndex struct {
 	// fileNamesByID holds the file name of each replay by its ID.
 	fileNamesByID map[string]string
 
-	// filesInDir holds the names of the filesInDir in dir.
+	// filesInDir holds the names of the files in dir, see ReplayIndex.
 	filesInDir map[string]bool
 }
 
@@ -108,7 +110,7 @@ type FetchResult struct {
 // Otherwise it asks bar-db for the replay's file name: if the directory holds a file of that name, Fetch reads the
 // file's header and records it if it holds the replay's game, else it reports an error matching fs.ErrExist, as
 // another game's replay has the same name. If there is no such file, Fetch creates the directory if it is missing and
-// downloads the file with DownloadDemoIntoDir.
+// downloads the file with DownloadDemoIntoDir. The index file is only written by Save.
 func (i *ReplayIndex) Fetch(ctx context.Context, client *Client, id string) (FetchResult, error) {
 	i.mutex.Lock()
 	fileName, found := i.fileNamesByID[id]

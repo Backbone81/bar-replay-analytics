@@ -16,7 +16,8 @@
 //
 // On top of one method per endpoint, Client combines them for finding and fetching the games of top players:
 // LeaderboardSeason (the active season), Leaderboard (one game type), RecentReplays (a player's recent games of one
-// game type, see GameType.Matches) and DownloadDemoIntoDir (a demo file stored safely under its name).
+// game type, see GameType.Matches) and DownloadDemoIntoDir (a demo file stored safely under its name). ReplayIndex
+// keeps a directory of downloaded demo files and knows which replay each holds.
 //
 // Client sends at most Config.MaxRequestRate requests per second to Teiserver and bar-db together, so a tool walking
 // many pages or replays does not overload them. Downloads from the storage are not rate limited. Client sets no
