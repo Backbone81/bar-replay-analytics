@@ -22,12 +22,13 @@ var (
 	replayReportIntervalLength        time.Duration
 )
 
-// replayReportCmd prints the report of a replay.
+// replayReportCmd writes the report of a replay.
 var replayReportCmd = &cobra.Command{
 	Use:   "report <replay>",
-	Short: "Print the report of a replay as JSON",
-	Long: `Prints the report of a replay as JSON: the game aggregated for coaching, readable as it is. It needs the events
-file of the replay's playback (see "replay play").
+	Short: "Write the report of a replay as JSON next to the replay",
+	Long: `Writes the report of a replay as JSON to <replay name>_report.json next to the replay file: the game aggregated
+for coaching, readable as it is. It replaces an existing report. It needs the events file of the replay's playback,
+<replay name>_events.json next to the replay file (see "replay play").
 
 <replay> is a path to a .sdfz file, or the name of a file in the demos/ folder of the BAR data directory.`,
 	Args: cobra.ExactArgs(1),
@@ -44,11 +45,7 @@ file of the replay's playback (see "replay play").
 		if err != nil {
 			return fmt.Errorf("setup script: %w", err)
 		}
-		eventsFilePath, err := replayEventsPath(filePath)
-		if err != nil {
-			return err
-		}
-		eventsFile, err := events.ReadFile(eventsFilePath)
+		eventsFile, err := events.ReadFile(playback.EventsFilePath(filePath))
 		if err != nil {
 			return fmt.Errorf("events file of the replay's playback: %w", err)
 		}
@@ -63,21 +60,19 @@ file of the replay's playback (see "replay play").
 		if err != nil {
 			return err
 		}
-		return writeJSON(result)
+		reportFilePath := reportPath(filePath)
+		if err := writeJSONFile(reportFilePath, result); err != nil {
+			return err
+		}
+		printField("report", reportFilePath)
+		return nil
 	},
 }
 
-// replayEventsPath returns the path of the events file the playback of the replay file filePath wrote, in the events
-// folder in the BAR data directory (see playback.Player.EventsDir).
-func replayEventsPath(filePath string) (string, error) {
-	player, err := playback.NewPlayer(barDataDir)
-	if err != nil {
-		return "", err
-	}
-	replay := playback.Replay{
-		Name: strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath)),
-	}
-	return filepath.Join(player.EventsDir(), replay.EventsFileName()), nil
+// reportPath returns the path of the report of the replay file filePath: <replay name>_report.json next to it, like
+// the events file of its playback (see playback.EventsFilePath).
+func reportPath(filePath string) string {
+	return strings.TrimSuffix(filePath, filepath.Ext(filePath)) + "_report.json"
 }
 
 func init() {

@@ -8,8 +8,11 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
+
+	"github.com/backbone81/bar-replay-analytics-go/internal/datadir"
 )
 
+// barDataDir is the value of --bar-data-dir; use dataDir, which finds the BAR data dir if it is empty.
 var barDataDir string
 
 // rootCmd represents the base command when called without any subcommands.
@@ -37,9 +40,26 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(
 		&barDataDir,
 		"bar-data-dir",
-		"data",
-		"The BAR data directory which contains the folders demos/, engine/ and maps/.",
+		"",
+		"The BAR data directory which contains the folders demos/, engine/ and maps/. Empty looks for it where the "+
+			"BAR installers put it (Windows: %LOCALAPPDATA%\\Programs\\Beyond-All-Reason\\data; Linux: "+
+			"~/.var/app/info.beyondallreason.bar/data for the Flatpak, ~/.local/state/Beyond All Reason for the "+
+			"AppImage).",
 	)
+}
+
+// dataDir returns the BAR data directory: --bar-data-dir, or the one datadir.Find finds if that is empty. The
+// commands call it only when they need the directory, so the others work without a BAR install.
+func dataDir() (string, error) {
+	if barDataDir != "" {
+		return barDataDir, nil
+	}
+	found, err := datadir.Find()
+	if err != nil {
+		return "", err
+	}
+	barDataDir = found
+	return found, nil
 }
 
 // printRequest prints a line for a request to requestURL to stderr, aligned like the lines of printReplayLine. The

@@ -5,7 +5,8 @@
 
 The widget is active only when a replay is played back in a headless engine (`spring-headless`). It then plays the
 replay at maximum speed, logs unit, economy and builder events to `events/<replay name>_events.json` in this folder,
-and quits the engine at the end. In a normal game and when watching a replay, it removes itself and does nothing.
+and quits the engine at the end. The tool runs it in a temporary folder of its own and copies the events file next
+to the replay. In a normal game and when watching a replay, it removes itself and does nothing.
 
 The tool writes the widget out for each playback by itself. This folder is only needed to inspect the widget; you can
 delete it.

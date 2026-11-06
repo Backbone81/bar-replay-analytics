@@ -58,20 +58,18 @@ func (r *Result) GameOver() bool {
 	return r.End != nil && r.End.Reason == events.EndReasonGameOver
 }
 
-// Play plays replay back. It returns an error if the engine could not be run, or the analytics widget wrote no events
-// file, and otherwise a Result, also if the playback did not reach the end of the game (see Result.GameOver). Several
-// Play calls may run at the same time, but not for replays of the same Name, as their events files would be the same.
-// Cancelling ctx stops the engine.
+// Play plays replay back. The analytics widget writes the events file into the playback's write dir, and Play copies
+// it next to the replay file at the end (Replay.EventsFilePath), also an incomplete one; the engine log goes there
+// directly (Replay.LogFilePath). It returns an error if the engine could not be run, or the analytics widget wrote no
+// events file, and otherwise a Result, also if the playback did not reach the end of the game (see Result.GameOver).
+// Several Play calls may run at the same time, but not for the same replay file, as their events files would be the
+// same. Cancelling ctx stops the engine.
 func (p *Player) Play(ctx context.Context, replay *Replay) (*Result, error) {
-	eventsDir := p.EventsDir()
-	if err := os.MkdirAll(eventsDir, dirPermissions); err != nil {
-		return nil, err
-	}
-
 	result := &Result{
-		EventsFile: filepath.Join(eventsDir, replay.EventsFileName()),
-		LogFile:    filepath.Join(eventsDir, replay.LogFileName()),
+		EventsFile: replay.EventsFilePath(),
+		LogFile:    replay.LogFilePath(),
 	}
+	// A failed playback must not leave the events file of an earlier one behind.
 	if err := os.Remove(result.EventsFile); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
 	}
@@ -87,10 +85,15 @@ func (p *Player) Play(ctx context.Context, replay *Replay) (*Result, error) {
 		return nil, err
 	}
 
+	writtenEventsFile := p.WriteDirEventsFile(writeDir, replay)
 	start := time.Now()
-	err = p.runEngine(ctx, replay, writeDir, logFile, result)
+	err = p.runEngine(ctx, replay, writeDir, writtenEventsFile, logFile, result)
 	result.Duration = time.Since(start)
-	if err := errors.Join(err, logFile.Close(), ctx.Err()); err != nil {
+	copyErr := copyFileAtomically(writtenEventsFile, result.EventsFile)
+	if errors.Is(copyErr, fs.ErrNotExist) {
+		copyErr = nil // reported below, after the engine's own errors
+	}
+	if err := errors.Join(err, logFile.Close(), copyErr, ctx.Err()); err != nil {
 		return nil, err
 	}
 
@@ -105,7 +108,7 @@ func (p *Player) Play(ctx context.Context, replay *Replay) (*Result, error) {
 
 // MakeWriteDir creates a playback's write dir, a temporary folder the caller removes. It holds a copy of the data
 // dir's archive cache (so the engine does not rescan every archive), the settings of writeSettings, and the embedded
-// analytics widget with its events/ linked to EventsDir.
+// analytics widget, which writes its events file into events/ in its folder (see WriteDirEventsFile).
 //
 // The widget goes into the same folder name as an installed one: the engine lists a path present in both the write
 // dir and a data dir once, from the write dir, so the embedded widget replaces the installed one. Under another name
@@ -146,11 +149,20 @@ func (p *Player) fillWriteDir(writeDir string) error {
 		return err
 	}
 
-	widgetDir := filepath.Join(writeDir, widgetsDir, filepath.Base(p.analyticsDir))
-	if _, err := newfiles.Write(widget.Template, widgetDir); err != nil {
-		return err
-	}
-	return os.Symlink(p.EventsDir(), filepath.Join(widgetDir, "events"))
+	_, err = newfiles.Write(widget.Template, p.writeDirWidgetDir(writeDir))
+	return err
+}
+
+// writeDirWidgetDir returns the folder of the embedded analytics widget in the write dir writeDir.
+func (p *Player) writeDirWidgetDir(writeDir string) string {
+	return filepath.Join(writeDir, widgetsDir, filepath.Base(p.analyticsDir))
+}
+
+// WriteDirEventsFile returns the path the analytics widget writes the events file of replay to in the write dir
+// writeDir: events/<replay name>_events.json in its folder. The engine runs in the write dir, so the widget's relative
+// path ends up there.
+func (p *Player) WriteDirEventsFile(writeDir string, replay *Replay) string {
+	return filepath.Join(p.writeDirWidgetDir(writeDir), "events", replay.EventsFileName())
 }
 
 // writeSettings writes springsettings.cfg into writeDir: Config.WorkerThreadCount, and HostPortDefault 0.
@@ -168,10 +180,10 @@ func (p *Player) writeSettings(writeDir string) error {
 }
 
 // runEngine runs the engine for replay in writeDir with its output to logFile until it exits, ctx is cancelled or
-// monitor.check stops it, and sets Result.StopReason and Result.ExitErr. It returns an error only if the engine could
-// not be started.
+// monitor.check stops it, and sets Result.StopReason and Result.ExitErr. eventsFile is where the widget writes the
+// events, which monitor.check watches. It returns an error only if the engine could not be started.
 func (p *Player) runEngine(
-	ctx context.Context, replay *Replay, writeDir string, logFile *os.File, result *Result,
+	ctx context.Context, replay *Replay, writeDir string, eventsFile string, logFile *os.File, result *Result,
 ) error {
 	engineCtx, stopEngine := context.WithCancel(ctx)
 	defer stopEngine()
@@ -199,7 +211,7 @@ func (p *Player) runEngine(
 	monitor := &monitor{
 		player:     p,
 		replay:     replay,
-		eventsFile: result.EventsFile,
+		eventsFile: eventsFile,
 		logFile:    result.LogFile,
 		start:      time.Now(),
 	}

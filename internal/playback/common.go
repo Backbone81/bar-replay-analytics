@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
 )
@@ -35,6 +36,33 @@ const filePermissions = 0o644
 
 // dirPermissions are the permissions of the directories the package creates.
 const dirPermissions = 0o755
+
+// copyFileAtomically copies the file sourceFilePath to destinationFilePath, replacing it if it exists. It writes a
+// temporary file next to it and renames that, so destinationFilePath is never incomplete. A missing source is an
+// error that wraps fs.ErrNotExist.
+func copyFileAtomically(sourceFilePath string, destinationFilePath string) error {
+	if _, err := os.Stat(sourceFilePath); err != nil {
+		return err
+	}
+	tempFile, err := os.CreateTemp(filepath.Dir(destinationFilePath), filepath.Base(destinationFilePath)+".tmp-*")
+	if err != nil {
+		return err
+	}
+	tempFilePath := tempFile.Name()
+	if err := tempFile.Close(); err != nil {
+		return errors.Join(err, os.Remove(tempFilePath))
+	}
+	if err := copyFile(sourceFilePath, tempFilePath); err != nil {
+		return errors.Join(err, os.Remove(tempFilePath))
+	}
+	if err := os.Chmod(tempFilePath, filePermissions); err != nil {
+		return errors.Join(err, os.Remove(tempFilePath))
+	}
+	if err := os.Rename(tempFilePath, destinationFilePath); err != nil {
+		return errors.Join(err, os.Remove(tempFilePath))
+	}
+	return nil
+}
 
 // copyFile copies the file sourceFilePath to destinationFilePath, which it creates or truncates.
 func copyFile(sourceFilePath string, destinationFilePath string) error {

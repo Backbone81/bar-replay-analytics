@@ -46,9 +46,33 @@ func (r *Replay) EventsFileName() string {
 	return r.Name + "_events.json"
 }
 
-// LogFileName returns the file name of the engine log of the replay's playback.
-func (r *Replay) LogFileName() string {
-	return r.Name + ".log"
+// EventsFilePath returns the path of the events file of the replay's playback: next to the replay file.
+func (r *Replay) EventsFilePath() string {
+	return EventsFilePath(r.FilePath)
+}
+
+// LogFilePath returns the path of the engine log of the replay's playback: next to the replay file.
+func (r *Replay) LogFilePath() string {
+	return LogFilePath(r.FilePath)
+}
+
+// EventsFilePath returns the path of the events file of the playback of the replay file replayFilePath:
+// <replay name>_events.json next to it. BAR's replay browser lists only the .sdfz files in demos/, so it does not
+// show the file.
+func EventsFilePath(replayFilePath string) string {
+	return siblingPath(replayFilePath, "_events.json")
+}
+
+// LogFilePath returns the path of the engine log of the playback of the replay file replayFilePath:
+// <replay name>.log next to it.
+func LogFilePath(replayFilePath string) string {
+	return siblingPath(replayFilePath, ".log")
+}
+
+// siblingPath returns the path of the file next to the replay file replayFilePath that is named after the replay
+// (its file name without extension) with suffix.
+func siblingPath(replayFilePath string, suffix string) string {
+	return strings.TrimSuffix(replayFilePath, filepath.Ext(replayFilePath)) + suffix
 }
 
 // readReplay reads the names of the engine, game and map from the replay file filePath, and checks them.

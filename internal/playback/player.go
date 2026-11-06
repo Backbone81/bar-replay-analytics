@@ -24,7 +24,8 @@ type Player struct {
 	// dataDir is the absolute path of the data dir.
 	dataDir string
 
-	// analyticsDir is the installed analytics widget's folder, or LuaUI/Widgets/bar-replay-analytics/; see EventsDir.
+	// analyticsDir is the installed analytics widget's folder, or LuaUI/Widgets/bar-replay-analytics/. Each playback's
+	// write dir gets the embedded widget in a folder of the same name, see MakeWriteDir.
 	analyticsDir string
 
 	// analyticsInstalled is whether the analytics widget is installed in analyticsDir.
@@ -74,11 +75,6 @@ func (p *Player) DataDir() string {
 // LuaUI/Widgets/bar-replay-analytics/ and false if none is.
 func (p *Player) AnalyticsWidgetDir() (string, bool) {
 	return p.analyticsDir, p.analyticsInstalled
-}
-
-// EventsDir returns the folder of the events and log files: events/ in AnalyticsWidgetDir.
-func (p *Player) EventsDir() string {
-	return filepath.Join(p.analyticsDir, "events")
 }
 
 // FindWidgetDir returns the subfolder of widgets (a LuaUI/Widgets/) that holds widgetFile, and whether there is one.

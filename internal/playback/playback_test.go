@@ -177,18 +177,18 @@ var _ = Describe("Playback", func() {
 	})
 
 	Context("NewPlayer", func() {
-		It("puts the events into LuaUI/Widgets/bar-replay-analytics/ if the analytics widget is not installed", func() {
+		It("selects LuaUI/Widgets/bar-replay-analytics/ if the analytics widget is not installed", func() {
 			dataDir := GinkgoT().TempDir()
 
 			player, err := playback.NewPlayer(dataDir)
 
 			Expect(err).NotTo(HaveOccurred())
-			widgetDir := filepath.Join(dataDir, "LuaUI", "Widgets", "bar-replay-analytics")
-			Expect(player.AnalyticsWidgetDir()).To(Equal(widgetDir))
-			Expect(player.EventsDir()).To(Equal(filepath.Join(widgetDir, "events")))
+			widgetDir, installed := player.AnalyticsWidgetDir()
+			Expect(widgetDir).To(Equal(filepath.Join(dataDir, "LuaUI", "Widgets", "bar-replay-analytics")))
+			Expect(installed).To(BeFalse())
 		})
 
-		It("finds an installed analytics widget and its events folder", func() {
+		It("finds an installed analytics widget", func() {
 			dataDir := GinkgoT().TempDir()
 			writeFile(filepath.Join(dataDir, "LuaUI", "Widgets", "analytics", playback.AnalyticsWidgetFile), nil)
 
@@ -198,7 +198,17 @@ var _ = Describe("Playback", func() {
 			widgetDir, installed := player.AnalyticsWidgetDir()
 			Expect(widgetDir).To(Equal(filepath.Join(dataDir, "LuaUI", "Widgets", "analytics")))
 			Expect(installed).To(BeTrue())
-			Expect(player.EventsDir()).To(Equal(filepath.Join(dataDir, "LuaUI", "Widgets", "analytics", "events")))
+		})
+	})
+
+	Context("EventsFilePath and LogFilePath", func() {
+		It("name the files after the replay, next to it", func() {
+			replayFile := filepath.Join("demos", "2026-10-24_13-48-21-286_Argent Strata 1.1_2026.07.04.sdfz")
+
+			Expect(playback.EventsFilePath(replayFile)).To(Equal(filepath.Join("demos",
+				"2026-10-24_13-48-21-286_Argent Strata 1.1_2026.07.04_events.json")))
+			Expect(playback.LogFilePath(replayFile)).To(Equal(filepath.Join("demos",
+				"2026-10-24_13-48-21-286_Argent Strata 1.1_2026.07.04.log")))
 		})
 	})
 
@@ -226,7 +236,7 @@ var _ = Describe("Playback", func() {
 	})
 
 	Context("MakeWriteDir", func() {
-		It("writes the embedded analytics widget and links its events folder", func() {
+		It("writes the embedded analytics widget, which writes its events into the write dir", func() {
 			dataDir := GinkgoT().TempDir()
 			player, err := playback.NewPlayer(dataDir)
 			Expect(err).NotTo(HaveOccurred())
@@ -237,7 +247,9 @@ var _ = Describe("Playback", func() {
 			DeferCleanup(os.RemoveAll, writeDir)
 			widgetDir := filepath.Join(writeDir, "LuaUI", "Widgets", "bar-replay-analytics")
 			expectEmbeddedWidget(widgetDir)
-			Expect(os.Readlink(filepath.Join(widgetDir, "events"))).To(Equal(player.EventsDir()))
+			Expect(filepath.Join(widgetDir, "events")).NotTo(BeAnExistingFile())
+			Expect(player.WriteDirEventsFile(writeDir, &playback.Replay{Name: "game"})).
+				To(Equal(filepath.Join(widgetDir, "events", "game_events.json")))
 		})
 
 		It("writes the embedded analytics widget into the folder of an installed one, so it replaces it", func() {

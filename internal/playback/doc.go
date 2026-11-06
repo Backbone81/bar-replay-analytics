@@ -11,11 +11,11 @@
 // an untrusted file and end up in paths and command lines, so Prepare rejects any that is not a plain name.
 //
 // Play runs the engine with a temporary write dir of its own (see MakeWriteDir) and the data dir as additional data
-// dir (SPRING_DATADIR), so playbacks can run in parallel and the data dir gets only the events and log files. These
-// go to events/ in the folder of the analytics widget installed in the data dir, or in
-// LuaUI/Widgets/bar-replay-analytics/ if none is (see Player.EventsDir): <replay name>_events.json and
-// <replay name>.log. The widget is active only in a headless replay; it raises the speed limit, skips to the end and
-// quits the engine when the game is over or the replay stops advancing.
+// dir (SPRING_DATADIR), so playbacks can run in parallel and leave the data dir alone. The widget writes the events
+// file into the write dir, and Play copies it next to the replay file before it removes the write dir:
+// <replay name>_events.json (see EventsFilePath); the engine's output goes there directly as <replay name>.log. The
+// widget is active only in a headless replay; it raises the speed limit, skips to the end and quits the engine when
+// the game is over or the replay stops advancing.
 //
 // Play reports progress every Config.ProgressInterval as the frame of the last event. It stops the engine if the
 // events file (while loading: the log) has not grown for Config.StallTimeout, or the widget cannot write its events

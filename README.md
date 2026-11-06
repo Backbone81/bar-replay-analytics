@@ -23,15 +23,18 @@ go install github.com/backbone81/bar-replay-analytics-go/cmd/bar-replay-analytic
 
 It lands in `go/bin/` in your home folder. Add that folder to your `PATH` if `bar-replay-analytics-go` is not found.
 
-**2. Find your BAR data folder.** It holds `demos/`, where BAR saves every game you play. Usually it is:
+**2. Check that it finds BAR.** The tool works in your BAR data folder, which holds `demos/`, where BAR saves every
+game you play. It looks for it where the BAR installers put it:
 
 | Install | BAR data folder |
 | --- | --- |
 | Windows | `%LOCALAPPDATA%\Programs\Beyond-All-Reason\data` |
-| Linux, AppImage | `~/.local/state/Beyond All Reason` |
+| Linux, AppImage | `~/.local/state/Beyond All Reason` (`$XDG_STATE_HOME/Beyond All Reason`) |
 | Linux, Flatpak | `~/.var/app/info.beyondallreason.bar/data` |
 
-Below, `<BAR data>` stands for that folder.
+It uses the first of these that holds BAR. If BAR is somewhere else, the commands say so; then pass the folder with
+`--bar-data-dir "<BAR data>"` to every command. Do the same if you have several BAR installs and want another one
+than the first. `replay play` prints the folder it uses.
 
 **3. Get coached.** Make a folder for your coaching, set it up for the agent and start your AI agent there:
 
@@ -48,13 +51,12 @@ one-hour game takes about one and a half minutes; the first playback also downlo
 
 ## Usage
 
-Every command takes `--bar-data-dir "<BAR data>"`. A replay is the name of a file in `demos/` or a path to one. Every
-command explains its options with `--help`.
+A replay is the name of a file in `demos/` or a path to one. Every command explains its options with `--help`.
 
 ```sh
 # Analyze replays
-bar-replay-analytics-go replay play <replay>...         # play back, several at a time
-bar-replay-analytics-go replay report <replay>          # the report (needs the playback)
+bar-replay-analytics-go replay play <replay>...         # play back, several at a time: <replay>_events.json
+bar-replay-analytics-go replay report <replay>          # the report (needs the playback): <replay>_report.json
 bar-replay-analytics-go replay script <replay>          # map, players, AIs and game options, no playback needed
 bar-replay-analytics-go replay inspect <replay>         # everything the replay file holds
 
@@ -71,11 +73,13 @@ Good to know:
 
 - **Playback needs about 5 GB of memory per replay.** `replay play` plays several replays at once, as many as your
   CPU and memory allow; `--parallel` sets the number.
+- **Results go next to the replay:** `<replay>_events.json` and `<replay>.log` (the engine's output) from the
+  playback, `<replay>_report.json` from the report. BAR's replay browser lists only the `.sdfz` files, so it does not
+  show them.
 - **Playback leaves your BAR install alone.** It adds only what it downloads (engines, game versions, maps), like the
-  lobby, and its results in `LuaUI/Widgets/bar-replay-analytics/events/`. Its analytics widget is built in and runs
-  only in the playback. Your settings, widgets and `infolog.txt` stay untouched.
+  lobby, and its results next to the replays. Its analytics widget is built in and runs only in the playback. Your
+  settings, widgets and `infolog.txt` stay untouched.
 - **Games that crashed or did not end** (length 0:00 in the lobby) are skipped: their replay can run for hours.
-  `--unended` plays them anyway.
 - **Downloaded replays go to `demos/leaderboard/`**, so they don't crowd the replay list in the BAR lobby. Running
   `download-top` again fetches only what is new. `--game-type` is `duel`, `small-team`, `large-team` or `ffa`;
   `--map` takes the exact mapname from `replay script`, version included, and can be repeated.

@@ -31,19 +31,19 @@ var replayPlayCmd = &cobra.Command{
 	Use:   "play <replay>...",
 	Short: "Play replays back in a headless engine at maximum speed",
 	Long: `Plays replays back in spring-headless at maximum speed, with the analytics widget of bar-replay-analytics
-(dbg_replay_analytics.lua) logging the game to events/<replay name>_events.json in the widget's folder. The engine
-log goes next to it as <replay name>.log. --parallel replays are played back at the same time.
+(dbg_replay_analytics.lua) logging the game to <replay name>_events.json next to the replay file. The engine's output
+goes next to it as <replay name>.log. BAR's replay browser lists only the .sdfz files, so it does not show them.
+--parallel replays are played back at the same time.
 
 The widget is built into this program and written into each playback's write dir; it need not be installed in the
-BAR data directory, and replaces one installed there. The events go to the installed widget's folder, or to
-LuaUI/Widgets/bar-replay-analytics/ if none is installed. Other widgets installed in LuaUI/Widgets/ run during
-playback too, so their log lines show what a widget would have done in the game, e.g. the [reminder] lines of
-bar-advisor.
+BAR data directory, and replaces one installed there. Other widgets installed in LuaUI/Widgets/ run during playback
+too, so their log lines show what a widget would have done in the game, e.g. the [reminder] lines of bar-advisor.
 
 The engine, game and map versions a replay needs are downloaded into the BAR data directory if they are missing, as
 the BAR lobby does: the engine from BAR's CDN, the game and map with the engine's pr-downloader. Each playback has a
 temporary write dir of its own, so playbacks do not change the data directory's infolog.txt, settings or widget
-config (LuaUI/Config/), and parallel ones do not overwrite each other's.
+config (LuaUI/Config/), and parallel ones do not overwrite each other's. The playback adds nothing else to the data
+directory.
 
 An engine playing a replay back needs about 5 GB of memory (4.8 GB for a 1v1 replay of 27 minutes) and, with the
 default --engine-threads 2, about 1.5 CPU cores, so --parallel defaults to one playback per 2 CPUs, but at most one
@@ -78,8 +78,12 @@ or the game was not ended, and its recorded stream can go on for hours of game t
 			return err
 		}
 
+		dir, err := dataDir()
+		if err != nil {
+			return err
+		}
 		player, err := playback.NewPlayer(
-			barDataDir,
+			dir,
 			playback.WithProgressInterval(replayPlayProgressInterval),
 			playback.WithWorkerThreadCount(replayPlayEngineThreads),
 			playback.WithOnProgress(printProgress),
@@ -109,7 +113,6 @@ or the game was not ended, and its recorded stream can go on for hours of game t
 		failed, skipped := playReplays(cmd.Context(), player, filePaths)
 
 		fmt.Println()
-		printField("events dir", player.EventsDir())
 		printField("replays", len(filePaths))
 		printField("played", len(filePaths)-failed-skipped)
 		printField("skipped", skipped)
@@ -149,8 +152,8 @@ func init() {
 	)
 }
 
-// replayPlayPaths returns the paths of the replays args name (see replayPath). It returns an error if two have the
-// same file name, as their playbacks would write the same events file.
+// replayPlayPaths returns the paths of the replays args name (see replayPath). It returns an error if two name the
+// same file, as their playbacks would write the same events file.
 func replayPlayPaths(args []string) ([]string, error) {
 	filePaths := make([]string, len(args))
 	seen := make(map[string]string)
@@ -159,12 +162,14 @@ func replayPlayPaths(args []string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		name := filepath.Base(filePath)
-		if other, found := seen[name]; found {
-			return nil, fmt.Errorf("%s and %s have the same file name, so their events files would be the same",
-				other, filePath)
+		absoluteFilePath, err := filepath.Abs(filePath)
+		if err != nil {
+			return nil, err
 		}
-		seen[name] = filePath
+		if other, found := seen[absoluteFilePath]; found {
+			return nil, fmt.Errorf("%s and %s are the same replay", other, arg)
+		}
+		seen[absoluteFilePath] = arg
 		filePaths[i] = filePath
 	}
 	return filePaths, nil

@@ -63,11 +63,15 @@ type replayToDownload struct {
 }
 
 // downloadDir returns the directory --dir selects.
-func downloadDir() string {
+func downloadDir() (string, error) {
 	if replayDownloadDir != "" {
-		return replayDownloadDir
+		return replayDownloadDir, nil
 	}
-	return filepath.Join(barDataDir, "demos", "leaderboard")
+	dir, err := dataDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "demos", "leaderboard"), nil
 }
 
 // replayDownloader downloads replays into the download directory one after the other, as a download command is asked
@@ -76,6 +80,9 @@ func downloadDir() string {
 type replayDownloader struct {
 	client *barlive.Client
 	index  *barlive.ReplayIndex
+
+	// dir is the download directory, see downloadDir.
+	dir string
 
 	// dryRun makes it only list the missing replays.
 	dryRun bool
@@ -94,13 +101,18 @@ type replayDownloader struct {
 // newReplayDownloader returns a replayDownloader for the directory --dir selects. With dryRun, it only lists the
 // missing replays.
 func newReplayDownloader(client *barlive.Client, dryRun bool) (*replayDownloader, error) {
-	index, err := barlive.OpenReplayIndex(downloadDir())
+	dir, err := downloadDir()
+	if err != nil {
+		return nil, err
+	}
+	index, err := barlive.OpenReplayIndex(dir)
 	if err != nil {
 		return nil, err
 	}
 	return &replayDownloader{
 		client: client,
 		index:  index,
+		dir:    dir,
 		dryRun: dryRun,
 		seen:   make(map[string]bool),
 	}, nil
@@ -150,7 +162,7 @@ func (d *replayDownloader) finish(err error) error {
 	}
 
 	fmt.Println()
-	printField("dir", downloadDir())
+	printField("dir", d.dir)
 	printField("replays", len(d.seen))
 	printField("present", d.present)
 	if d.dryRun {

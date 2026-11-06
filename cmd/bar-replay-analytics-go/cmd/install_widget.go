@@ -21,7 +21,11 @@ Playback does not need this: it uses the widget built into this program, which r
 is active only in a headless playback and does nothing in your own games.`,
 	Args: cobra.NoArgs,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		_, created, err := playback.InstallAnalyticsWidget(barDataDir)
+		dir, err := dataDir()
+		if err != nil {
+			return err
+		}
+		_, created, err := playback.InstallAnalyticsWidget(dir)
 		printCreated(created)
 		return err
 	},
