@@ -86,8 +86,7 @@ var _ = Describe("Combat", func() {
 
 	It("does not count a unit its own player reclaimed", func() {
 		eventsFile := newTestEventsFile()
-		eventsFile.Events[10] = unitKilled(3000, 101, 2, 0, 0)
-		eventsFile.Events[10].UnitDestroyed.WeaponDefID = events.EnvDamageReclaimed
+		eventsFile.Events[10] = unitReclaimed(3000, 101, 2, 0, 0)
 
 		result, err := newIntervalReport(eventsFile)
 
@@ -95,16 +94,31 @@ var _ = Describe("Combat", func() {
 		Expect(result.Players[0].Combat.Total).To(BeZero())
 	})
 
-	It("counts a unit an enemy reclaimed as lost and as killed by the enemy", func() {
+	It("counts a unit an enemy reclaimed as lost and as killed by the enemy, with its whole metal cost", func() {
 		eventsFile := newTestEventsFile()
-		eventsFile.Events[10] = unitKilled(3000, 101, 2, 0, 1)
-		eventsFile.Events[10].UnitDestroyed.WeaponDefID = events.EnvDamageReclaimed
+		eventsFile.Events[10] = unitReclaimed(3000, 101, 2, 0, 1)
 
 		result, err := newIntervalReport(eventsFile)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(result.Players[0].Combat.Total).To(Equal(report.Casualties{Lost: report.DeadUnits{Count: 1, Metal: 50}}))
 		Expect(result.Players[1].Combat.Total).To(Equal(report.Casualties{Killed: report.DeadUnits{Count: 1, Metal: 50}}))
+	})
+
+	It("counts an unfinished unit an enemy reclaimed without metal", func() {
+		eventsFile := newTestEventsFile()
+		addEvents(eventsFile,
+			events.Event{
+				Frame:       1500,
+				UnitCreated: &events.UnitCreated{UnitID: 104, UnitDefID: 4, UnitTeam: 0, BuilderID: new(102)},
+			},
+			unitReclaimed(1800, 104, 4, 0, 1),
+		)
+
+		result, err := newIntervalReport(eventsFile)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result.Players[1].Combat.Total).To(Equal(report.Casualties{Killed: report.DeadUnits{Count: 1}}))
 	})
 
 	It("does not count a metal extractor replaced by an upgrade", func() {
@@ -186,6 +200,16 @@ func unitKilled(frame int, unitID int, unitDefID int, unitTeam int, attackerTeam
 			WeaponDefID:   1,
 		},
 	}
+}
+
+// unitReclaimed returns the event of the unit with unitID and unitDefID of the player unitTeam reclaimed at frame by
+// the commander of the player attackerTeam (see unitKilled), with build progress 0, as the engine reports a reclaimed
+// unit.
+func unitReclaimed(frame int, unitID int, unitDefID int, unitTeam int, attackerTeam int) events.Event {
+	event := unitKilled(frame, unitID, unitDefID, unitTeam, attackerTeam)
+	event.UnitDestroyed.BuildProgress = 0
+	event.UnitDestroyed.WeaponDefID = events.EnvDamageReclaimed
+	return event
 }
 
 // interval returns the interval from start to end seconds of game time.

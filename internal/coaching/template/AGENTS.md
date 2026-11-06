@@ -78,6 +78,9 @@ Per player, all names as the BAR UI shows them (use these names with the player,
 - **Builders:** per interval, how many commanders and tech 1 and tech 2 constructors were alive and idle. Per builder,
   its idle time and longer idle stretches with game times, and what it built.
 - **Combat:** units killed and lost, with their metal, in total and per interval.
+- **Resurrection:** `metalValue`, what the units the player's resurrection bots brought back from wrecks would have
+  cost to build, and `energySpent`, what resurrecting them cost (half the units' energy cost, no metal), in total and
+  per interval.
 - **Opening build order:** what the player finished in the first 5 minutes, and when the first unit of each kind was
   finished over the whole game.
 - **Metadata:** map, game version, length, winner, game options, income multipliers and AI difficulty.
@@ -103,7 +106,12 @@ Know the limits of the data:
 - **Judge fights by metal killed against metal lost**, not by counts: ten cheap units for one expensive one can be a
   good trade.
 - Losses include every death: own fire, self-destruction, abandoned unfinished buildings. Units reclaimed by their own
-  side are not lost. Units removed because their player resigned or left count as neither killed nor lost.
+  side are not lost. Units removed because their player resigned or left count as neither killed nor lost. An enemy
+  unit reclaimed while unfinished counts as killed without metal: how far it was built is not known.
+- Resurrected units are not kills: the report keeps them apart from combat. Their energy counts only finished
+  resurrections, and not the metal and energy spent restoring a wreck that was already partly reclaimed.
+- The report has no reclaim income: the engine counts reclaimed metal and energy as produced, without telling them
+  apart.
 - Reclaiming wrecks and trees makes income spike for a while. Don't read a spike as a stronger economy.
 - An income multiplier other than 1, or non-default game options, make a game unlike a standard one. Mention it when
   you compare across games.

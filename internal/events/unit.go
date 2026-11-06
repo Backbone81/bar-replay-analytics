@@ -53,7 +53,9 @@ type UnitDestroyed struct {
 	// Z is the unit's z position in elmos, rounded down.
 	Z int `json:"z"`
 
-	// BuildProgress is how far the unit was built, from 0 to 1; 1 for a finished unit.
+	// BuildProgress is how far the unit was built, from 0 to 1; 1 for a finished unit. Is 0 for a reclaimed unit,
+	// finished or not: the engine takes it to 0 before it kills the unit (CUnit::AddBuildPower in
+	// rts/Sim/Units/Unit.cpp).
 	BuildProgress float64 `json:"buildProgress"`
 
 	// AttackerID is the ID of the unit that killed it.

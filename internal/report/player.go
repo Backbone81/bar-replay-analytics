@@ -47,6 +47,10 @@ type Player struct {
 	// as Economy.
 	Combat Combat `json:"combat"`
 
+	// Resurrection provides the metal value of the units this player resurrected and the energy that cost, over the
+	// game and in the same intervals as Economy.
+	Resurrection Resurrection `json:"resurrection"`
+
 	// OpeningBuildOrder provides the units and buildings this player built in the first Config.OpeningBuildOrderLength
 	// of the game, in the order they were finished. Units which were not built, such as the commander at the start, are
 	// left out. Is empty if Config.OpeningBuildOrderLength is 0.

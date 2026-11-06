@@ -314,6 +314,10 @@ var _ = Describe("Report", func() {
 							"total": {"killed": {"count": 0, "metal": 0}, "lost": {"count": 1, "metal": 50}},
 							"intervals": [{"time": "0:00-1:00", "killed": {"count": 0, "metal": 0}, "lost": {"count": 1, "metal": 50}}]
 						},
+						"resurrection": {
+							"total": {"metalValue": 0, "energySpent": 0},
+							"intervals": [{"time": "0:00-1:00", "metalValue": 0, "energySpent": 0}]
+						},
 						"openingBuildOrder": [
 							{"time": "0:20", "name": "Metal Extractor", "buildRate": 1},
 							{"time": "1:30", "name": "Bot Lab", "buildRate": 2}
@@ -365,6 +369,10 @@ var _ = Describe("Report", func() {
 						"combat": {
 							"total": {"killed": {"count": 0, "metal": 0}, "lost": {"count": 0, "metal": 0}},
 							"intervals": [{"time": "0:00-1:00", "killed": {"count": 0, "metal": 0}, "lost": {"count": 0, "metal": 0}}]
+						},
+						"resurrection": {
+							"total": {"metalValue": 0, "energySpent": 0},
+							"intervals": [{"time": "0:00-1:00", "metalValue": 0, "energySpent": 0}]
 						},
 						"openingBuildOrder": [
 							{"time": "0:25", "name": "Metal Extractor", "buildRate": 0.83}

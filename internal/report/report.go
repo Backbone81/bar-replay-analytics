@@ -80,6 +80,7 @@ func NewReport(
 		return nil, fmt.Errorf("events: %w", err)
 	}
 	combatHistories := newCombatHistories(eventsFile, players)
+	resurrectionHistories := newResurrectionHistories(eventsFile, len(players))
 	endFrame := int(replay.FileHeader.GameTime) * GameSpeed
 	spans := newIntervalSpans(endFrame, int(replay.FileHeader.TeamStatPeriod), config)
 	for i := range players {
@@ -92,6 +93,7 @@ func NewReport(
 			endFrame,
 		)
 		players[i].Combat = newCombat(combatHistories[i], spans)
+		players[i].Resurrection = newResurrection(resurrectionHistories[i], spans)
 		players[i].OpeningBuildOrder = buildOrders[i]
 		players[i].FirstFinished = firstFinished[i]
 		players[i].Builders = builderActivities[i].builders(eventsFile.UnitDefs, config)

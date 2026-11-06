@@ -12,7 +12,9 @@ import (
 // crushed, decayed as an abandoned nanoframe. Its metal is gone either way. Units whose metal came back are not lost:
 // those the player or an ally reclaimed, and metal extractors replaced by an upgrade, whose cost BAR refunds
 // (unit_mex_upgrade_reclaimer.lua). Units are counted unfinished too, with the metal of their build progress, as
-// partly built units cost what was spent on them.
+// partly built units cost what was spent on them. A reclaimed unit has build progress 0 when it dies, as the engine
+// takes it to 0 before it kills the unit (CUnit::AddBuildPower in rts/Sim/Units/Unit.cpp), so a finished one counts
+// its whole metal cost, an unfinished one 0: what it was built to before the reclaim is not known.
 //
 // A unit is killed by a player when one of the player's units killed it and it belonged to another team (or to Gaia),
 // in the same ways a unit is lost, reclaiming included: an enemy unit reclaimed is one the enemy lost.
@@ -51,7 +53,8 @@ type DeadUnits struct {
 	// Count is the number of units.
 	Count int `json:"count"`
 
-	// Metal is the metal spent on them, rounded to whole metal: each unit's metal cost times its build progress.
+	// Metal is the metal spent on them, rounded to whole metal: each unit's metal cost times its build progress (for a
+	// reclaimed unit see Combat).
 	Metal float64 `json:"metal"`
 }
 
@@ -80,6 +83,10 @@ type combatTracker struct {
 
 	// died provides the frames the dead teams died at, by team ID.
 	died map[int]int
+
+	// finished provides the unit IDs of the units alive and finished. Unit IDs are reused once a unit died, so each
+	// UnitCreated takes its ID out.
+	finished map[int]bool
 }
 
 // newCombatHistories prepares the combat history of each player, by player ID, from the units which died in the
@@ -89,9 +96,14 @@ func newCombatHistories(eventsFile *events.File, players []Player) []combatHisto
 		players:   players,
 		histories: make([]combatHistory, len(players)),
 		died:      make(map[int]int),
+		finished:  make(map[int]bool),
 	}
 	for _, event := range eventsFile.Events {
 		switch {
+		case event.UnitCreated != nil:
+			delete(tracker.finished, event.UnitCreated.UnitID)
+		case event.UnitFinished != nil:
+			tracker.finished[event.UnitFinished.UnitID] = true
 		case event.TeamDied != nil:
 			if _, ok := tracker.died[event.TeamDied.TeamID]; !ok {
 				tracker.died[event.TeamDied.TeamID] = event.Frame
@@ -106,12 +118,16 @@ func newCombatHistories(eventsFile *events.File, players []Player) []combatHisto
 
 // addDeath adds the destroyed unit of unitDef, which died at frame, as a kill to the player whose unit killed it,
 // unless that player is its own or an ally, and as a loss to its player, unless its metal came back (isRefunded). A
-// unit of a dead team is neither.
+// unit of a dead team is neither. A reclaimed unit which was finished counts with build progress 1 (see Combat).
 func (t *combatTracker) addDeath(frame int, destroyed *events.UnitDestroyed, unitDef events.UnitDef) {
 	if diedAt, ok := t.died[destroyed.UnitTeam]; ok && frame >= diedAt {
 		return
 	}
-	metal := unitDef.MetalCost * destroyed.BuildProgress
+	buildProgress := destroyed.BuildProgress
+	if destroyed.WeaponDefID == events.EnvDamageReclaimed && t.finished[destroyed.UnitID] {
+		buildProgress = 1
+	}
+	metal := unitDef.MetalCost * buildProgress
 	attacker := -1
 	if destroyed.AttackerTeam != nil && t.isPlayer(*destroyed.AttackerTeam) {
 		attacker = *destroyed.AttackerTeam
