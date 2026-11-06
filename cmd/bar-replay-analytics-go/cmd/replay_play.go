@@ -220,7 +220,7 @@ func playReplay(ctx context.Context, player *playback.Player, filePath string) (
 	printStatus("starting", replay.Name, fmt.Sprintf("engine %s, %s, %s, %s", replay.EngineVersion, replay.GameType,
 		replay.MapName, length))
 
-	result, err := player.Play(ctx, replay)
+	result, err := player.Play(ctx, log, replay)
 	if err != nil {
 		return "failed", err.Error()
 	}

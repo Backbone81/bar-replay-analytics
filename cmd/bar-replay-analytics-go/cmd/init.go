@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/coaching"
-	"github.com/backbone81/bar-replay-analytics-go/internal/newfiles"
+	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
 // initCmd writes the workspace of an AI agent that coaches a player into the current folder.
@@ -15,22 +15,13 @@ var initCmd = &cobra.Command{
 the templates player.md and training-log.md, and work/ for intermediate output. Start the agent in this folder
 afterwards.
 
-Only missing files are created; existing ones are left unchanged and reported as errors.`,
+Never overwrites a file: stops with an error at the first one that exists.`,
 	Args: cobra.NoArgs,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		created, err := newfiles.Write(coaching.Template, ".")
-		printCreated(created)
-		return err
+		return utils.WriteTemplate(log, coaching.Template, ".")
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(initCmd)
-}
-
-// printCreated prints a "created" line for each of the files in filePaths.
-func printCreated(filePaths []string) {
-	for _, filePath := range filePaths {
-		printField("created", filePath)
-	}
 }

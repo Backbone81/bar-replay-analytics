@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,8 +16,8 @@ import (
 	"time"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/events"
-	"github.com/backbone81/bar-replay-analytics-go/internal/newfiles"
 	"github.com/backbone81/bar-replay-analytics-go/internal/playback/widget"
+	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
 // analyticsFailed is the analytics widget's message when it cannot open its events file.
@@ -64,7 +65,7 @@ func (r *Result) GameOver() bool {
 // events file, and otherwise a Result, also if the playback did not reach the end of the game (see Result.GameOver).
 // Several Play calls may run at the same time, but not for the same replay file, as their events files would be the
 // same. Cancelling ctx stops the engine.
-func (p *Player) Play(ctx context.Context, replay *Replay) (*Result, error) {
+func (p *Player) Play(ctx context.Context, log *slog.Logger, replay *Replay) (*Result, error) {
 	result := &Result{
 		EventsFile: replay.EventsFilePath(),
 		LogFile:    replay.LogFilePath(),
@@ -74,7 +75,7 @@ func (p *Player) Play(ctx context.Context, replay *Replay) (*Result, error) {
 		return nil, err
 	}
 
-	writeDir, err := p.MakeWriteDir()
+	writeDir, err := p.MakeWriteDir(log)
 	if err != nil {
 		return nil, err
 	}
@@ -113,13 +114,13 @@ func (p *Player) Play(ctx context.Context, replay *Replay) (*Result, error) {
 // The widget goes into the same folder name as an installed one: the engine lists a path present in both the write
 // dir and a data dir once, from the write dir, so the embedded widget replaces the installed one. Under another name
 // BAR would load both and reject the second as a duplicate.
-func (p *Player) MakeWriteDir() (string, error) {
+func (p *Player) MakeWriteDir(log *slog.Logger) (string, error) {
 	writeDir, err := os.MkdirTemp("", "bar-replay-analytics-*")
 	if err != nil {
 		return "", err
 	}
 
-	if err := p.fillWriteDir(writeDir); err != nil {
+	if err := p.fillWriteDir(log, writeDir); err != nil {
 		_ = os.RemoveAll(writeDir)
 		return "", err
 	}
@@ -127,7 +128,7 @@ func (p *Player) MakeWriteDir() (string, error) {
 }
 
 // fillWriteDir implements MakeWriteDir for the folder writeDir.
-func (p *Player) fillWriteDir(writeDir string) error {
+func (p *Player) fillWriteDir(log *slog.Logger, writeDir string) error {
 	archiveCaches, err := filepath.Glob(filepath.Join(p.dataDir, "cache", "ArchiveCache*.lua"))
 	if err != nil {
 		return err
@@ -149,8 +150,7 @@ func (p *Player) fillWriteDir(writeDir string) error {
 		return err
 	}
 
-	_, err = newfiles.Write(widget.Template, p.writeDirWidgetDir(writeDir))
-	return err
+	return utils.WriteTemplate(log, widget.Template, p.writeDirWidgetDir(writeDir))
 }
 
 // writeDirWidgetDir returns the folder of the embedded analytics widget in the write dir writeDir.

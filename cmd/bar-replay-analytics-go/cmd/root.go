@@ -7,10 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/logger"
 	"github.com/spf13/cobra"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/datadir"
+	"github.com/backbone81/bar-replay-analytics-go/internal/logger"
 )
 
 var (
