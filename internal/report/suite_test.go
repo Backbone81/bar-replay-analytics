@@ -48,8 +48,9 @@ func newTestDemo() *demo.Demo {
 	}
 }
 
-// newTestEventsFile returns an events file of the game of newTestDemo, in which player 0 starts with a Cortex commander
-// and player 1, Random in the setup script, with an Armada one. Each builds a metal extractor, player 0 also a bot lab,
+// newTestEventsFile returns an events file of the game of newTestDemo on a map of 8192 x 8192 elmos, in which player 0
+// starts with a Cortex commander in the bottom left cell A4 of the map grid and player 1, Random in the setup script,
+// with an Armada one in the top right cell D1. Each builds a metal extractor, player 0 also a bot lab,
 // and after the opening build order of 5 minutes (frame 9000) a construction bot. Player 0 has enough resources for its
 // metal extractor and its construction bot (build rate 1) and gets help with its bot lab (2), player 1 lacks resources
 // for its metal extractor (0.83). The ID of the metal extractor of player 0 is reused after it died, for a commander
@@ -57,9 +58,9 @@ func newTestDemo() *demo.Demo {
 func newTestEventsFile() *events.File {
 	return &events.File{
 		Events: []events.Event{
-			{Frame: 0, UnitCreated: &events.UnitCreated{UnitID: 100, UnitDefID: 1, UnitTeam: 0}},
+			{Frame: 0, UnitCreated: &events.UnitCreated{UnitID: 100, UnitDefID: 1, UnitTeam: 0, X: 1698, Z: 6452}},
 			{Frame: 0, UnitFinished: &events.UnitFinished{UnitID: 100, UnitDefID: 1, UnitTeam: 0}},
-			{Frame: 0, UnitCreated: &events.UnitCreated{UnitID: 200, UnitDefID: 5, UnitTeam: 1}},
+			{Frame: 0, UnitCreated: &events.UnitCreated{UnitID: 200, UnitDefID: 5, UnitTeam: 1, X: 6552, Z: 1798}},
 			{Frame: 0, UnitFinished: &events.UnitFinished{UnitID: 200, UnitDefID: 5, UnitTeam: 1}},
 			{Frame: 30, UnitCreated: &events.UnitCreated{UnitID: 101, UnitDefID: 2, UnitTeam: 0, BuilderID: new(100)}},
 			{Frame: 60, UnitCreated: &events.UnitCreated{UnitID: 201, UnitDefID: 6, UnitTeam: 1, BuilderID: new(200)}},
@@ -75,6 +76,8 @@ func newTestEventsFile() *events.File {
 		},
 		Game: events.Game{
 			MapName:     "Argent Strata 1.1",
+			MapSizeX:    8192,
+			MapSizeZ:    8192,
 			GameName:    "Beyond All Reason",
 			GameVersion: "test-31756-0d4c3c3",
 		},

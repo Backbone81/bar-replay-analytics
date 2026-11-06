@@ -47,6 +47,10 @@ type Player struct {
 	// as Economy.
 	Combat Combat `json:"combat"`
 
+	// LossLocations provides where the player lost units and buildings, by the cells of Report.MapGrid: one interval
+	// for the opening (Config.OpeningLength), as there is little fighting in it, then the intervals of Economy.
+	LossLocations []LossLocationInterval `json:"lossLocations"`
+
 	// Resurrection provides the metal value of the units this player resurrected and the energy that cost, over the
 	// game and in the same intervals as Economy.
 	Resurrection Resurrection `json:"resurrection"`

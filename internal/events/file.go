@@ -62,14 +62,17 @@ func ReadFile(filePath string) (*File, error) {
 	return Read(file)
 }
 
-// Validate returns an error if the file is incomplete, the game did not end, an event is invalid, the frames go
-// backwards, or an event or team refers to a unit def that is not in UnitDefs.
+// Validate returns an error if the file is incomplete, the game did not end, the map has no size, an event is invalid,
+// the frames go backwards, or an event or team refers to a unit def that is not in UnitDefs.
 func (f *File) Validate() error {
 	if f.End == nil {
 		return errors.New("events: no end, the events file is incomplete")
 	}
 	if f.End.Reason != EndReasonGameOver {
 		return fmt.Errorf("events: ended at frame %d with reason %q, not %q", f.End.Frame, f.End.Reason, EndReasonGameOver)
+	}
+	if f.Game.MapSizeX <= 0 || f.Game.MapSizeZ <= 0 {
+		return fmt.Errorf("events: map size %d x %d, want both > 0", f.Game.MapSizeX, f.Game.MapSizeZ)
 	}
 	lastFrame := 0
 	for i, event := range f.Events {

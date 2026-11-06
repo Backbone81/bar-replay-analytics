@@ -285,6 +285,16 @@ var _ = Describe("Report", func() {
 					"modOptions": {"date_day": "29"},
 					"mapOptions": {}
 				},
+				"mapGrid": {
+					"mapSize": {"x": 8192, "z": 8192},
+					"columns": 4,
+					"rows": 4,
+					"cellSize": {"x": 2048, "z": 2048},
+					"startPositions": [
+						{"playerID": 0, "cell": "A4", "x": 1698, "z": 6452},
+						{"playerID": 1, "cell": "D1", "x": 6552, "z": 1798}
+					]
+				},
 				"teams": [
 					{
 						"teamID": 0,
@@ -311,9 +321,33 @@ var _ = Describe("Report", func() {
 							"intervals": []
 						},
 						"combat": {
-							"total": {"killed": {"count": 0, "metal": 0}, "lost": {"count": 1, "metal": 50}},
-							"intervals": [{"time": "0:00-1:00", "killed": {"count": 0, "metal": 0}, "lost": {"count": 1, "metal": 50}}]
+							"total": {
+								"killed": {"count": 0, "metal": 0},
+								"lost": {"count": 1, "metal": 50},
+								"unitTypes": [` + lostMetalExtractorJSON + `]
+							},
+							"intervals": [
+								{
+									"time": "0:00-1:00",
+									"killed": {"count": 0, "metal": 0},
+									"lost": {"count": 1, "metal": 50},
+									"unitTypes": [` + lostMetalExtractorJSON + `]
+								}
+							]
 						},
+						"lossLocations": [
+							{
+								"time": "0:00-1:00",
+								"cells": [
+									{
+										"cell": "A1",
+										"units": {"count": 0, "metal": 0},
+										"buildings": {"count": 1, "metal": 50},
+										"killedByBuildings": {"count": 0, "metal": 0}
+									}
+								]
+							}
+						],
 						"resurrection": {
 							"total": {"metalValue": 0, "energySpent": 0},
 							"intervals": [{"time": "0:00-1:00", "metalValue": 0, "energySpent": 0}]
@@ -367,9 +401,17 @@ var _ = Describe("Report", func() {
 							"intervals": []
 						},
 						"combat": {
-							"total": {"killed": {"count": 0, "metal": 0}, "lost": {"count": 0, "metal": 0}},
-							"intervals": [{"time": "0:00-1:00", "killed": {"count": 0, "metal": 0}, "lost": {"count": 0, "metal": 0}}]
+							"total": {"killed": {"count": 0, "metal": 0}, "lost": {"count": 0, "metal": 0}, "unitTypes": []},
+							"intervals": [
+								{
+									"time": "0:00-1:00",
+									"killed": {"count": 0, "metal": 0},
+									"lost": {"count": 0, "metal": 0},
+									"unitTypes": []
+								}
+							]
 						},
+						"lossLocations": [{"time": "0:00-1:00", "cells": []}],
 						"resurrection": {
 							"total": {"metalValue": 0, "energySpent": 0},
 							"intervals": [{"time": "0:00-1:00", "metalValue": 0, "energySpent": 0}]
@@ -424,6 +466,14 @@ func newHostedEventsFile() *events.File {
 	eventsFile.Game.GameVersion = "test-31691-a617033"
 	return eventsFile
 }
+
+// lostMetalExtractorJSON is the unit type of a Metal Extractor lost without attacker, as JSON.
+const lostMetalExtractorJSON = `{
+	"name": "Metal Extractor",
+	"killed": {"count": 0, "metal": 0},
+	"lost": {"count": 1, "metal": 50},
+	"killedBy": []
+}`
 
 // zeroResourcesJSON is the members of Resources with all amounts 0, as JSON.
 const zeroResourcesJSON = `

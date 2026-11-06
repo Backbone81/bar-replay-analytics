@@ -9,8 +9,10 @@
 // version and the game options as the script holds them), the teams, and per player its name, income multiplier and AI
 // from the setup script, its economy from its TeamStatistics history (totals and averages per second over the game and
 // per interval), and from the events the units it killed and lost with their metal (in total and per interval of the
-// economy), the metal extractors it held at the end of each interval, the faction it played, its build order in the
-// opening (the units and buildings it finished) and when it finished its first unit of each unit def over the game.
+// economy, also by its unit types with the enemy unit types which killed them), where it lost units and buildings on a
+// grid over the map (MapGrid, which also holds every player's start), the metal extractors it held at the end of each
+// interval, the faction it played, its build order in the opening (the units and buildings it finished) and when it
+// finished its first unit of each unit def over the game.
 // NewReport first takes the faction chosen in the lobby from the setup script, then overwrites it with the one of the
 // player's start unit in the events, so a disagreement shows when stepping through it.
 //

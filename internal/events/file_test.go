@@ -17,7 +17,12 @@ var _ = Describe("File", func() {
 				Events: []events.Event{
 					{Frame: 30, UnitFinished: &events.UnitFinished{UnitID: 2858, UnitDefID: 101, UnitTeam: 0}},
 				},
-				Game:     events.Game{MapName: "Argent Strata 1.1", MaxUnits: 32000},
+				Game: events.Game{
+					MapName:  "Argent Strata 1.1",
+					MapSizeX: 8192,
+					MapSizeZ: 8192,
+					MaxUnits: 32000,
+				},
 				Teams:    []events.Team{{TeamID: 0, StartUnit: new(101), Name: "Player"}},
 				UnitDefs: map[int]events.UnitDef{101: {Name: "corcom"}},
 				End:      &events.End{Frame: 1800, Reason: events.EndReasonGameOver},
@@ -47,6 +52,12 @@ var _ = Describe("File", func() {
 			stalledEnd := `{"frame":1800,"reason":"stalled"}`
 
 			Expect(events.Read(strings.NewReader(document(stalledEnd, unitFinished)))).Error().To(HaveOccurred())
+		})
+
+		It("rejects a map without size", func() {
+			data := strings.Replace(document(gameOverEnd), `"mapSizeZ":8192`, `"mapSizeZ":0`, 1)
+
+			Expect(events.Read(strings.NewReader(data))).Error().To(HaveOccurred())
 		})
 
 		It("rejects an event with two types", func() {
@@ -100,7 +111,7 @@ const unitFinished = `{"frame":30,"unitFinished":{"unitID":2858,"unitDefID":101,
 // document returns an events file with end and the events, as the widget writes it, with one team and one unit def.
 func document(end string, events ...string) string {
 	return "{\"events\":[\n" + strings.Join(events, ",\n") + "\n]," +
-		`"game":{"mapName":"Argent Strata 1.1","maxUnits":32000},` +
+		`"game":{"mapName":"Argent Strata 1.1","mapSizeX":8192,"mapSizeZ":8192,"maxUnits":32000},` +
 		`"teams":[{"teamID":0,"startUnit":101,"name":"Player"}],` +
 		`"unitDefs":{"101":{"name":"corcom"}},` +
 		`"end":` + end + "}\n"

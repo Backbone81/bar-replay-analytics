@@ -38,29 +38,89 @@ var _ = Describe("Combat", func() {
 
 		Expect(err).NotTo(HaveOccurred())
 		// The metal extractor of player 0 dies at 1:40 without attacker, the half-built construction bot at 1:00, at
-		// the end of the second interval.
+		// the end of the second interval, killed by the Armada Commander.
+		constructionBot := report.UnitTypeCasualties{
+			Name:     "Construction Bot",
+			Lost:     report.DeadUnits{Count: 1, Metal: 55},
+			KilledBy: []string{"Armada Commander"},
+		}
+		commander := report.UnitTypeCasualties{
+			Name:     "Cortex Commander",
+			Killed:   report.DeadUnits{Count: 1, Metal: 50},
+			KilledBy: []string{},
+		}
+		metalExtractor := report.UnitTypeCasualties{
+			Name:     "Metal Extractor",
+			Lost:     report.DeadUnits{Count: 1, Metal: 50},
+			KilledBy: []string{},
+		}
 		Expect(result.Players[0].Combat).To(Equal(report.Combat{
 			Total: report.Casualties{
-				Killed: report.DeadUnits{Count: 1, Metal: 50},
-				Lost:   report.DeadUnits{Count: 2, Metal: 105},
+				Killed:    report.DeadUnits{Count: 1, Metal: 50},
+				Lost:      report.DeadUnits{Count: 2, Metal: 105},
+				UnitTypes: []report.UnitTypeCasualties{constructionBot, commander, metalExtractor},
 			},
 			Intervals: []report.CombatInterval{
-				{Time: interval(0, 30)},
+				{Time: interval(0, 30), Casualties: noCasualties()},
 				{
 					Time: interval(30, 60),
 					Casualties: report.Casualties{
-						Killed: report.DeadUnits{Count: 1, Metal: 50},
-						Lost:   report.DeadUnits{Count: 1, Metal: 55},
+						Killed:    report.DeadUnits{Count: 1, Metal: 50},
+						Lost:      report.DeadUnits{Count: 1, Metal: 55},
+						UnitTypes: []report.UnitTypeCasualties{constructionBot, commander},
 					},
 				},
-				{Time: interval(60, 90)},
-				{Time: interval(90, 120), Casualties: report.Casualties{Lost: report.DeadUnits{Count: 1, Metal: 50}}},
-				{Time: interval(120, 150)},
+				{Time: interval(60, 90), Casualties: noCasualties()},
+				{
+					Time: interval(90, 120),
+					Casualties: report.Casualties{
+						Lost:      report.DeadUnits{Count: 1, Metal: 50},
+						UnitTypes: []report.UnitTypeCasualties{metalExtractor},
+					},
+				},
+				{Time: interval(120, 150), Casualties: noCasualties()},
 			},
 		}))
-		Expect(result.Players[1].Combat.Total).To(Equal(report.Casualties{
+		Expect(totals(result.Players[1].Combat.Total)).To(Equal(report.Casualties{
 			Killed: report.DeadUnits{Count: 1, Metal: 55},
 			Lost:   report.DeadUnits{Count: 1, Metal: 50},
+		}))
+		Expect(result.Players[1].Combat.Total.UnitTypes).To(Equal([]report.UnitTypeCasualties{
+			{Name: "Armada Commander", Killed: report.DeadUnits{Count: 1, Metal: 55}, KilledBy: []string{}},
+			{
+				Name:     "Metal Extractor",
+				Lost:     report.DeadUnits{Count: 1, Metal: 50},
+				KilledBy: []string{"Cortex Commander"},
+			},
+		}))
+	})
+
+	It("lists the unit types which killed the most metal of a unit type, at most three", func() {
+		eventsFile := newTestEventsFile()
+		eventsFile.UnitDefs[11] = events.UnitDef{Name: "armpw", TranslatedHumanName: "Pawn", MetalCost: 50, CanMove: true}
+		eventsFile.UnitDefs[12] = events.UnitDef{Name: "armllt", TranslatedHumanName: "Sentinel", MetalCost: 80}
+		eventsFile.UnitDefs[13] = events.UnitDef{Name: "armham", TranslatedHumanName: "Mace", MetalCost: 110, CanMove: true}
+		var added []events.Event
+		// Six construction bots of player 0 from its bot lab, killed by a Pawn, two Sentinels, a Mace, its own Cortex
+		// Commander and the Armada Commander. Of the killers with the same metal, the first by name are listed.
+		for i, attackerDefID := range []int{11, 12, 12, 13, 1, 5} {
+			unitID := 110 + i
+			killed := unitKilled(3100+i, unitID, 4, 0, 1)
+			killed.UnitDestroyed.AttackerDefID = new(attackerDefID)
+			if attackerDefID == 1 {
+				killed.UnitDestroyed.AttackerTeam = new(0)
+			}
+			added = append(added, unitCreated(2800+i, unitID, 4, 102), unitFinished(3000+i, unitID, 4), killed)
+		}
+		addEvents(eventsFile, added...)
+
+		result, err := newIntervalReport(eventsFile)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result.Players[0].Combat.Total.UnitTypes[0]).To(Equal(report.UnitTypeCasualties{
+			Name:     "Construction Bot",
+			Lost:     report.DeadUnits{Count: 6, Metal: 660},
+			KilledBy: []string{"Sentinel", "Armada Commander", "Mace"},
 		}))
 	})
 
@@ -71,7 +131,12 @@ var _ = Describe("Combat", func() {
 		result, err := newIntervalReport(eventsFile)
 
 		Expect(err).NotTo(HaveOccurred())
-		Expect(result.Players[0].Combat.Total).To(Equal(report.Casualties{Lost: report.DeadUnits{Count: 1, Metal: 50}}))
+		Expect(totals(result.Players[0].Combat.Total)).To(Equal(report.Casualties{
+			Lost: report.DeadUnits{Count: 1, Metal: 50},
+		}))
+		Expect(result.Players[0].Combat.Total.UnitTypes).To(Equal([]report.UnitTypeCasualties{
+			{Name: "Metal Extractor", Lost: report.DeadUnits{Count: 1, Metal: 50}, KilledBy: []string{}},
+		}))
 	})
 
 	It("counts a self-destructed unit as lost", func() {
@@ -81,7 +146,9 @@ var _ = Describe("Combat", func() {
 		result, err := newIntervalReport(eventsFile)
 
 		Expect(err).NotTo(HaveOccurred())
-		Expect(result.Players[0].Combat.Total).To(Equal(report.Casualties{Lost: report.DeadUnits{Count: 1, Metal: 50}}))
+		Expect(totals(result.Players[0].Combat.Total)).To(Equal(report.Casualties{
+			Lost: report.DeadUnits{Count: 1, Metal: 50},
+		}))
 	})
 
 	It("does not count a unit its own player reclaimed", func() {
@@ -91,7 +158,7 @@ var _ = Describe("Combat", func() {
 		result, err := newIntervalReport(eventsFile)
 
 		Expect(err).NotTo(HaveOccurred())
-		Expect(result.Players[0].Combat.Total).To(BeZero())
+		Expect(result.Players[0].Combat.Total).To(Equal(noCasualties()))
 	})
 
 	It("counts a unit an enemy reclaimed as lost and as killed by the enemy, with its whole metal cost", func() {
@@ -101,8 +168,12 @@ var _ = Describe("Combat", func() {
 		result, err := newIntervalReport(eventsFile)
 
 		Expect(err).NotTo(HaveOccurred())
-		Expect(result.Players[0].Combat.Total).To(Equal(report.Casualties{Lost: report.DeadUnits{Count: 1, Metal: 50}}))
-		Expect(result.Players[1].Combat.Total).To(Equal(report.Casualties{Killed: report.DeadUnits{Count: 1, Metal: 50}}))
+		Expect(totals(result.Players[0].Combat.Total)).To(Equal(report.Casualties{
+			Lost: report.DeadUnits{Count: 1, Metal: 50},
+		}))
+		Expect(totals(result.Players[1].Combat.Total)).To(Equal(report.Casualties{
+			Killed: report.DeadUnits{Count: 1, Metal: 50},
+		}))
 	})
 
 	It("counts an unfinished unit an enemy reclaimed without metal", func() {
@@ -118,7 +189,9 @@ var _ = Describe("Combat", func() {
 		result, err := newIntervalReport(eventsFile)
 
 		Expect(err).NotTo(HaveOccurred())
-		Expect(result.Players[1].Combat.Total).To(Equal(report.Casualties{Killed: report.DeadUnits{Count: 1}}))
+		Expect(totals(result.Players[1].Combat.Total)).To(Equal(report.Casualties{
+			Killed: report.DeadUnits{Count: 1},
+		}))
 	})
 
 	It("does not count a metal extractor replaced by an upgrade", func() {
@@ -128,7 +201,7 @@ var _ = Describe("Combat", func() {
 		result, err := newIntervalReport(eventsFile)
 
 		Expect(err).NotTo(HaveOccurred())
-		Expect(result.Players[0].Combat.Total).To(BeZero())
+		Expect(result.Players[0].Combat.Total).To(Equal(noCasualties()))
 	})
 
 	It("counts neither as lost nor as killed the units removed from a dead player", func() {
@@ -139,8 +212,8 @@ var _ = Describe("Combat", func() {
 		result, err := newIntervalReport(eventsFile)
 
 		Expect(err).NotTo(HaveOccurred())
-		Expect(result.Players[0].Combat.Total).To(BeZero())
-		Expect(result.Players[1].Combat.Total).To(BeZero())
+		Expect(result.Players[0].Combat.Total).To(Equal(noCasualties()))
+		Expect(result.Players[1].Combat.Total).To(Equal(noCasualties()))
 	})
 
 	It("counts a death after the last interval in the last interval", func() {
@@ -163,7 +236,12 @@ var _ = Describe("Combat", func() {
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(result.Players[0].Economy).To(BeNil())
-		lost := report.Casualties{Lost: report.DeadUnits{Count: 1, Metal: 50}}
+		lost := report.Casualties{
+			Lost: report.DeadUnits{Count: 1, Metal: 50},
+			UnitTypes: []report.UnitTypeCasualties{
+				{Name: "Metal Extractor", Lost: report.DeadUnits{Count: 1, Metal: 50}, KilledBy: []string{}},
+			},
+		}
 		Expect(result.Players[0].Combat).To(Equal(report.Combat{
 			Total:     lost,
 			Intervals: []report.CombatInterval{{Time: interval(0, 60), Casualties: lost}},
@@ -181,6 +259,17 @@ var _ = Describe("Combat", func() {
 		Expect(result.Players[0].Combat.Intervals).To(BeEmpty())
 	})
 })
+
+// noCasualties returns the casualties of a player which killed and lost nothing.
+func noCasualties() report.Casualties {
+	return report.Casualties{UnitTypes: []report.UnitTypeCasualties{}}
+}
+
+// totals returns casualties without their unit types.
+func totals(casualties report.Casualties) report.Casualties {
+	casualties.UnitTypes = nil
+	return casualties
+}
 
 // unitKilled returns the event of the finished unit with unitID and unitDefID of the player unitTeam dying at frame,
 // killed by a weapon of the commander of the player attackerTeam (unit ID 100 for player 0, 200 for player 1).

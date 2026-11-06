@@ -29,6 +29,9 @@ type Config struct {
 
 	// IdleStretchLength is the shortest idle stretch of a builder Builder.IdleStretches lists. Must be positive.
 	IdleStretchLength time.Duration
+
+	// MapGridCellSize is the longest side of a cell of the MapGrid, in elmos. Must be positive.
+	MapGridCellSize int
 }
 
 // DefaultConfig is the configuration NewReport starts from.
@@ -43,12 +46,17 @@ type Config struct {
 //
 // IdleStretchLength is 1 minute: shorter gaps between orders are normal, while a builder idle for a minute or more is
 // one the player forgot, which is what a coach points at.
+//
+// MapGridCellSize is 2048 elmos (4 map units of 512 elmos, as the lobby gives map sizes): the reach of one or two
+// defences, more than a cluster of metal spots, less than a base with its outer metal extractors. BAR's maps are 3072
+// to 16384 elmos along a side, so a grid has 2 to 8 columns and rows; a 1v1 map of 8192 x 8192 has 4 x 4.
 var DefaultConfig = Config{
 	OpeningLength:           10 * time.Minute,
 	OpeningIntervalLength:   time.Minute,
 	IntervalLength:          5 * time.Minute,
 	OpeningBuildOrderLength: 5 * time.Minute,
 	IdleStretchLength:       time.Minute,
+	MapGridCellSize:         2048,
 }
 
 // Validate returns an error if a length of the configuration is invalid.
@@ -67,6 +75,9 @@ func (c Config) Validate() error {
 	}
 	if c.IdleStretchLength <= 0 {
 		return fmt.Errorf("idle stretch length: got %v, want > 0", c.IdleStretchLength)
+	}
+	if c.MapGridCellSize <= 0 {
+		return fmt.Errorf("map grid cell size: got %d, want > 0", c.MapGridCellSize)
 	}
 	return nil
 }

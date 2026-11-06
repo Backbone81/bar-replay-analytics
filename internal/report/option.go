@@ -39,3 +39,10 @@ func WithIdleStretchLength(idleStretchLength time.Duration) Option {
 		config.IdleStretchLength = idleStretchLength
 	}
 }
+
+// WithMapGridCellSize sets Config.MapGridCellSize.
+func WithMapGridCellSize(mapGridCellSize int) Option {
+	return func(config *Config) {
+		config.MapGridCellSize = mapGridCellSize
+	}
+}

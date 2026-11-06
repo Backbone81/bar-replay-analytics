@@ -14,6 +14,9 @@ type Report struct {
 	// Metadata describes the game.
 	Metadata Metadata `json:"metadata"`
 
+	// MapGrid divides the map into the cells Player.LossLocations refers to, and tells where each player started.
+	MapGrid MapGrid `json:"mapGrid"`
+
 	// Teams provides every team but Gaia's, indexed by team ID.
 	Teams []Team `json:"teams"`
 
@@ -80,9 +83,11 @@ func NewReport(
 		return nil, fmt.Errorf("events: %w", err)
 	}
 	combatHistories := newCombatHistories(eventsFile, players)
+	mapGrid := newMapGrid(eventsFile, len(players), config)
 	resurrectionHistories := newResurrectionHistories(eventsFile, len(players))
 	endFrame := int(replay.FileHeader.GameTime) * GameSpeed
 	spans := newIntervalSpans(endFrame, int(replay.FileHeader.TeamStatPeriod), config)
+	lossSpans := lossLocationSpans(spans, config)
 	for i := range players {
 		players[i].setFactionFromStartUnit(eventsFile)
 		players[i].Economy = newEconomy(
@@ -93,6 +98,7 @@ func NewReport(
 			endFrame,
 		)
 		players[i].Combat = newCombat(combatHistories[i], spans)
+		players[i].LossLocations = newLossLocations(combatHistories[i], mapGrid, lossSpans)
 		players[i].Resurrection = newResurrection(resurrectionHistories[i], spans)
 		players[i].OpeningBuildOrder = buildOrders[i]
 		players[i].FirstFinished = firstFinished[i]
@@ -104,6 +110,7 @@ func NewReport(
 
 	return &Report{
 		Metadata: metadata,
+		MapGrid:  mapGrid,
 		Teams:    teams,
 		Players:  players,
 	}, nil

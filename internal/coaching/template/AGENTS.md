@@ -63,9 +63,9 @@ BAR saves every game as a `.sdfz` file in `demos/` of the data directory. Comman
 4. **Get the report.** `replay report <replay> > work/<replay name>.json`: the game aggregated for coaching (see "What
    the report holds"). Start every analysis from the report.
 5. **Dig deeper if needed.** The events file holds every unit's creation, completion, death (with position and killer)
-   and command. Query it for what the report does not show, e.g. where losses happened, which enemy units killed the
-   most metal or how long factories stood idle. The file is several megabytes: never read it whole, query it with a
-   short script (or `jq`) that prints only the aggregated result.
+   and command. Query it for what the report does not show, e.g. how long factories stood idle, or where within a
+   cell of the map grid units died. The file is several megabytes: never read it whole, query it with a short script
+   (or `jq`) that prints only the aggregated result.
 
 ## What the report holds
 
@@ -77,7 +77,12 @@ Per player, all names as the BAR UI shows them (use these names with the player,
 - **Metal extractors** held at the end of each interval, tech 1 and tech 2 apart.
 - **Builders:** per interval, how many commanders and tech 1 and tech 2 constructors were alive and idle. Per builder,
   its idle time and longer idle stretches with game times, and what it built.
-- **Combat:** units killed and lost, with their metal, in total and per interval.
+- **Combat:** units killed and lost, with their metal, in total and per interval, also by the player's unit types:
+  what each type killed and lost, and the enemy types that killed it most.
+- **Loss locations:** where the player lost units and buildings, by the cells of `mapGrid` (columns A, B, ... left to
+  right, rows 1, 2, ... top to bottom as on the minimap, cells of at most 2048 elmos), and how much of it buildings
+  (static defences, long-range weapons) killed. One interval for the first 10 minutes, then the 5-minute intervals.
+  `mapGrid` also tells each player's start cell.
 - **Resurrection:** `metalValue`, what the units the player's resurrection bots brought back from wrecks would have
   cost to build, and `energySpent`, what resurrecting them cost (half the units' energy cost, no metal), in total and
   per interval.
@@ -85,7 +90,7 @@ Per player, all names as the BAR UI shows them (use these names with the player,
   finished over the whole game.
 - **Metadata:** map, game version, length, winner, game options, income multipliers and AI difficulty.
 
-The report has no factories, no positions and no unit types of kills and losses: for those, query the events file.
+The report has no factories and no positions finer than a cell of the map grid: for those, query the events file.
 
 Reading the JSON:
 
@@ -139,8 +144,10 @@ builders busy, not in fighting.
    fell into intervals where resources piled up.
 5. **Tech timing.** When the first tech 2 factory and tech 2 constructor were finished, against income, not the clock:
    a switch too early stalls the economy, too late leaves resources unspent.
-6. **Fights.** Metal killed against lost per interval. Where were the big losses (events: position, killer)? Was it
-   a lost fight, units walking into defenses, or an undefended expansion? Was the commander at risk?
+6. **Fights.** Metal killed against lost per interval, and per unit type: which types paid off, which enemy types
+   killed them. Where were the big losses (`lossLocations` against the start cells)? Was it a lost fight, units
+   walking into defenses (losses in an enemy's start cell, killed by buildings), or an undefended expansion? Was the
+   commander at risk?
 7. **Precautions.** Anti-air, radar and an anti-nuke when the opponent could afford a nuke. If the player wants to play
    against humans, keep this advice even when this opponent never used air or nukes.
 8. **Opening.** The build order against the opponent's and against strong players on the same map.
@@ -157,10 +164,10 @@ deeper with the events file, against strong players' replays on the same map:
 - **Army and economy value over time:** metal in finished units still alive, split into army and economy, for both
   sides. It shows when the player was ahead, when the opponent was weak (after a lost fight or a switch to tech 2), and
   whether the player used that window.
-- **Trades by unit type:** metal killed against metal lost per unit type, to see which units paid off and which counter
-  the opponent built.
-- **Map control:** where metal extractors stood and where units died over time, to see where the front was and which
-  expansions were lost.
+- **Trades by unit type:** the report's unit types per interval show which units paid off and which counter the
+  opponent built; compare them with a strong player's on the same map.
+- **Map control:** where metal extractors stood (events) and where units died over time (`lossLocations`, both sides),
+  to see where the front was and which expansions were lost.
 - **Factory use:** idle time of factories, especially during fights, when attention is elsewhere.
 - **Timings:** tech 2 metal extractors, tech 3, long-range weapons and nukes, against income and against the opponent.
 
