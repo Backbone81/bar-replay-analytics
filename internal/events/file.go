@@ -10,14 +10,14 @@ import (
 
 // File is the content of an events file.
 type File struct {
-	// Events provides the events in the order the widget wrote them, which is the order of their frames.
+	// Events provides the events in frame order.
 	Events []Event `json:"events"`
 
 	// Game provides the game that was played.
 	Game Game `json:"game"`
 
 	// Sides provides the sides of the game.
-	// Is empty in a file of a widget from before it wrote them.
+	// Is empty in files of older widgets.
 	Sides []Side `json:"sides"`
 
 	// Teams provides every team but Gaia.
@@ -30,12 +30,11 @@ type File struct {
 	UnitDefs map[int]UnitDef `json:"unitDefs"`
 
 	// End provides when and why the widget stopped logging.
-	// Is nil if the file is incomplete, but Read rejects such a file.
+	// Is nil in an incomplete file, which Read rejects.
 	End *End `json:"end"`
 }
 
-// Read reads an events file from reader, parses and validates it.
-// Returns an error if the file is not valid JSON or validation fails.
+// Read parses an events file and validates it with File.Validate.
 func Read(reader io.Reader) (*File, error) {
 	data, err := io.ReadAll(reader)
 	if err != nil {
@@ -51,8 +50,7 @@ func Read(reader io.Reader) (*File, error) {
 	return &file, nil
 }
 
-// ReadFile opens the events file named by filePath and reads it with Read.
-// Returns an error if the file cannot be opened or validation fails.
+// ReadFile reads the events file at filePath with Read.
 func ReadFile(filePath string) (*File, error) {
 	file, err := os.Open(filePath) //nolint:gosec // Opening the file the caller names is the purpose of ReadFile.
 	if err != nil {

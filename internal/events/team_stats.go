@@ -1,9 +1,8 @@
 package events
 
-// TeamStats is one entry of a team's statistics history, as Spring.GetTeamStatsHistory returns it at the end of the
-// game: the engine records an entry every 15 s (teamStatPeriod) with the totals since the start of the game, the same
-// TeamStatistics a replay file holds (rts/Sim/Misc/TeamStatistics.h). The engine records them while it simulates, so a
-// playback has them also for a replay file without statistics.
+// TeamStats is one entry of a team's statistics history, from Spring.GetTeamStatsHistory at the end of the game: the
+// totals since the start, recorded by the engine every 15 s (TeamStatistics, rts/Sim/Misc/TeamStatistics.h, as in a
+// replay file's trailer). The engine records them while it simulates, so they exist also for a replay without stats.
 type TeamStats struct {
 	// Time is Frame in whole seconds.
 	Time int `json:"time"`

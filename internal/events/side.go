@@ -1,6 +1,6 @@
 package events
 
-// Side is a side of the game, as BAR calls it a faction, from Spring.GetSideData: the game's gamedata/sidedata.lua.
+// Side is a side (BAR: faction) from Spring.GetSideData, defined in the game's gamedata/sidedata.lua.
 type Side struct {
 	// SideName is the side's name in lowercase, e.g. "cortex", as Team.Side gives it.
 	SideName string `json:"sideName"`

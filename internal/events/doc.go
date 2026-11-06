@@ -1,5 +1,5 @@
-// Package events reads the events file the analytics widget of bar-replay-analytics (dbg_replay_analytics.lua) writes
-// while a replay is played back in a headless engine: <replay name>_events.json.
+// Package events reads the events file, <replay name>_events.json, that the analytics widget
+// (internal/playback/widget/template/dbg_replay_analytics.lua) writes while a replay plays back headless.
 //
 // The file is one JSON object:
 //
@@ -10,21 +10,17 @@
 //	],"game":{...},"sides":[...],"teams":[...],"teamStats":{"<teamID>":[...]},"unitDefs":{"<unitDefID>":{...}},
 //	"end":{"frame":48227,"reason":"gameover"}}
 //
-// Each event holds its game frame (GameSpeed frames per second) and its fields under one key, the event's name. Events
-// are named after the call-in or Spring function they come from, in lower camel case (unitCreated is
-// widget:UnitCreated), and so are their fields (unitTeam, attackerDefID). Event has one pointer per event type, so a
-// plain json.Unmarshal decodes them; the one that is set tells the type. An event of a type this package does not know
-// yet has no pointer set, so a newer widget's file can still be read. For the same reason, unknown fields are ignored.
+// Each event has its game frame (GameSpeed per second) and one key, its name, that holds its fields. Events are named
+// after the call-in they come from in lower camel case (unitCreated is widget:UnitCreated), fields after the call-in's
+// parameters (unitTeam, attackerDefID). Event has one pointer per event type, so json.Unmarshal decodes it as is.
+// Unknown event types and fields are ignored, so a newer widget's file can still be read.
 //
-// All events come from call-ins, the widget samples nothing. What does not change during the game, or the engine
-// already records, is not in the events but written once, after them: the game (Game), its sides (Side), the teams
-// (Team), each team's statistics history (TeamStats, every 15 s) and the unit defs the events refer to (File.UnitDefs,
-// by unitDefID as UnitDefs in Lua).
+// Every event comes from a call-in; the widget samples nothing. What does not change during the game, or what the
+// engine records itself, is written once after the events: Game, Sides, Teams, TeamStats (every 15 s) and the UnitDefs
+// the events and teams refer to.
 //
-// The widget writes End when it stops logging, with the reason. Read accepts only a file whose game ended
-// (EndReasonGameOver): a file without End is incomplete, the engine crashed or was stopped, and a file with any other
-// reason misses the rest of the game.
+// End says why the widget stopped logging. Read accepts only EndReasonGameOver: a file without End is incomplete (the
+// engine crashed or was stopped), and any other reason means the rest of the game is missing.
 //
-// Fields the widget leaves out because they have no value are pointers where the zero value is a valid value (e.g.
-// team 0), and zero values otherwise.
+// A field the widget leaves out is a pointer if its zero value is valid (e.g. team 0), else it reads as its zero value.
 package events

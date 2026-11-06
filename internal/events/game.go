@@ -1,6 +1,6 @@
 package events
 
-// Game is the game that was played, from the widget's Game table.
+// Game is the game that was played, from the engine's Lua Game table.
 type Game struct {
 	// MapName is the map's name, e.g. "Argent Strata 1.1".
 	MapName string `json:"mapName"`

@@ -33,7 +33,7 @@ type Team struct {
 	// Is nil if the game did not set it.
 	StartUnit *int `json:"startUnit,omitempty"`
 
-	// Name is the player's name, or for an AI its name and short name, e.g. "BARbarianAI(1) (UNKNOWN)": in a playback
-	// the engine gives no AI short name.
+	// Name is the player's name, for an AI "<name> (<short name>)", e.g. "BARbarianAI(1) (UNKNOWN)": a playback has
+	// no AI short names.
 	Name string `json:"name"`
 }
