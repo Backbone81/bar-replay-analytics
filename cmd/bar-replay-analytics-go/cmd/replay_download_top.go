@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ var (
 	replayDownloadTopGameType string
 	replayDownloadTopTop      int
 	replayDownloadTopDays     int
+	replayDownloadTopMaps     []string
 	replayDownloadTopDryRun   bool
 )
 
@@ -29,6 +31,11 @@ game type of the leaderboard only. A game counts as that game type if bar-db's p
 size the lobby server decides the game type by: duel 1v1, small-team two allyteams of up to 5 players, large-team two
 allyteams of more, ffa more than two allyteams of 1 player. Games with AIs and aborted games are left out; unrated
 games are included, as bar-db does not tell them apart.
+
+--map selects only the games on that map, given as the mapname of the start script ('replay script' shows it), such
+as "Argent Strata 1.1". The name must match exactly, case and map version included: another version of a map is
+another map. Repeat --map to select games on any of several maps. Fewer games are played on one map, so raise --days
+to find enough of them.
 
 The replays are stored under the file names of the replay storage in demos/leaderboard/ of the BAR data directory
 (see --dir). The BAR lobby lists only the replays directly in demos/, so these do not crowd its replay list.
@@ -94,6 +101,12 @@ func init() {
 		7,
 		"Select the games which started in the last days.",
 	)
+	flags.StringArrayVar(
+		&replayDownloadTopMaps,
+		"map",
+		nil,
+		"Select the games on this map, by its exact mapname, such as \"Argent Strata 1.1\". Repeat for several maps.",
+	)
 	flags.BoolVar(
 		&replayDownloadTopDryRun,
 		"dry-run",
@@ -110,6 +123,11 @@ func checkDownloadTopFlags() error {
 	if replayDownloadTopDays < 1 {
 		return fmt.Errorf("--days: got %d, want >= 1", replayDownloadTopDays)
 	}
+	for _, mapName := range replayDownloadTopMaps {
+		if strings.TrimSpace(mapName) == "" {
+			return errors.New("--map: got an empty map name")
+		}
+	}
 	return nil
 }
 
@@ -121,6 +139,9 @@ type topPlayers struct {
 
 	// since is the time from which on games are downloaded.
 	since time.Time
+
+	// maps are the maps of the games, by mapname, or nil for any map.
+	maps []string
 
 	// players are the best players, best first.
 	players []barlive.LeaderboardPlayer
@@ -150,12 +171,16 @@ func selectTopPlayers(ctx context.Context, client *barlive.Client) (*topPlayers,
 	selection := &topPlayers{
 		gameType: gameType,
 		since:    time.Now().Add(-time.Duration(replayDownloadTopDays) * 24 * time.Hour),
+		maps:     replayDownloadTopMaps,
 		players:  leaderboard.Players[:min(replayDownloadTopTop, len(leaderboard.Players))],
 	}
 
 	printField("season", season.Season)
 	printField("game type", gameTypeFlagName(gameType))
 	printField("since", selection.since.UTC().Format("2006-01-02 15:04 MST"))
+	if len(selection.maps) != 0 {
+		printField("maps", strings.Join(selection.maps, ", "))
+	}
 	printField("players", len(selection.players))
 	return selection, nil
 }
@@ -169,7 +194,7 @@ func (t *topPlayers) downloadPlayerReplays(
 	printField("player", fmt.Sprintf("%d. %s", rank, player.Name))
 
 	count := 0
-	for replay, err := range downloader.client.RecentReplays(ctx, player.Name, t.gameType, t.since) {
+	for replay, err := range downloader.client.RecentReplays(ctx, player.Name, t.gameType, t.since, t.maps) {
 		if err != nil {
 			return fmt.Errorf("replays of %s: %w", player.Name, err)
 		}

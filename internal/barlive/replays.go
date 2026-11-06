@@ -229,14 +229,15 @@ func (c *Client) AllReplays(ctx context.Context, query ReplaysQuery) iter.Seq2[R
 }
 
 // RecentReplays returns the replays of the games of gameType which player played in and which started at since or
-// later, newest first. player is a current account name, see ReplaysQuery.Players.
+// later, newest first. player is a current account name, see ReplaysQuery.Players. maps selects games on any of these
+// maps, by Map.ScriptName; nil selects any map.
 //
-// It selects in bar-db the preset of gameType (GameType.ReplayPreset), games without AIs which ended normally, and the
-// days from since to now; it then drops the replays which started before since or do not have the shape of gameType
-// (GameType.Matches). The rated and unrated games are both returned: bar-db does not tell them apart. Errors are
-// yielded as by AllReplays.
+// It selects in bar-db the preset of gameType (GameType.ReplayPreset), games without AIs which ended normally, the
+// maps, and the days from since to now; it then drops the replays which started before since or do not have the shape
+// of gameType (GameType.Matches). The rated and unrated games are both returned: bar-db does not tell them apart.
+// Errors are yielded as by AllReplays.
 func (c *Client) RecentReplays(
-	ctx context.Context, player string, gameType GameType, since time.Time,
+	ctx context.Context, player string, gameType GameType, since time.Time, maps []string,
 ) iter.Seq2[ReplaySummary, error] {
 	return func(yield func(ReplaySummary, error) bool) {
 		preset, found := gameType.ReplayPreset()
@@ -253,6 +254,7 @@ func (c *Client) RecentReplays(
 			EndedNormally: &endedNormally,
 			HasBots:       &hasBots,
 			Players:       []string{player},
+			Maps:          maps,
 			Date: &DateRange{
 				From: since.UTC(),
 				To:   time.Now().UTC(),

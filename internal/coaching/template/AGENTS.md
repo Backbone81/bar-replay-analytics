@@ -183,8 +183,10 @@ A number means little alone. Compare, and say what you compare with:
 2. **The player's earlier games** from `training-log.md`, ideally on the same map and against the same opponent. On
    the first analysis there are none: say this game is the starting point, don't make up progress.
 3. **Strong players:** `leaderboard show` lists the best players per game type, `replay download-top` downloads their
-   recent games into `demos/leaderboard/`. Compare on the same map and game type only, and interval by interval, e.g.
-   metal income or metal extractors at minute 5.
+   recent games into `demos/leaderboard/`; `--map "<mapname>"` (the exact mapname from `replay script`, version
+   included) downloads only the games on the player's map, so raise `--days` to find enough of them, and try
+   `--dry-run` first. Compare on the same map and game type only, and interval by interval, e.g. metal income or metal
+   extractors at minute 5.
 
 Don't quote "good" numbers from memory: BAR changes its balance often and they differ by map. Take them from the
 replays, and unit stats and game rules as described in "Looking things up".

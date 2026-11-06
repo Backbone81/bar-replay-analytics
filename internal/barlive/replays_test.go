@@ -266,6 +266,14 @@ var _ = Describe("Replays", func() {
 			}))
 		})
 
+		It("selects the maps in bar-db", func() {
+			server.HandleFunc("GET /replays", serveReplaysPage())
+
+			Expect(recentIDs(server, since, barlive.GameTypeDuel, "Argent Strata 1.1", "Cape_Violet_V1")).To(BeEmpty())
+
+			Expect(server.recorded()[0].Query["maps"]).To(Equal([]string{"Argent Strata 1.1", "Cape_Violet_V1"}))
+		})
+
 		It("returns the replays of the game type which started since then", func() {
 			server.HandleFunc("GET /replays", serveReplaysPage(
 				replayStartedAt("a", now.Add(-time.Hour), 1, 1),
@@ -289,7 +297,7 @@ var _ = Describe("Replays", func() {
 
 		It("yields an error for a game type without preset and sends no request", func() {
 			var errs []error
-			for _, err := range server.client().RecentReplays(context.Background(), "Player002", "Team FFA", since) {
+			for _, err := range server.client().RecentReplays(context.Background(), "Player002", "Team FFA", since, nil) {
 				errs = append(errs, err)
 			}
 
@@ -301,7 +309,13 @@ var _ = Describe("Replays", func() {
 			server.HandleFunc("GET /replays", serveTestdata(http.StatusBadRequest, "replays_bad_request.json"))
 
 			var errs []error
-			for _, err := range server.client().RecentReplays(context.Background(), "Player002", barlive.GameTypeDuel, since) {
+			for _, err := range server.client().RecentReplays(
+				context.Background(),
+				"Player002",
+				barlive.GameTypeDuel,
+				since,
+				nil,
+			) {
 				errs = append(errs, err)
 			}
 
@@ -335,11 +349,11 @@ func replayStartedAt(id string, startTime time.Time, allyTeamSizes ...int) *barl
 	return replay
 }
 
-// recentIDs returns the IDs of the replays RecentReplays returns for Player002 from server, and fails the spec on an
-// error.
-func recentIDs(server *testServer, since time.Time, gameType barlive.GameType) []string {
+// recentIDs returns the IDs of the replays RecentReplays returns for Player002 on maps from server, and fails the spec
+// on an error.
+func recentIDs(server *testServer, since time.Time, gameType barlive.GameType, maps ...string) []string {
 	var ids []string
-	for replay, err := range server.client().RecentReplays(context.Background(), "Player002", gameType, since) {
+	for replay, err := range server.client().RecentReplays(context.Background(), "Player002", gameType, since, maps) {
 		Expect(err).NotTo(HaveOccurred())
 		ids = append(ids, replay.ID)
 	}

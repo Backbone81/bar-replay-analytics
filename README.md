@@ -60,7 +60,7 @@ bar-replay-analytics-go replay inspect <replay>         # everything the replay 
 
 # Leaderboards and replays of strong players
 bar-replay-analytics-go leaderboard show [--game-type duel] [--top 20]
-bar-replay-analytics-go replay download-top [--game-type duel] [--top 10] [--days 7]
+bar-replay-analytics-go replay download-top [--game-type duel] [--top 10] [--days 7] [--map "<mapname>"]
 bar-replay-analytics-go replay download <replay-id>...  # the ID from https://www.bar-rts.com/replays/<replay-id>
 
 # Set up the current folder for an AI coach
@@ -77,7 +77,8 @@ Good to know:
 - **Games that crashed or did not end** (length 0:00 in the lobby) are skipped: their replay can run for hours.
   `--unended` plays them anyway.
 - **Downloaded replays go to `demos/leaderboard/`**, so they don't crowd the replay list in the BAR lobby. Running
-  `download-top` again fetches only what is new. `--game-type` is `duel`, `small-team`, `large-team` or `ffa`.
+  `download-top` again fetches only what is new. `--game-type` is `duel`, `small-team`, `large-team` or `ffa`;
+  `--map` takes the exact mapname from `replay script`, version included, and can be repeated.
 
 ## Development
 
