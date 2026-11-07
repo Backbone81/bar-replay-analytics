@@ -29,7 +29,8 @@ var rootCmd = &cobra.Command{
 	Use:   "bar-replay-analytics-go",
 	Short: "Analyze replays of Beyond All Reason",
 	Long: `Analyzes replays of Beyond All Reason for coaching: reads them, plays them back headless and reports on the
-game. Also shows the leaderboards of the BAR lobby server and downloads replays from https://bar-rts.com.`,
+game. Also downloads replays from https://bar-rts.com, such as the recent games of the best players on the
+leaderboards of the BAR lobby server.`,
 	SilenceUsage: true,
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		if barDataDir != "" || cmd.Annotations[needsBarDataDir] == "" {

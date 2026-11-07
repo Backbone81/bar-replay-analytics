@@ -14,7 +14,6 @@ import (
 
 // The flags of replayDownloadTopCmd.
 var (
-	replayDownloadTopSeason   int
 	replayDownloadTopGameType string
 	replayDownloadTopTop      int
 	replayDownloadTopDays     int
@@ -27,11 +26,11 @@ var replayDownloadTopCmd = &cobra.Command{
 	Use:         "download-top",
 	Annotations: map[string]string{needsBarDataDir: "true"}, //nolint:goconst
 	Short:       "Download the recent replays of the best players of a leaderboard",
-	Long: `Downloads the replays of the games the --top players of a leaderboard played in the last --days, of the
-leaderboard's game type only: bar-db's preset must fit, and the allyteams must have the shape the lobby server decides
-the game type by (duel 1v1, small-team two allyteams of up to 5 players, large-team two of more, ffa more than two of
-1 player). Games with AIs and aborted games are left out; unrated ones are included, as bar-db does not tell them
-apart.
+	Long: `Downloads the replays of the games the --top players of a leaderboard of the active season played in the last
+--days, of the leaderboard's game type only: bar-db's preset must fit, and the allyteams must have the shape the lobby
+server decides the game type by (duel 1v1, small-team two allyteams of up to 5 players, large-team two of more, ffa
+more than two of 1 player). Games with AIs and aborted games are left out; unrated ones are included, as bar-db does
+not tell them apart.
 
 --map takes the exact mapname of the start script ('replay script' shows it), version included, such as "Argent Strata
 1.1". Repeat it for several maps.
@@ -71,12 +70,6 @@ func init() {
 	replayCmd.AddCommand(replayDownloadTopCmd)
 	addReplayDownloadFlags(replayDownloadTopCmd)
 	flags := replayDownloadTopCmd.Flags()
-	flags.IntVar(
-		&replayDownloadTopSeason,
-		"season",
-		0,
-		"The season of the leaderboard, see 'leaderboard seasons'. 0 selects the active season.",
-	)
 	flags.StringVar(
 		&replayDownloadTopGameType,
 		"game-type",
@@ -141,9 +134,9 @@ type topPlayers struct {
 	players []barlive.LeaderboardPlayer
 }
 
-// selectTopPlayers returns the best players the flags select, and prints the selection.
+// selectTopPlayers returns the best players of the active season the flags select, and prints the selection.
 func selectTopPlayers(ctx context.Context, client *barlive.Client) (*topPlayers, error) {
-	season, err := client.LeaderboardSeason(ctx, replayDownloadTopSeason)
+	season, err := client.LeaderboardSeason(ctx, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +178,7 @@ func (t *topPlayers) downloadPlayerReplays(
 	ctx context.Context, downloader *replayDownloader, rank int, player barlive.LeaderboardPlayer,
 ) error {
 	fmt.Println()
-	printField("player", fmt.Sprintf("%d. %s", rank, player.Name))
+	printField("player", fmt.Sprintf("%d. %s (rating %.2f)", rank, player.Name, player.Rating))
 
 	count := 0
 	for replay, err := range downloader.client.RecentReplays(ctx, player.Name, t.gameType, t.since, t.maps) {
@@ -218,4 +211,29 @@ func describeReplay(replay *barlive.ReplaySummary) string {
 		replay.Map.ScriptName,
 		strings.Join(allyTeams, " vs "),
 	)
+}
+
+// gameTypeFlagName returns the value of --game-type which selects gameType: its name in lower case with hyphens for
+// spaces, such as "small-team" for "Small Team".
+func gameTypeFlagName(gameType barlive.GameType) string {
+	return strings.ToLower(strings.ReplaceAll(string(gameType), " ", "-"))
+}
+
+// gameTypeFlagNames returns the values of --game-type for the game types of season, separated by commas.
+func gameTypeFlagNames(season barlive.LeaderboardSeason) string {
+	names := make([]string, len(season.GameTypes))
+	for i, gameType := range season.GameTypes {
+		names[i] = gameTypeFlagName(gameType)
+	}
+	return strings.Join(names, ", ")
+}
+
+// findGameType returns the game type of season which flagName selects, see gameTypeFlagName.
+func findGameType(season barlive.LeaderboardSeason, flagName string) (barlive.GameType, error) {
+	for _, gameType := range season.GameTypes {
+		if gameTypeFlagName(gameType) == flagName {
+			return gameType, nil
+		}
+	}
+	return "", fmt.Errorf("--game-type %q: season %d has %s", flagName, season.Season, gameTypeFlagNames(season))
 }
