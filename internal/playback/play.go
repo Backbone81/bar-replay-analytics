@@ -163,6 +163,12 @@ func (p *Player) WriteDirEventsFile(writeDir string, replay *Replay) string {
 
 // writeSettings writes springsettings.cfg into writeDir: Config.WorkerThreadCount, and HostPortDefault 0.
 //
+// runEngine passes it as the engine's only config file (--config). Without it, the engine also reads the
+// springsettings.cfg of every data dir, the engine dir and the data dir (rts/System/Config/ConfigLocater.cpp), and
+// rewrites them as it starts, when it removes deprecated keys and those set to their default value
+// (ConfigHandlerImpl::FinalizeLoad deletes from every file source): in the BAR data dir, that is the player's own
+// settings file, and the player's settings would apply to the playback.
+//
 // A replay is played by a local server that binds a UDP port for spectators. It ignores the start script's HostPort
 // and binds HostPortDefault, 8452 unless set (rts/Game/PreGame.cpp StartServerForDemo, rts/Game/ClientSetup.cpp), so
 // parallel playbacks would collide ("bind: Address already in use"); 0 lets the system pick a free port.
@@ -172,7 +178,12 @@ func (p *Player) writeSettings(writeDir string) error {
 		settings += fmt.Sprintf("WorkerThreadCount = %d\n", p.config.WorkerThreadCount)
 	}
 
-	return os.WriteFile(filepath.Join(writeDir, "springsettings.cfg"), []byte(settings), filePermissions)
+	return os.WriteFile(settingsFile(writeDir), []byte(settings), filePermissions)
+}
+
+// settingsFile returns the path of the engine's config file in the write dir writeDir (see writeSettings).
+func settingsFile(writeDir string) string {
+	return filepath.Join(writeDir, "springsettings.cfg")
 }
 
 // runEngine runs the engine for replay in writeDir with its output to logFile until it exits, ctx is cancelled or
@@ -185,7 +196,8 @@ func (p *Player) runEngine(
 	defer stopEngine()
 
 	//nolint:gosec // The engine Prepare found; the replay path is absolute, so it cannot be taken for an option.
-	command := exec.CommandContext(engineCtx, replay.Engine, "--isolation", "--write-dir", writeDir, replay.FilePath)
+	command := exec.CommandContext(engineCtx, replay.Engine, "--isolation", "--write-dir", writeDir,
+		"--config", settingsFile(writeDir), replay.FilePath)
 	command.Dir = writeDir
 	command.Env = append(os.Environ(), "SPRING_DATADIR="+p.dataDir)
 	command.Stdout = logFile
