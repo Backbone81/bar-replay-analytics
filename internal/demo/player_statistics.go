@@ -11,7 +11,10 @@ import (
 type PlayerStatistics struct {
 	TeamControllerStatistics
 
-	// MousePixels is the distance the mouse moved, in pixels.
+	// MousePixels is the distance the mouse moved, in pixels. It can be negative and is therefore not validated:
+	// CMouseHandler::MouseMove adds (int)sqrt(float(dx*dx + dy*dy)) for every mouse motion event, so a single
+	// bogus event with a delta above about 46340 pixels overflows the int sum, the square root of the negative
+	// value is NaN, and casting NaN to int on x86 adds INT_MIN (seen for a spectator in a 2026.07.04 demo).
 	MousePixels int32 `json:"mousePixels"`
 
 	// MouseClicks is the number of mouse clicks.
@@ -41,10 +44,6 @@ func readPlayerStatisticsInOrder(playerStatsData []byte, byteOrder binary.ByteOr
 func (s *PlayerStatistics) validate() error {
 	if err := s.TeamControllerStatistics.validate(); err != nil {
 		return err
-	}
-
-	if s.MousePixels < 0 {
-		return fmt.Errorf("mousePixels: got %d, want >= 0", s.MousePixels)
 	}
 
 	if s.MouseClicks < 0 {

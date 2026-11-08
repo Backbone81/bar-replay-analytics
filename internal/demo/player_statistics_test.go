@@ -27,6 +27,19 @@ var _ = Describe("PlayerStatistics", func() {
 			Expect(result).To(Equal(stats))
 		})
 
+		It("accepts a negative mousePixels, which the engine writes after a bogus mouse motion event", func() {
+			stats := newTestDemo().playerStats[0]
+			stats.MousePixels = -2147405973
+
+			data, err := encodeValue(stats)
+			Expect(err).NotTo(HaveOccurred())
+
+			result, err := demo.ReadPlayerStatistics(data)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal(stats))
+		})
+
 		It("rejects data shorter than the statistics", func() {
 			Expect(demo.ReadPlayerStatistics(make([]byte, 19))).Error().To(
 				MatchError(ContainSubstring("reading PlayerStatistics")))
@@ -45,7 +58,6 @@ var _ = Describe("PlayerStatistics", func() {
 			},
 			Entry("numCommands", func(stats *demo.PlayerStatistics) { stats.NumCommands = -1 }, "numCommands"),
 			Entry("unitCommands", func(stats *demo.PlayerStatistics) { stats.UnitCommands = -1 }, "unitCommands"),
-			Entry("mousePixels", func(stats *demo.PlayerStatistics) { stats.MousePixels = -1 }, "mousePixels"),
 			Entry("mouseClicks", func(stats *demo.PlayerStatistics) { stats.MouseClicks = -1 }, "mouseClicks"),
 			Entry("keyPresses", func(stats *demo.PlayerStatistics) { stats.KeyPresses = -1 }, "keyPresses"),
 		)
