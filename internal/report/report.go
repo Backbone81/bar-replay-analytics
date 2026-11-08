@@ -9,8 +9,20 @@ import (
 	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
 )
 
+// FormatVersion is the version of the report's format. Increase it whenever the report of the same replay and events
+// file changes (a field or value added, removed or computed differently), so that an outdated report can be told
+// apart. The golden test (testdata/report.json) fails on every such change to remind of it.
+const FormatVersion = 1
+
 // Report is the prepared analytics of a replay.
 type Report struct {
+	// FormatVersion is the version of the report's format, see FormatVersion.
+	FormatVersion int `json:"formatVersion"`
+
+	// EventsFormatVersion is the format version of the events file the report was prepared from
+	// (events.File.FormatVersion): a report of outdated events stays outdated until the replay is played back again.
+	EventsFormatVersion int `json:"eventsFormatVersion"`
+
 	// Metadata describes the game.
 	Metadata Metadata `json:"metadata"`
 
@@ -109,10 +121,12 @@ func NewReport(
 	}
 
 	return &Report{
-		Metadata: metadata,
-		MapGrid:  mapGrid,
-		Teams:    teams,
-		Players:  players,
+		FormatVersion:       FormatVersion,
+		EventsFormatVersion: eventsFile.FormatVersion,
+		Metadata:            metadata,
+		MapGrid:             mapGrid,
+		Teams:               teams,
+		Players:             players,
 	}, nil
 }
 

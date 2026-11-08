@@ -51,12 +51,14 @@ one-hour game takes about one and a half minutes; the first playback also downlo
 
 ## Usage
 
-A replay is the name of a file in `demos/` or a path to one. Every command explains its options with `--help`.
+A replay is the name of a file in `demos/` or a path to one. `replay play` and `replay report` also take folders, such
+as `leaderboard` for `demos/leaderboard/`: every `.sdfz` file directly in it. Every command explains its options with
+`--help`.
 
 ```sh
 # Analyze replays
 bar-replay-analytics-go replay play <replay>...         # play back, several at a time: <replay>_events.json
-bar-replay-analytics-go replay report <replay>          # the report (needs the playback): <replay>_report.json
+bar-replay-analytics-go replay report <replay>...       # the reports (need the playback): <replay>_report.json
 bar-replay-analytics-go replay script <replay>          # map, players, AIs and game options, no playback needed
 bar-replay-analytics-go replay inspect <replay>         # everything the replay file holds
 
@@ -77,6 +79,11 @@ Good to know:
 - **Playback leaves your BAR install alone.** It adds only what it downloads (engines, game versions, maps), like the
   lobby, and its results next to the replays. Its analytics widget is built in and runs only in the playback. Your
   settings, widgets and `infolog.txt` stay untouched.
+- **Only new or outdated replays are played back.** `replay play` skips a replay whose events file is complete and
+  of the analytics widget's current format version (`formatVersion` in the file), so `replay play leaderboard` after
+  a download plays only the new games, and after an update of the tool the ones its widget would log differently.
+  `--force` plays them all again. Each report records its own `formatVersion` and the `eventsFormatVersion` it was
+  made from; reports take seconds, so `replay report leaderboard` simply writes them all again.
 - **Games that crashed or did not end** (length 0:00 in the lobby) are skipped: their replay can run for hours.
 - **Downloaded replays go to `demos/leaderboard/`**, so they don't crowd the replay list in the BAR lobby. Running
   `download-top` again fetches only what is new; `--dry-run` logs the missing games of the players of the active
@@ -92,6 +99,15 @@ make build   # tidy, format, vet, lint, then build ./bar-replay-analytics-go
 make test    # the same checks, then all tests
 make fuzz    # run the fuzz tests until they stop finding new inputs (see scripts/fuzz.sh)
 ```
+
+Two tests make sure the format versions are increased when the output changes:
+
+- **Events:** `internal/playback/widget/version_test.go` holds a hash of the widget's `.lua` files. When the widget
+  changes, it fails and prints the new hash: if the events it writes change, increase `FORMAT_VERSION` in
+  `dbg_replay_analytics.lua` (the only definition; Go reads it from there), then set the new hash.
+- **Report:** `internal/report/testdata/report*.json` are the reports of a test game. When a report changes, the test
+  fails: if that is intended, increase `report.FormatVersion` and update the files with
+  `go test ./internal/report -update`.
 
 The template of the coaching agent's workspace that `init` writes is `internal/coaching/template/`, built into
 the binary.

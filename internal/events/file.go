@@ -10,6 +10,9 @@ import (
 
 // File is the content of an events file.
 type File struct {
+	// FormatVersion is the version of the file's format, the widget's FORMAT_VERSION (see widget.FormatVersion).
+	FormatVersion int `json:"formatVersion"`
+
 	// Events provides the events in frame order.
 	Events []Event `json:"events"`
 

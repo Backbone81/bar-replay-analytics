@@ -17,13 +17,13 @@ end
 --
 -- Writes events/<replay name>_events.json in its own folder (user widgets may write only under LuaUI/Config/ and
 -- LuaUI/Widgets/), one JSON object:
---   {"events":[...],"game":{...},"sides":[...],"teams":[...],"teamStats":{"<teamID>":[...]},
+--   {"formatVersion":...,"events":[...],"game":{...},"sides":[...],"teams":[...],"teamStats":{"<teamID>":[...]},
 --    "unitDefs":{"<unitDefID>":{...}},"end":{"frame":...,"reason":...}}
 -- Each event is {"frame":...,"<event name>":{...}} on a line of its own, named, like its fields, after the call-in or
 -- Spring function it comes from. Events come from call-ins only, nothing is sampled. Everything after "events" is
 -- written once at the end: teamStats is Spring.GetTeamStatsHistory (every 15 s), unitDefs only those the events
 -- refer to. "end" is written whenever logging stops; its reason is "gameover" only if the game ended. A file without
--- it is incomplete: the engine crashed or was stopped.
+-- it is incomplete: the engine crashed or was stopped. "formatVersion" is FORMAT_VERSION.
 --
 -- To play at full speed it switches to full view, raises the speed limit (the start position phase otherwise plays
 -- in real time), skips to the end once the game runs, and quits the engine at game over or when the replay stalls.
@@ -35,6 +35,11 @@ end
 -- Quit when the game frame has not advanced for this long: the replay has ended (or, before frame 1, never starts).
 local STALL_QUIT_SECONDS = 20
 local PREGAME_QUIT_SECONDS = 300 -- loading and the start position phase take longer
+
+-- The version of the events file's format, written as "formatVersion". Increase it whenever the events this widget
+-- writes change (an event, field or value added, removed or computed differently), so that bar-replay-analytics-go
+-- plays replays with older events files again. Its tests hold a hash of this file to remind of it.
+local FORMAT_VERSION = 1
 
 --------------------------------------------------------------------------------
 -- Engine API and state
@@ -389,7 +394,7 @@ function widget:Initialize()
 		widgetHandler:RemoveWidget()
 		return
 	end
-	eventsFile:write('{"events":[\n')
+	eventsFile:write(stringFormat('{"formatVersion":%d,"events":[\n', FORMAT_VERSION))
 	classifyUnitDefs()
 	collectTeamIDs()
 	spSendCommands("specfullview 1")

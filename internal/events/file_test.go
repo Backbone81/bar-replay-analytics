@@ -120,6 +120,7 @@ func document(end string, events ...string) string {
 // testdataFile returns the content of testdata/events.json.
 func testdataFile() *events.File {
 	return &events.File{
+		FormatVersion: 1,
 		Events: []events.Event{
 			{Frame: 0, UnitCreated: &events.UnitCreated{UnitID: 2858, UnitDefID: 101, UnitTeam: 0, X: 1698, Z: 6452}},
 			{Frame: 0, UnitFinished: &events.UnitFinished{UnitID: 2858, UnitDefID: 101, UnitTeam: 0}},

@@ -24,6 +24,7 @@ var (
 	replayPlayParallel         int
 	replayPlayProgressInterval time.Duration
 	replayPlayEngineThreads    int
+	replayPlayForce            bool
 )
 
 // replayPlayCmd plays replays back in a headless engine.
@@ -39,11 +40,16 @@ lines show what they would have done in the game, such as the [reminder] lines o
 Missing engines, games and maps are downloaded into the BAR data directory as the BAR lobby does. Each playback has a
 temporary write dir, so the data directory's infolog.txt, settings and LuaUI/Config/ stay unchanged.
 
+A replay whose events file is current is not played again unless --force is given: the file ends with the game over
+and has the format version of the analytics widget built into this program, which increases whenever the events it
+writes change. So the same command, such as 'replay play leaderboard', plays only the new replays, and after an
+update of this program the ones with outdated events.
+
 A playback is stopped if its output has not grown for a minute, and fails unless its events file ends with the game
 over. A replay without a game length in its header (0:00 in the lobby: the engine crashed or the game was not ended)
 is skipped.
 
-<replay> is a path to a .sdfz file, or the name of a file in the demos/ folder of the BAR data directory.`,
+` + replayArgsHelp,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if replayPlayParallel < 0 {
@@ -59,7 +65,7 @@ is skipped.
 			return fmt.Errorf("--progress-interval: got %v, want > 0", replayPlayProgressInterval)
 		}
 
-		filePaths, err := replayPlayPaths(args)
+		filePaths, err := replayPaths(args)
 		if err != nil {
 			return err
 		}
@@ -88,18 +94,14 @@ is skipped.
 		printField("parallel", replayPlayParallel)
 		fmt.Println()
 
-		failed, skipped := playReplays(cmd.Context(), player, filePaths)
+		counts := playReplays(cmd.Context(), player, filePaths)
 
-		fmt.Println()
-		printField("replays", len(filePaths))
-		printField("played", len(filePaths)-failed-skipped)
-		printField("skipped", skipped)
-		printField("failed", failed)
+		counts.print(statusPlayed, statusCurrent, statusSkipped, statusFailed)
 		if err := cmd.Context().Err(); err != nil {
 			return err
 		}
-		if failed != 0 {
-			return fmt.Errorf("%d of %d replays failed", failed, len(filePaths))
+		if counts[statusFailed] != 0 {
+			return fmt.Errorf("%d of %d replays failed", counts[statusFailed], len(filePaths))
 		}
 		return nil
 	},
@@ -128,38 +130,20 @@ func init() {
 		"The number of threads of each engine's thread pool (WorkerThreadCount), the main thread included. 0 leaves "+
 			"the engine's default of one per CPU, which is slower.",
 	)
+	flags.BoolVar(
+		&replayPlayForce,
+		"force",
+		false,
+		"Play replays back also if their events file is current.",
+	)
 }
 
-// replayPlayPaths returns the paths of the replays args name (see replayPath). It returns an error if two name the
-// same file, as their playbacks would write the same events file.
-func replayPlayPaths(args []string) ([]string, error) {
-	filePaths := make([]string, len(args))
-	seen := make(map[string]string)
-	for i, arg := range args {
-		filePath, err := replayPath(arg)
-		if err != nil {
-			return nil, err
-		}
-		absoluteFilePath, err := filepath.Abs(filePath)
-		if err != nil {
-			return nil, err
-		}
-		if other, found := seen[absoluteFilePath]; found {
-			return nil, fmt.Errorf("%s and %s are the same replay", other, arg)
-		}
-		seen[absoluteFilePath] = arg
-		filePaths[i] = filePath
-	}
-	return filePaths, nil
-}
-
-// playReplays plays the replays filePaths back with --parallel at a time, prints a line for each and returns the
-// number of failed and skipped ones.
-func playReplays(ctx context.Context, player *playback.Player, filePaths []string) (int, int) {
+// playReplays plays the replays filePaths back with --parallel at a time, prints a line for each and returns how
+// many ended with each status (see playReplay).
+func playReplays(ctx context.Context, player *playback.Player, filePaths []string) statusCounts {
 	queue := make(chan string)
 	var mutex sync.Mutex
-	failed := 0
-	skipped := 0
+	counts := statusCounts{}
 
 	var waitGroup sync.WaitGroup
 	for range min(replayPlayParallel, len(filePaths)) {
@@ -168,13 +152,7 @@ func playReplays(ctx context.Context, player *playback.Player, filePaths []strin
 				status, description := playReplay(ctx, player, filePath)
 
 				mutex.Lock()
-				switch status {
-				//nolint:goconst
-				case "failed":
-					failed++
-				case "skipped":
-					skipped++
-				}
+				counts[status]++
 				printReplayLine(status, filepath.Base(filePath), description)
 				mutex.Unlock()
 			}
@@ -185,26 +163,36 @@ func playReplays(ctx context.Context, player *playback.Player, filePaths []strin
 	}
 	close(queue)
 	waitGroup.Wait()
-	return failed, skipped
+	return counts
 }
 
-// playReplay prepares and plays the replay filePath back, and returns its status, "played", "skipped" or "failed",
-// and a description of the outcome.
+// playReplay prepares and plays the replay filePath back, and returns its status and a description of the outcome.
+// The status is "played", "current" (its events file is current and --force was not given), "skipped" (no game
+// length) or "failed".
 func playReplay(ctx context.Context, player *playback.Player, filePath string) (string, string) {
 	if err := ctx.Err(); err != nil {
-		return "failed", err.Error()
+		return statusFailed, err.Error()
+	}
+	if !replayPlayForce {
+		status, err := playback.CheckEventsFile(filePath)
+		if err != nil {
+			return statusFailed, err.Error()
+		}
+		if status.Current {
+			return statusCurrent, status.Reason
+		}
 	}
 	// Before Prepare, so nothing is downloaded for a skipped replay.
 	header, err := demo.ReadDemoFileHeaderFromFilePath(filePath)
 	if err != nil {
-		return "failed", err.Error()
+		return statusFailed, err.Error()
 	}
 	if header.GameTime == 0 {
-		return "skipped", "no game length: the engine crashed or the game was not ended"
+		return statusSkipped, "no game length: the engine crashed or the game was not ended"
 	}
 	replay, err := player.Prepare(ctx, filePath)
 	if err != nil {
-		return "failed", err.Error()
+		return statusFailed, err.Error()
 	}
 	length := "unknown length"
 	if replay.GameTime > 0 {
@@ -215,13 +203,13 @@ func playReplay(ctx context.Context, player *playback.Player, filePath string) (
 
 	result, err := player.Play(ctx, log, replay)
 	if err != nil {
-		return "failed", err.Error()
+		return statusFailed, err.Error()
 	}
 	description := describeResult(result)
 	if !result.GameOver() {
-		return "failed", description
+		return statusFailed, description
 	}
-	return "played", description
+	return statusPlayed, description
 }
 
 // describeResult returns how a playback ended, its number of events, how long it took and where its files are.

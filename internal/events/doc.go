@@ -3,7 +3,7 @@
 //
 // The file is one JSON object:
 //
-//	{"events":[
+//	{"formatVersion":1,"events":[
 //	{"frame":0,"unitCreated":{...}},
 //	{"frame":0,"unitFinished":{...}},
 //	...
@@ -18,6 +18,9 @@
 // Every event comes from a call-in; the widget samples nothing. What does not change during the game, or what the
 // engine records itself, is written once after the events: Game, Sides, Teams, TeamStats (every 15 s) and the UnitDefs
 // the events and teams refer to.
+//
+// FormatVersion is the widget's FORMAT_VERSION: it increases whenever what the widget writes changes, so an events file
+// of a lower version than the embedded widget's is outdated.
 //
 // End says why the widget stopped logging. Read accepts only EndReasonGameOver: a file without End is incomplete (the
 // engine crashed or was stopped), and any other reason means the rest of the game is missing.

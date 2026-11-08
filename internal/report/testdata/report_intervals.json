@@ -1,0 +1,874 @@
+{
+  "formatVersion": 1,
+  "eventsFormatVersion": 1,
+  "metadata": {
+    "engineVersion": "2026.07.04",
+    "gameVersion": "Beyond All Reason test-31756-0d4c3c3",
+    "map": "Argent Strata 1.1",
+    "gameID": "0102030405060708090a0b0c0d0e0f10",
+    "startTime": "2026-10-24T13:48:21Z",
+    "duration": "1:00",
+    "winningTeams": [
+      1
+    ],
+    "modOptions": {
+      "date_day": "29"
+    },
+    "mapOptions": {}
+  },
+  "mapGrid": {
+    "mapSize": {
+      "x": 8192,
+      "z": 8192
+    },
+    "columns": 4,
+    "rows": 4,
+    "cellSize": {
+      "x": 2048,
+      "z": 2048
+    },
+    "startPositions": [
+      {
+        "playerID": 0,
+        "cell": "A4",
+        "x": 1698,
+        "z": 6452
+      },
+      {
+        "playerID": 1,
+        "cell": "D1",
+        "x": 6552,
+        "z": 1798
+      }
+    ]
+  },
+  "teams": [
+    {
+      "teamID": 0,
+      "playerIDs": [
+        0
+      ],
+      "won": false
+    },
+    {
+      "teamID": 1,
+      "playerIDs": [
+        1
+      ],
+      "won": true
+    }
+  ],
+  "players": [
+    {
+      "playerID": 0,
+      "teamID": 0,
+      "name": "Player",
+      "faction": "Cortex",
+      "incomeMultiplier": 1,
+      "ai": null,
+      "economy": {
+        "total": {
+          "metal": {
+            "produced": 420,
+            "used": 360,
+            "wasted": 0,
+            "received": 0,
+            "sent": 0
+          },
+          "energy": {
+            "produced": 2400,
+            "used": 0,
+            "wasted": 240,
+            "received": 0,
+            "sent": 0
+          }
+        },
+        "perSecond": {
+          "metal": {
+            "produced": 7,
+            "used": 6,
+            "wasted": 0,
+            "received": 0,
+            "sent": 0
+          },
+          "energy": {
+            "produced": 40,
+            "used": 0,
+            "wasted": 4,
+            "received": 0,
+            "sent": 0
+          }
+        },
+        "intervals": [
+          {
+            "time": "0:00-0:15",
+            "perSecond": {
+              "metal": {
+                "produced": 0,
+                "used": 0,
+                "wasted": 0,
+                "received": 0,
+                "sent": 0
+              },
+              "energy": {
+                "produced": 0,
+                "used": 0,
+                "wasted": 0,
+                "received": 0,
+                "sent": 0
+              }
+            },
+            "metalExtractors": {
+              "tech1": 0,
+              "tech2": 0
+            },
+            "builders": {
+              "commander": {
+                "alive": 1,
+                "idle": 0
+              },
+              "tech1": {
+                "alive": 0,
+                "idle": 0
+              },
+              "tech2": {
+                "alive": 0,
+                "idle": 0
+              }
+            }
+          },
+          {
+            "time": "0:15-0:30",
+            "perSecond": {
+              "metal": {
+                "produced": 0,
+                "used": 0,
+                "wasted": 0,
+                "received": 0,
+                "sent": 0
+              },
+              "energy": {
+                "produced": 0,
+                "used": 0,
+                "wasted": 0,
+                "received": 0,
+                "sent": 0
+              }
+            },
+            "metalExtractors": {
+              "tech1": 1,
+              "tech2": 0
+            },
+            "builders": {
+              "commander": {
+                "alive": 1,
+                "idle": 0
+              },
+              "tech1": {
+                "alive": 0,
+                "idle": 0
+              },
+              "tech2": {
+                "alive": 0,
+                "idle": 0
+              }
+            }
+          },
+          {
+            "time": "0:30-0:45",
+            "perSecond": {
+              "metal": {
+                "produced": 0,
+                "used": 0,
+                "wasted": 0,
+                "received": 0,
+                "sent": 0
+              },
+              "energy": {
+                "produced": 0,
+                "used": 0,
+                "wasted": 0,
+                "received": 0,
+                "sent": 0
+              }
+            },
+            "metalExtractors": {
+              "tech1": 1,
+              "tech2": 0
+            },
+            "builders": {
+              "commander": {
+                "alive": 1,
+                "idle": 0
+              },
+              "tech1": {
+                "alive": 0,
+                "idle": 0
+              },
+              "tech2": {
+                "alive": 0,
+                "idle": 0
+              }
+            }
+          },
+          {
+            "time": "0:45-1:00",
+            "perSecond": {
+              "metal": {
+                "produced": 28,
+                "used": 24,
+                "wasted": 0,
+                "received": 0,
+                "sent": 0
+              },
+              "energy": {
+                "produced": 160,
+                "used": 0,
+                "wasted": 16,
+                "received": 0,
+                "sent": 0
+              }
+            },
+            "metalExtractors": {
+              "tech1": 2,
+              "tech2": 0
+            },
+            "builders": {
+              "commander": {
+                "alive": 1,
+                "idle": 0
+              },
+              "tech1": {
+                "alive": 0,
+                "idle": 0
+              },
+              "tech2": {
+                "alive": 0,
+                "idle": 0
+              }
+            }
+          }
+        ]
+      },
+      "combat": {
+        "total": {
+          "killed": {
+            "count": 1,
+            "metal": 50
+          },
+          "lost": {
+            "count": 1,
+            "metal": 50
+          },
+          "unitTypes": [
+            {
+              "name": "Cortex Commander",
+              "killed": {
+                "count": 1,
+                "metal": 50
+              },
+              "lost": {
+                "count": 0,
+                "metal": 0
+              },
+              "killedBy": []
+            },
+            {
+              "name": "Metal Extractor",
+              "killed": {
+                "count": 0,
+                "metal": 0
+              },
+              "lost": {
+                "count": 1,
+                "metal": 50
+              },
+              "killedBy": []
+            }
+          ]
+        },
+        "intervals": [
+          {
+            "killed": {
+              "count": 0,
+              "metal": 0
+            },
+            "lost": {
+              "count": 0,
+              "metal": 0
+            },
+            "unitTypes": [],
+            "time": "0:00-0:15"
+          },
+          {
+            "killed": {
+              "count": 0,
+              "metal": 0
+            },
+            "lost": {
+              "count": 0,
+              "metal": 0
+            },
+            "unitTypes": [],
+            "time": "0:15-0:30"
+          },
+          {
+            "killed": {
+              "count": 1,
+              "metal": 50
+            },
+            "lost": {
+              "count": 0,
+              "metal": 0
+            },
+            "unitTypes": [
+              {
+                "name": "Cortex Commander",
+                "killed": {
+                  "count": 1,
+                  "metal": 50
+                },
+                "lost": {
+                  "count": 0,
+                  "metal": 0
+                },
+                "killedBy": []
+              }
+            ],
+            "time": "0:30-0:45"
+          },
+          {
+            "killed": {
+              "count": 0,
+              "metal": 0
+            },
+            "lost": {
+              "count": 1,
+              "metal": 50
+            },
+            "unitTypes": [
+              {
+                "name": "Metal Extractor",
+                "killed": {
+                  "count": 0,
+                  "metal": 0
+                },
+                "lost": {
+                  "count": 1,
+                  "metal": 50
+                },
+                "killedBy": []
+              }
+            ],
+            "time": "0:45-1:00"
+          }
+        ]
+      },
+      "lossLocations": [
+        {
+          "time": "0:00-0:30",
+          "cells": []
+        },
+        {
+          "time": "0:30-0:45",
+          "cells": []
+        },
+        {
+          "time": "0:45-1:00",
+          "cells": [
+            {
+              "cell": "A1",
+              "units": {
+                "count": 0,
+                "metal": 0
+              },
+              "buildings": {
+                "count": 1,
+                "metal": 50
+              },
+              "killedByBuildings": {
+                "count": 0,
+                "metal": 0
+              }
+            }
+          ]
+        }
+      ],
+      "resurrection": {
+        "total": {
+          "metalValue": 50,
+          "energySpent": 0
+        },
+        "intervals": [
+          {
+            "metalValue": 0,
+            "energySpent": 0,
+            "time": "0:00-0:15"
+          },
+          {
+            "metalValue": 0,
+            "energySpent": 0,
+            "time": "0:15-0:30"
+          },
+          {
+            "metalValue": 0,
+            "energySpent": 0,
+            "time": "0:30-0:45"
+          },
+          {
+            "metalValue": 50,
+            "energySpent": 0,
+            "time": "0:45-1:00"
+          }
+        ]
+      },
+      "openingBuildOrder": [
+        {
+          "time": "0:20",
+          "name": "Metal Extractor",
+          "buildRate": 1
+        },
+        {
+          "time": "0:37",
+          "name": "Graverobber",
+          "buildRate": 0
+        },
+        {
+          "time": "1:30",
+          "name": "Bot Lab",
+          "buildRate": 2
+        }
+      ],
+      "firstFinished": [
+        {
+          "time": "0:20",
+          "name": "Metal Extractor"
+        },
+        {
+          "time": "0:37",
+          "name": "Graverobber"
+        },
+        {
+          "time": "1:30",
+          "name": "Bot Lab"
+        },
+        {
+          "time": "5:10",
+          "name": "Construction Bot"
+        }
+      ],
+      "builders": [
+        {
+          "name": "Cortex Commander 1",
+          "time": "0:00-5:10",
+          "idle": "0:00",
+          "idleFraction": 0,
+          "idleStretches": [],
+          "builds": [
+            {
+              "name": "Metal Extractor",
+              "count": 1
+            },
+            {
+              "name": "Bot Lab",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "name": "Cortex Commander 2",
+          "time": "1:50-5:10",
+          "idle": "0:00",
+          "idleFraction": 0,
+          "idleStretches": [],
+          "builds": []
+        },
+        {
+          "name": "Construction Bot 1",
+          "time": "5:10-5:10",
+          "idle": "0:00",
+          "idleFraction": 0,
+          "idleStretches": [],
+          "builds": []
+        }
+      ]
+    },
+    {
+      "playerID": 1,
+      "teamID": 1,
+      "name": "BARbarianAI(1)",
+      "faction": "Armada",
+      "incomeMultiplier": 1,
+      "ai": {
+        "shortName": "BARb",
+        "profile": "Hard",
+        "options": {
+          "profile": "Hard"
+        }
+      },
+      "economy": {
+        "total": {
+          "metal": {
+            "produced": 500,
+            "used": 0,
+            "wasted": 0,
+            "received": 0,
+            "sent": 30
+          },
+          "energy": {
+            "produced": 5000,
+            "used": 0,
+            "wasted": 0,
+            "received": 90,
+            "sent": 0
+          }
+        },
+        "perSecond": {
+          "metal": {
+            "produced": 8.333333333333334,
+            "used": 0,
+            "wasted": 0,
+            "received": 0,
+            "sent": 0.5
+          },
+          "energy": {
+            "produced": 83.33333333333333,
+            "used": 0,
+            "wasted": 0,
+            "received": 1.5,
+            "sent": 0
+          }
+        },
+        "intervals": [
+          {
+            "time": "0:00-0:15",
+            "perSecond": {
+              "metal": {
+                "produced": 0,
+                "used": 0,
+                "wasted": 0,
+                "received": 0,
+                "sent": 0
+              },
+              "energy": {
+                "produced": 0,
+                "used": 0,
+                "wasted": 0,
+                "received": 0,
+                "sent": 0
+              }
+            },
+            "metalExtractors": {
+              "tech1": 0,
+              "tech2": 0
+            },
+            "builders": {
+              "commander": {
+                "alive": 1,
+                "idle": 0
+              },
+              "tech1": {
+                "alive": 0,
+                "idle": 0
+              },
+              "tech2": {
+                "alive": 0,
+                "idle": 0
+              }
+            }
+          },
+          {
+            "time": "0:15-0:30",
+            "perSecond": {
+              "metal": {
+                "produced": 0,
+                "used": 0,
+                "wasted": 0,
+                "received": 0,
+                "sent": 0
+              },
+              "energy": {
+                "produced": 0,
+                "used": 0,
+                "wasted": 0,
+                "received": 0,
+                "sent": 0
+              }
+            },
+            "metalExtractors": {
+              "tech1": 1,
+              "tech2": 0
+            },
+            "builders": {
+              "commander": {
+                "alive": 1,
+                "idle": 0
+              },
+              "tech1": {
+                "alive": 0,
+                "idle": 0
+              },
+              "tech2": {
+                "alive": 0,
+                "idle": 0
+              }
+            }
+          },
+          {
+            "time": "0:30-0:45",
+            "perSecond": {
+              "metal": {
+                "produced": 0,
+                "used": 0,
+                "wasted": 0,
+                "received": 0,
+                "sent": 0
+              },
+              "energy": {
+                "produced": 0,
+                "used": 0,
+                "wasted": 0,
+                "received": 0,
+                "sent": 0
+              }
+            },
+            "metalExtractors": {
+              "tech1": 0,
+              "tech2": 0
+            },
+            "builders": {
+              "commander": {
+                "alive": 1,
+                "idle": 0
+              },
+              "tech1": {
+                "alive": 0,
+                "idle": 0
+              },
+              "tech2": {
+                "alive": 0,
+                "idle": 0
+              }
+            }
+          },
+          {
+            "time": "0:45-1:00",
+            "perSecond": {
+              "metal": {
+                "produced": 33.333333333333336,
+                "used": 0,
+                "wasted": 0,
+                "received": 0,
+                "sent": 2
+              },
+              "energy": {
+                "produced": 333.3333333333333,
+                "used": 0,
+                "wasted": 0,
+                "received": 6,
+                "sent": 0
+              }
+            },
+            "metalExtractors": {
+              "tech1": 0,
+              "tech2": 0
+            },
+            "builders": {
+              "commander": {
+                "alive": 1,
+                "idle": 0
+              },
+              "tech1": {
+                "alive": 0,
+                "idle": 0
+              },
+              "tech2": {
+                "alive": 0,
+                "idle": 0
+              }
+            }
+          }
+        ]
+      },
+      "combat": {
+        "total": {
+          "killed": {
+            "count": 0,
+            "metal": 0
+          },
+          "lost": {
+            "count": 1,
+            "metal": 50
+          },
+          "unitTypes": [
+            {
+              "name": "Metal Extractor",
+              "killed": {
+                "count": 0,
+                "metal": 0
+              },
+              "lost": {
+                "count": 1,
+                "metal": 50
+              },
+              "killedBy": [
+                "Cortex Commander"
+              ]
+            }
+          ]
+        },
+        "intervals": [
+          {
+            "killed": {
+              "count": 0,
+              "metal": 0
+            },
+            "lost": {
+              "count": 0,
+              "metal": 0
+            },
+            "unitTypes": [],
+            "time": "0:00-0:15"
+          },
+          {
+            "killed": {
+              "count": 0,
+              "metal": 0
+            },
+            "lost": {
+              "count": 0,
+              "metal": 0
+            },
+            "unitTypes": [],
+            "time": "0:15-0:30"
+          },
+          {
+            "killed": {
+              "count": 0,
+              "metal": 0
+            },
+            "lost": {
+              "count": 1,
+              "metal": 50
+            },
+            "unitTypes": [
+              {
+                "name": "Metal Extractor",
+                "killed": {
+                  "count": 0,
+                  "metal": 0
+                },
+                "lost": {
+                  "count": 1,
+                  "metal": 50
+                },
+                "killedBy": [
+                  "Cortex Commander"
+                ]
+              }
+            ],
+            "time": "0:30-0:45"
+          },
+          {
+            "killed": {
+              "count": 0,
+              "metal": 0
+            },
+            "lost": {
+              "count": 0,
+              "metal": 0
+            },
+            "unitTypes": [],
+            "time": "0:45-1:00"
+          }
+        ]
+      },
+      "lossLocations": [
+        {
+          "time": "0:00-0:30",
+          "cells": []
+        },
+        {
+          "time": "0:30-0:45",
+          "cells": [
+            {
+              "cell": "A1",
+              "units": {
+                "count": 0,
+                "metal": 0
+              },
+              "buildings": {
+                "count": 1,
+                "metal": 50
+              },
+              "killedByBuildings": {
+                "count": 0,
+                "metal": 0
+              }
+            }
+          ]
+        },
+        {
+          "time": "0:45-1:00",
+          "cells": []
+        }
+      ],
+      "resurrection": {
+        "total": {
+          "metalValue": 0,
+          "energySpent": 0
+        },
+        "intervals": [
+          {
+            "metalValue": 0,
+            "energySpent": 0,
+            "time": "0:00-0:15"
+          },
+          {
+            "metalValue": 0,
+            "energySpent": 0,
+            "time": "0:15-0:30"
+          },
+          {
+            "metalValue": 0,
+            "energySpent": 0,
+            "time": "0:30-0:45"
+          },
+          {
+            "metalValue": 0,
+            "energySpent": 0,
+            "time": "0:45-1:00"
+          }
+        ]
+      },
+      "openingBuildOrder": [
+        {
+          "time": "0:25",
+          "name": "Metal Extractor",
+          "buildRate": 0.83
+        }
+      ],
+      "firstFinished": [
+        {
+          "time": "0:25",
+          "name": "Metal Extractor"
+        }
+      ],
+      "builders": [
+        {
+          "name": "Armada Commander 1",
+          "time": "0:00-5:10",
+          "idle": "0:00",
+          "idleFraction": 0,
+          "idleStretches": [],
+          "builds": [
+            {
+              "name": "Metal Extractor",
+              "count": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

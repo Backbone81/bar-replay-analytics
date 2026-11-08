@@ -61,9 +61,10 @@ BAR saves every game as a `.sdfz` file in `demos/` of the data directory. Comman
    name. If several humans could be the player, ask.
 3. **Play it back.** `replay play <replay>...` runs the game in a headless engine at maximum speed (a few minutes per
    game; several replays run in parallel) and writes `<replay name>_events.json` next to the replay, and the engine's
-   output as `<replay name>.log`. It downloads a missing engine, game version or map into the data directory, as the
+   output as `<replay name>.log`. A replay whose events file is current is not played again (`--force` does). It
+   downloads a missing engine, game version or map into the data directory, as the
    BAR lobby does.
-4. **Get the report.** `replay report <replay>` writes `<replay name>_report.json` next to the replay: the game
+4. **Get the report.** `replay report <replay>...` writes `<replay name>_report.json` next to the replay: the game
    aggregated for coaching (see "What the report holds"). Start every analysis from the report.
 5. **Dig deeper if needed.** The events file holds every unit's creation, completion, death (with position and killer)
    and command. Query it for what the report does not show, e.g. how long factories stood idle, or where within a
@@ -188,7 +189,8 @@ A number means little alone. Compare, and say what you compare with:
 3. **Strong players:** `replay download-top` downloads the recent games of the best players of a leaderboard into
    `demos/leaderboard/`; `--map "<mapname>"` (the exact mapname from `replay script`, version included) downloads only
    the games on the player's map, so raise `--days` to find enough of them, and try `--dry-run` first: it logs the
-   missing games, each with its player and rating, without downloading them. Compare on the same map and game type only, and interval by interval, e.g. metal income or metal
+   missing games, each with its player and rating, without downloading them. Then `replay play leaderboard` and
+   `replay report leaderboard` play back and report every game in the folder (only new ones are played). Compare on the same map and game type only, and interval by interval, e.g. metal income or metal
    extractors at minute 5.
 
 Don't quote "good" numbers from memory: BAR changes its balance often and they differ by map. Take them from the

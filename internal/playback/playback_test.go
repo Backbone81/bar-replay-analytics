@@ -18,7 +18,7 @@ import (
 )
 
 // analyticsWidgetFile is the file name of the analytics widget.
-const analyticsWidgetFile = "dbg_replay_analytics.lua"
+const analyticsWidgetFile = widget.FileName
 
 // discardLog is the logger for the functions under test; their log lines are not tested here.
 var discardLog = slog.New(slog.DiscardHandler)

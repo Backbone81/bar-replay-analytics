@@ -2,6 +2,8 @@ package report_test
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -265,176 +267,46 @@ var _ = Describe("Report", func() {
 		)
 	})
 
-	Context("MarshalJSON", func() {
-		It("writes the report as JSON", func() {
-			replay := newTestDemo()
-			replay.TeamStats = [][]demo.TeamStatistics{{{Frame: 0}}, {{Frame: 0}}}
+	Context("golden report", func() {
+		// The reports of the test game, as replay report writes them, are in testdata/. Any change to what a report
+		// holds or how it is computed changes them, so this test fails: then increase report.FormatVersion if the
+		// change is intended and update the files with: go test ./internal/report -update
+		DescribeTable("writes the report of the test game as in testdata/",
+			func(goldenFileName string, options ...report.Option) {
+				result, err := report.NewReport(newTestDemo(), newTestSetupScript(), newGoldenEventsFile(), options...)
+				Expect(err).NotTo(HaveOccurred())
+				data, err := json.MarshalIndent(result, "", "  ")
+				Expect(err).NotTo(HaveOccurred())
+				data = append(data, '\n')
 
-			result, err := report.NewReport(replay, newTestSetupScript(), newTestEventsFile())
+				goldenFilePath := filepath.Join("testdata", goldenFileName)
+				if *update {
+					Expect(os.MkdirAll("testdata", 0o750)).To(Succeed())
+					Expect(os.WriteFile(goldenFilePath, data, 0o600)).To(Succeed())
+				}
+				golden, err := os.ReadFile(goldenFilePath)
+				Expect(err).NotTo(HaveOccurred(), "create it with: go test ./internal/report -update")
+				Expect(string(data)).To(Equal(string(golden)), `The report changed. If that is intended, increase
+report.FormatVersion (now %d) when the report of the same replay and events file holds anything different, then
+update testdata/ with: go test ./internal/report -update`, report.FormatVersion)
+			},
+			Entry("with the default configuration", "report.json"),
+			Entry("with an opening and later intervals", "report_intervals.json",
+				report.WithOpeningLength(30*time.Second),
+				report.WithOpeningIntervalLength(10*time.Second),
+				report.WithIntervalLength(15*time.Second),
+			),
+		)
+
+		It("holds the format versions of the report and of the events file", func() {
+			eventsFile := newTestEventsFile()
+			eventsFile.FormatVersion = 3
+
+			result, err := report.NewReport(newTestDemo(), newTestSetupScript(), eventsFile)
+
 			Expect(err).NotTo(HaveOccurred())
-
-			Expect(json.Marshal(result)).To(MatchJSON(`{
-				"metadata": {
-					"engineVersion": "2026.07.04",
-					"gameVersion": "Beyond All Reason test-31756-0d4c3c3",
-					"map": "Argent Strata 1.1",
-					"gameID": "0102030405060708090a0b0c0d0e0f10",
-					"startTime": "2026-10-24T13:48:21Z",
-					"duration": "1:00",
-					"winningTeams": [1],
-					"modOptions": {"date_day": "29"},
-					"mapOptions": {}
-				},
-				"mapGrid": {
-					"mapSize": {"x": 8192, "z": 8192},
-					"columns": 4,
-					"rows": 4,
-					"cellSize": {"x": 2048, "z": 2048},
-					"startPositions": [
-						{"playerID": 0, "cell": "A4", "x": 1698, "z": 6452},
-						{"playerID": 1, "cell": "D1", "x": 6552, "z": 1798}
-					]
-				},
-				"teams": [
-					{
-						"teamID": 0,
-						"playerIDs": [0],
-						"won": false
-					},
-					{
-						"teamID": 1,
-						"playerIDs": [1],
-						"won": true
-					}
-				],
-				"players": [
-					{
-						"playerID": 0,
-						"teamID": 0,
-						"name": "Player",
-						"faction": "Cortex",
-						"incomeMultiplier": 1,
-						"ai": null,
-						"economy": {
-							"total": {` + zeroResourcesJSON + `},
-							"perSecond": {` + zeroResourcesJSON + `},
-							"intervals": []
-						},
-						"combat": {
-							"total": {
-								"killed": {"count": 0, "metal": 0},
-								"lost": {"count": 1, "metal": 50},
-								"unitTypes": [` + lostMetalExtractorJSON + `]
-							},
-							"intervals": [
-								{
-									"time": "0:00-1:00",
-									"killed": {"count": 0, "metal": 0},
-									"lost": {"count": 1, "metal": 50},
-									"unitTypes": [` + lostMetalExtractorJSON + `]
-								}
-							]
-						},
-						"lossLocations": [
-							{
-								"time": "0:00-1:00",
-								"cells": [
-									{
-										"cell": "A1",
-										"units": {"count": 0, "metal": 0},
-										"buildings": {"count": 1, "metal": 50},
-										"killedByBuildings": {"count": 0, "metal": 0}
-									}
-								]
-							}
-						],
-						"resurrection": {
-							"total": {"metalValue": 0, "energySpent": 0},
-							"intervals": [{"time": "0:00-1:00", "metalValue": 0, "energySpent": 0}]
-						},
-						"openingBuildOrder": [
-							{"time": "0:20", "name": "Metal Extractor", "buildRate": 1},
-							{"time": "1:30", "name": "Bot Lab", "buildRate": 2}
-						],
-						"firstFinished": [
-							{"time": "0:20", "name": "Metal Extractor"},
-							{"time": "1:30", "name": "Bot Lab"},
-							{"time": "5:10", "name": "Construction Bot"}
-						],
-						"builders": [
-							{
-								"name": "Cortex Commander 1",
-								"time": "0:00-5:10",
-								"idle": "0:00",
-								"idleFraction": 0,
-								"idleStretches": [],
-								"builds": [{"name": "Metal Extractor", "count": 1}, {"name": "Bot Lab", "count": 1}]
-							},
-							{
-								"name": "Cortex Commander 2",
-								"time": "1:50-5:10",
-								"idle": "0:00",
-								"idleFraction": 0,
-								"idleStretches": [],
-								"builds": []
-							},
-							{
-								"name": "Construction Bot 1",
-								"time": "5:10-5:10",
-								"idle": "0:00",
-								"idleFraction": 0,
-								"idleStretches": [],
-								"builds": []
-							}
-						]
-					},
-					{
-						"playerID": 1,
-						"teamID": 1,
-						"name": "BARbarianAI(1)",
-						"faction": "Armada",
-						"incomeMultiplier": 1,
-						"ai": {"shortName": "BARb", "profile": "Hard", "options": {"profile": "Hard"}},
-						"economy": {
-							"total": {` + zeroResourcesJSON + `},
-							"perSecond": {` + zeroResourcesJSON + `},
-							"intervals": []
-						},
-						"combat": {
-							"total": {"killed": {"count": 0, "metal": 0}, "lost": {"count": 0, "metal": 0}, "unitTypes": []},
-							"intervals": [
-								{
-									"time": "0:00-1:00",
-									"killed": {"count": 0, "metal": 0},
-									"lost": {"count": 0, "metal": 0},
-									"unitTypes": []
-								}
-							]
-						},
-						"lossLocations": [{"time": "0:00-1:00", "cells": []}],
-						"resurrection": {
-							"total": {"metalValue": 0, "energySpent": 0},
-							"intervals": [{"time": "0:00-1:00", "metalValue": 0, "energySpent": 0}]
-						},
-						"openingBuildOrder": [
-							{"time": "0:25", "name": "Metal Extractor", "buildRate": 0.83}
-						],
-						"firstFinished": [
-							{"time": "0:25", "name": "Metal Extractor"}
-						],
-						"builders": [
-							{
-								"name": "Armada Commander 1",
-								"time": "0:00-5:10",
-								"idle": "0:00",
-								"idleFraction": 0,
-								"idleStretches": [],
-								"builds": [{"name": "Metal Extractor", "count": 1}]
-							}
-						]
-					}
-				]
-			}`))
+			Expect(result.FormatVersion).To(Equal(report.FormatVersion))
+			Expect(result.EventsFormatVersion).To(Equal(3))
 		})
 	})
 })
@@ -467,15 +339,17 @@ func newHostedEventsFile() *events.File {
 	return eventsFile
 }
 
-// lostMetalExtractorJSON is the unit type of a Metal Extractor lost without attacker, as JSON.
-const lostMetalExtractorJSON = `{
-	"name": "Metal Extractor",
-	"killed": {"count": 0, "metal": 0},
-	"lost": {"count": 1, "metal": 50},
-	"killedBy": []
-}`
-
-// zeroResourcesJSON is the members of Resources with all amounts 0, as JSON.
-const zeroResourcesJSON = `
-	"metal": {"produced": 0, "used": 0, "wasted": 0, "received": 0, "sent": 0},
-	"energy": {"produced": 0, "used": 0, "wasted": 0, "received": 0, "sent": 0}`
+// newGoldenEventsFile returns the events of the test game with a kill and a resurrection added, so that every part of
+// the report has content.
+func newGoldenEventsFile() *events.File {
+	eventsFile := newTestEventsFile()
+	addEvents(eventsFile,
+		// A Graverobber of the bot lab resurrects a metal extractor after player 0 killed one of player 1.
+		unitCreated(1000, 105, 10, 102),
+		unitFinished(1100, 105, 10),
+		unitKilled(1200, 201, 6, 1, 0),
+		unitCreated(1500, 106, 2, 105),
+		unitFinished(1500, 106, 2),
+	)
+	return eventsFile
+}
