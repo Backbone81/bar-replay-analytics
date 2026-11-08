@@ -268,6 +268,11 @@ func printDownload(description string) {
 	printStatus("download", description, "")
 }
 
+// printReplayLine prints the outcome for one replay to stdout.
+func printReplayLine(status string, name string, description string) {
+	fmt.Println(strings.TrimRight(fmt.Sprintf("%-10s  %s  %s", status, name, description), " "))
+}
+
 // printStatus prints a line about a running replay or download to stderr, aligned like the lines of
 // printReplayLine, so stdout holds only the results.
 func printStatus(status string, name string, description string) {

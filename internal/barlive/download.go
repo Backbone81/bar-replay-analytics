@@ -56,7 +56,7 @@ func (c *Client) downloadDemo(ctx context.Context, requestURL string, writer io.
 		return err
 	}
 
-	c.reportRequest(requestURL)
+	c.log.Debug("HTTP GET", "url", requestURL)
 	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return err
@@ -96,7 +96,7 @@ func (c *Client) DownloadDemoIntoDir(ctx context.Context, replay *Replay, dir st
 
 	partPath := filePath + ".part"
 	// ValidateDemoFileName made sure that partPath stays inside dir; replays are not confidential, see filePermissions.
-	file, err := os.OpenFile(partPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, filePermissions) //nolint:gosec
+	file, err := os.OpenFile(partPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644) //nolint:gosec
 	if err != nil {
 		return "", err
 	}
@@ -127,13 +127,6 @@ func (c *Client) DownloadDemoIntoDir(ctx context.Context, replay *Replay, dir st
 	renamed = true
 	return filePath, nil
 }
-
-// filePermissions are the permissions of the files the package writes: replays and the replay index hold nothing
-// confidential, so everyone may read them.
-const filePermissions = 0o644
-
-// dirPermissions are the permissions of the directories the package creates, so everyone may read their files.
-const dirPermissions = 0o755
 
 // checkNotExist returns an error matching fs.ErrExist if filePath exists, or the error of looking it up.
 func checkNotExist(filePath string) error {

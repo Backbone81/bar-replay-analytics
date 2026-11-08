@@ -1,15 +1,12 @@
 package cmd
 
 import (
-	"context"
-	"errors"
-	"fmt"
-	"strings"
-	"time"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/barlive"
+	"github.com/backbone81/bar-replay-analytics-go/internal/replaydownloader"
 )
 
 // The flags of replayDownloadTopCmd.
@@ -26,49 +23,54 @@ var replayDownloadTopCmd = &cobra.Command{
 	Use:         "download-top",
 	Annotations: map[string]string{needsBarDataDir: "true"}, //nolint:goconst
 	Short:       "Download the recent replays of the best players of a leaderboard",
-	Long: `Downloads the replays of the games the --top players of a leaderboard of the active season played in the last
---days, of the leaderboard's game type only: bar-db's preset must fit, and the allyteams must have the shape the lobby
-server decides the game type by (duel 1v1, small-team two allyteams of up to 5 players, large-team two of more, ffa
-more than two of 1 player). Games with AIs and aborted games are left out; unrated ones are included, as bar-db does
-not tell them apart.
+	Long: `Downloads the replays of the games the --top players of a leaderboard of the active season played in about the
+last --days (bar-db selects whole days), of the leaderboard's game type only: bar-db's preset must fit, and the
+allyteams must have the shape the lobby server decides the game type by (duel 1v1, small-team two allyteams of up to 5
+players, large-team two of more, ffa more than two of 1 player). Games with AIs and aborted games are left out; unrated
+ones are included, as bar-db does not tell them apart. An error stops the downloads of that player only; the command
+goes on with the next one and fails at the end.
 
 --map takes the exact mapname of the start script ('replay script' shows it), version included, such as "Argent Strata
 1.1". Repeat it for several maps.
 
-The replays keep the file names of the replay storage. The default --dir, demos/leaderboard/, is not shown in the BAR
-lobby's replay list. index.json there records which file holds which replay, so a new run downloads only the missing
-ones and notices files added or removed by hand. A download is written to a .part file first, so an interrupted run
-leaves no partial replay.`,
+The replays go to demos/leaderboard/ in the BAR data directory, which the BAR lobby's replay list does not show, under
+the file names of the replay storage. index.json there records which file holds which replay, so a new run downloads
+only the missing ones and notices files added or removed by hand. A download is written to a .part file first, so an
+interrupted run leaves no partial replay. --dry-run logs the replays it would download.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		if err := checkDownloadTopFlags(); err != nil {
-			return err
+		options := []replaydownloader.Option{
+			replaydownloader.WithLogger(log),
+			replaydownloader.WithDir(filepath.Join(barDataDir, "demos", "leaderboard")),
+			replaydownloader.WithPlayers(replayDownloadTopTop),
+			replaydownloader.WithDays(replayDownloadTopDays),
+			replaydownloader.WithGameType(toGameType(replayDownloadTopGameType)),
 		}
-
-		client := barlive.NewClient(barlive.WithOnRequest(printRequest))
-		selection, err := selectTopPlayers(cmd.Context(), client)
+		for _, mapName := range replayDownloadTopMaps {
+			options = append(options, replaydownloader.WithMap(mapName))
+		}
+		if replayDownloadTopDryRun {
+			options = append(options, replaydownloader.WithDryRun())
+		}
+		downloader, err := replaydownloader.New(options...)
 		if err != nil {
 			return err
 		}
-
-		downloader, err := newReplayDownloader(client, replayDownloadTopDryRun)
-		if err != nil {
-			return err
-		}
-
-		for i, player := range selection.players {
-			err = selection.downloadPlayerReplays(cmd.Context(), downloader, i+1, player)
-			if err != nil {
-				break
+		defer func() {
+			if err := downloader.Close(); err != nil {
+				log.Error(err.Error())
 			}
+		}()
+
+		if err := downloader.Run(cmd.Context()); err != nil {
+			return err
 		}
-		return downloader.finish(err)
+		return nil
 	},
 }
 
 func init() {
 	replayCmd.AddCommand(replayDownloadTopCmd)
-	addReplayDownloadFlags(replayDownloadTopCmd)
 	flags := replayDownloadTopCmd.Flags()
 	flags.StringVar(
 		&replayDownloadTopGameType,
@@ -98,142 +100,21 @@ func init() {
 		&replayDownloadTopDryRun,
 		"dry-run",
 		false,
-		"List the missing replays without downloading them.",
+		"Log the missing replays without downloading them.",
 	)
 }
 
-// checkDownloadTopFlags checks the flags of replayDownloadTopCmd which need no request.
-func checkDownloadTopFlags() error {
-	if replayDownloadTopTop < 1 || replayDownloadTopTop > 100 {
-		return fmt.Errorf("--top: got %d, want 1 to 100", replayDownloadTopTop)
+func toGameType(gameType string) barlive.GameType {
+	switch gameType {
+	case "duel":
+		return barlive.GameTypeDuel
+	case "small-team":
+		return barlive.GameTypeSmallTeam
+	case "large-team":
+		return barlive.GameTypeLargeTeam
+	case "ffa":
+		return barlive.GameTypeFFA
+	default:
+		return barlive.GameType(gameType)
 	}
-	if replayDownloadTopDays < 1 {
-		return fmt.Errorf("--days: got %d, want >= 1", replayDownloadTopDays)
-	}
-	for _, mapName := range replayDownloadTopMaps {
-		if strings.TrimSpace(mapName) == "" {
-			return errors.New("--map: got an empty map name")
-		}
-	}
-	return nil
-}
-
-// topPlayers is what the flags of replayDownloadTopCmd select: the best players of a leaderboard, and which of their
-// games to download.
-type topPlayers struct {
-	// gameType is the game type of the leaderboard and the games.
-	gameType barlive.GameType
-
-	// since is the time from which on games are downloaded.
-	since time.Time
-
-	// maps are the maps of the games, by mapname, or nil for any map.
-	maps []string
-
-	// players are the best players, best first.
-	players []barlive.LeaderboardPlayer
-}
-
-// selectTopPlayers returns the best players of the active season the flags select, and prints the selection.
-func selectTopPlayers(ctx context.Context, client *barlive.Client) (*topPlayers, error) {
-	season, err := client.LeaderboardSeason(ctx, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	gameType, err := findGameType(season, replayDownloadTopGameType)
-	if err != nil {
-		return nil, err
-	}
-
-	if _, found := gameType.ReplayPreset(); !found {
-		return nil, fmt.Errorf("--game-type %q: cannot select its replays", replayDownloadTopGameType)
-	}
-
-	leaderboard, err := client.Leaderboard(ctx, season.Season, gameType)
-	if err != nil {
-		return nil, err
-	}
-
-	selection := &topPlayers{
-		gameType: gameType,
-		since:    time.Now().Add(-time.Duration(replayDownloadTopDays) * 24 * time.Hour),
-		maps:     replayDownloadTopMaps,
-		players:  leaderboard.Players[:min(replayDownloadTopTop, len(leaderboard.Players))],
-	}
-
-	printField("season", season.Season)
-	printField("game type", gameTypeFlagName(gameType))
-	printField("since", selection.since.UTC().Format("2006-01-02 15:04 MST"))
-	if len(selection.maps) != 0 {
-		printField("maps", strings.Join(selection.maps, ", "))
-	}
-	printField("players", len(selection.players))
-	return selection, nil
-}
-
-// downloadPlayerReplays has downloader download the selected games of player, who has rank on the leaderboard, one
-// after the other as bar-db returns them, and prints the player and their number of games.
-func (t *topPlayers) downloadPlayerReplays(
-	ctx context.Context, downloader *replayDownloader, rank int, player barlive.LeaderboardPlayer,
-) error {
-	fmt.Println()
-	printField("player", fmt.Sprintf("%d. %s (rating %.2f)", rank, player.Name, player.Rating))
-
-	count := 0
-	for replay, err := range downloader.client.RecentReplays(ctx, player.Name, t.gameType, t.since, t.maps) {
-		if err != nil {
-			return fmt.Errorf("replays of %s: %w", player.Name, err)
-		}
-		count++
-		downloader.download(ctx, replayToDownload{ID: replay.ID, Description: describeReplay(&replay)})
-	}
-	printField("replays", count)
-	return nil
-}
-
-// describeReplay returns the start time, map and players of replay.
-func describeReplay(replay *barlive.ReplaySummary) string {
-	allyTeams := make([]string, 0, len(replay.AllyTeams))
-	for _, allyTeam := range replay.AllyTeams {
-		if len(allyTeam.Players) == 0 {
-			continue
-		}
-		names := make([]string, len(allyTeam.Players))
-		for i, player := range allyTeam.Players {
-			names[i] = player.Name
-		}
-		allyTeams = append(allyTeams, strings.Join(names, ", "))
-	}
-	return fmt.Sprintf(
-		"%s  %s  %s",
-		replay.StartTime.UTC().Format("2006-01-02 15:04"),
-		replay.Map.ScriptName,
-		strings.Join(allyTeams, " vs "),
-	)
-}
-
-// gameTypeFlagName returns the value of --game-type which selects gameType: its name in lower case with hyphens for
-// spaces, such as "small-team" for "Small Team".
-func gameTypeFlagName(gameType barlive.GameType) string {
-	return strings.ToLower(strings.ReplaceAll(string(gameType), " ", "-"))
-}
-
-// gameTypeFlagNames returns the values of --game-type for the game types of season, separated by commas.
-func gameTypeFlagNames(season barlive.LeaderboardSeason) string {
-	names := make([]string, len(season.GameTypes))
-	for i, gameType := range season.GameTypes {
-		names[i] = gameTypeFlagName(gameType)
-	}
-	return strings.Join(names, ", ")
-}
-
-// findGameType returns the game type of season which flagName selects, see gameTypeFlagName.
-func findGameType(season barlive.LeaderboardSeason, flagName string) (barlive.GameType, error) {
-	for _, gameType := range season.GameTypes {
-		if gameTypeFlagName(gameType) == flagName {
-			return gameType, nil
-		}
-	}
-	return "", fmt.Errorf("--game-type %q: season %d has %s", flagName, season.Season, gameTypeFlagNames(season))
 }

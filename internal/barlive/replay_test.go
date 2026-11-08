@@ -3,28 +3,31 @@ package barlive_test
 import (
 	"context"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/barlive"
+	"github.com/backbone81/bar-replay-analytics-go/internal/barlive/barlivetest"
 )
 
 var _ = Describe("Replay", func() {
-	var server *testServer
+	var server *barlivetest.Server
 
 	BeforeEach(func() {
-		server = newTestServer()
-		server.HandleFunc("GET /replays/00000000000000000000000000000001", serveTestdata(
-			http.StatusOK, "replay_00000000000000000000000000000001.json"))
-		server.HandleFunc("GET /replays/00000000000000000000000000000002", serveTestdata(
-			http.StatusOK, "replay_00000000000000000000000000000002.json"))
-		server.HandleFunc("GET /replays/{id}", serveTestdata(http.StatusNotFound, "replay_not_found.json"))
+		server = newServer()
+		server.HandleFunc("GET /replays/00000000000000000000000000000001", barlivetest.ServeJSONFile(
+			http.StatusOK, filepath.Join("testdata", "replay_00000000000000000000000000000001.json")))
+		server.HandleFunc("GET /replays/00000000000000000000000000000002", barlivetest.ServeJSONFile(
+			http.StatusOK, filepath.Join("testdata", "replay_00000000000000000000000000000002.json")))
+		server.HandleFunc("GET /replays/{id}", barlivetest.ServeJSONFile(
+			http.StatusNotFound, filepath.Join("testdata", "replay_not_found.json")))
 	})
 
 	It("returns the details of a replay", func() {
-		replay, err := server.client().Replay(context.Background(), "00000000000000000000000000000001")
+		replay, err := server.Client().Replay(context.Background(), "00000000000000000000000000000001")
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(replay.ID).To(Equal("00000000000000000000000000000001"))
@@ -88,7 +91,7 @@ var _ = Describe("Replay", func() {
 	})
 
 	It("returns the AIs of a replay", func() {
-		replay, err := server.client().Replay(context.Background(), "00000000000000000000000000000002")
+		replay, err := server.Client().Replay(context.Background(), "00000000000000000000000000000002")
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(replay.HasBots).To(BeTrue())
@@ -111,16 +114,16 @@ var _ = Describe("Replay", func() {
 	})
 
 	It("reports an unknown replay", func() {
-		Expect(server.client().Replay(context.Background(), "00000000000000000000000000000000")).Error().To(HaveOccurred())
+		Expect(server.Client().Replay(context.Background(), "00000000000000000000000000000000")).Error().To(HaveOccurred())
 	})
 
 	It("escapes the ID", func() {
-		Expect(server.client().Replay(context.Background(), "../a b")).Error().To(HaveOccurred())
-		Expect(server.recorded()[0].Path).To(Equal("/replays/..%2Fa%20b"))
+		Expect(server.Client().Replay(context.Background(), "../a b")).Error().To(HaveOccurred())
+		Expect(server.Requests()[0].Path).To(Equal("/replays/..%2Fa%20b"))
 	})
 
 	It("rejects an empty ID without a request", func() {
-		Expect(server.client().Replay(context.Background(), "")).Error().To(HaveOccurred())
-		Expect(server.recorded()).To(BeEmpty())
+		Expect(server.Client().Replay(context.Background(), "")).Error().To(HaveOccurred())
+		Expect(server.Requests()).To(BeEmpty())
 	})
 })

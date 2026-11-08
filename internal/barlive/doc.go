@@ -14,10 +14,9 @@
 //   - An OpenStack Swift container on OVH stores the replay files under demos/<fileName>. The site links them as
 //     objectStorageUrl + "/demos/" + fileName. Files older than about a year may have been deleted.
 //
-// On top of one method per endpoint, Client combines them for finding and fetching the games of top players:
-// LeaderboardSeason (the active season), Leaderboard (one game type), RecentReplays (a player's recent games of one
-// game type, see GameType.Matches) and DownloadDemoIntoDir (a demo file stored safely under its name). ReplayIndex
-// keeps a directory of downloaded demo files and knows which replay each holds.
+// Client has one method per endpoint: LeaderboardSeason (the active season), Leaderboard (one game type), Replays (one
+// page of a search), Replay (one replay with its file name) and DownloadDemo, plus DownloadDemoIntoDir (a demo file
+// stored safely under its name).
 //
 // Client sends at most Config.MaxRequestRate requests per second to Teiserver and bar-db together, so a tool walking
 // many pages or replays does not overload them. Downloads from the storage are not rate limited. Client sets no

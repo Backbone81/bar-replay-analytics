@@ -27,11 +27,6 @@ type Config struct {
 	// src/rest-api.ts), so 5 per second uses 30% of that and leaves room for other use from the same address.
 	// Teiserver's public API has no rate limit of its own.
 	MaxRequestRate rate.Limit
-
-	// OnRequest, if set, is called with the URL of each request just before it is sent: for Teiserver and bar-db once
-	// the rate limit lets it through, so a caller can show progress while requests wait. It may be called from several
-	// goroutines at once.
-	OnRequest func(requestURL string)
 }
 
 // DefaultConfig is the configuration of the real BAR Live Services.

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -67,11 +66,4 @@ func init() {
 		"The BAR data directory which contains the folders demos/, engine/ and maps/. Empty autodetects the "+
 			"location.",
 	)
-}
-
-// printRequest prints a line for a request to requestURL to stderr, aligned like the lines of printReplayLine. The
-// commands pass it to barlive.WithOnRequest, so a run shows progress while its requests wait for the rate limit, and
-// stdout holds only the results.
-func printRequest(requestURL string) {
-	_, _ = fmt.Fprintf(os.Stderr, "%-10s  %s\n", "GET", requestURL)
 }

@@ -187,8 +187,8 @@ A number means little alone. Compare, and say what you compare with:
    the first analysis there are none: say this game is the starting point, don't make up progress.
 3. **Strong players:** `replay download-top` downloads the recent games of the best players of a leaderboard into
    `demos/leaderboard/`; `--map "<mapname>"` (the exact mapname from `replay script`, version included) downloads only
-   the games on the player's map, so raise `--days` to find enough of them, and try `--dry-run` first: it lists the
-   players, their ratings and the missing games without downloading. Compare on the same map and game type only, and interval by interval, e.g. metal income or metal
+   the games on the player's map, so raise `--days` to find enough of them, and try `--dry-run` first: it logs the
+   missing games, each with its player and rating, without downloading them. Compare on the same map and game type only, and interval by interval, e.g. metal income or metal
    extractors at minute 5.
 
 Don't quote "good" numbers from memory: BAR changes its balance often and they differ by map. Take them from the

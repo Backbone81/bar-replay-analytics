@@ -3,28 +3,31 @@ package barlive_test
 import (
 	"context"
 	"net/http"
+	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/barlive"
+	"github.com/backbone81/bar-replay-analytics-go/internal/barlive/barlivetest"
 )
 
 var _ = Describe("Leaderboard", func() {
-	var server *testServer
+	var server *barlivetest.Server
 
 	BeforeEach(func() {
-		server = newTestServer()
-		server.HandleFunc("GET /teiserver/api/public/leaderboard", serveTestdata(http.StatusOK, "leaderboard_seasons.json"))
-		server.HandleFunc("GET /teiserver/api/public/leaderboard/3", serveTestdata(
-			http.StatusOK, "leaderboard_season_3.json"))
-		server.HandleFunc("GET /teiserver/api/public/leaderboard/99", serveTestdata(
-			http.StatusBadRequest, "leaderboard_season_99.json"))
+		server = newServer()
+		server.HandleFunc("GET /teiserver/api/public/leaderboard", barlivetest.ServeJSONFile(
+			http.StatusOK, filepath.Join("testdata", "leaderboard_seasons.json")))
+		server.HandleFunc("GET /teiserver/api/public/leaderboard/3", barlivetest.ServeJSONFile(
+			http.StatusOK, filepath.Join("testdata", "leaderboard_season_3.json")))
+		server.HandleFunc("GET /teiserver/api/public/leaderboard/99", barlivetest.ServeJSONFile(
+			http.StatusBadRequest, filepath.Join("testdata", "leaderboard_season_99.json")))
 	})
 
 	Context("LeaderboardSeasons", func() {
 		It("returns the seasons", func() {
-			seasons, err := server.client().LeaderboardSeasons(context.Background())
+			seasons, err := server.Client().LeaderboardSeasons(context.Background())
 
 			Expect(err).NotTo(HaveOccurred())
 			gameTypes := []barlive.GameType{
@@ -40,7 +43,7 @@ var _ = Describe("Leaderboard", func() {
 
 	Context("Leaderboards", func() {
 		It("returns the top 100 players of each game type", func() {
-			leaderboards, err := server.client().Leaderboards(context.Background(), 3)
+			leaderboards, err := server.Client().Leaderboards(context.Background(), 3)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(leaderboards).To(HaveLen(4))
@@ -59,13 +62,13 @@ var _ = Describe("Leaderboard", func() {
 		})
 
 		It("reports an unknown season", func() {
-			Expect(server.client().Leaderboards(context.Background(), 99)).Error().To(HaveOccurred())
+			Expect(server.Client().Leaderboards(context.Background(), 99)).Error().To(HaveOccurred())
 		})
 	})
 
 	Context("LeaderboardSeason", func() {
 		It("returns the active season for 0", func() {
-			season, err := server.client().LeaderboardSeason(context.Background(), 0)
+			season, err := server.Client().LeaderboardSeason(context.Background(), 0)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(season.Season).To(Equal(3))
@@ -73,34 +76,34 @@ var _ = Describe("Leaderboard", func() {
 		})
 
 		It("returns an earlier season", func() {
-			season, err := server.client().LeaderboardSeason(context.Background(), 2)
+			season, err := server.Client().LeaderboardSeason(context.Background(), 2)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(season.Season).To(Equal(2))
 		})
 
 		It("reports an unknown season", func() {
-			Expect(server.client().LeaderboardSeason(context.Background(), 4)).Error().To(
+			Expect(server.Client().LeaderboardSeason(context.Background(), 4)).Error().To(
 				MatchError("season 4: teiserver lists seasons 1 to 3"))
 		})
 
 		It("rejects a negative season without a request", func() {
-			Expect(server.client().LeaderboardSeason(context.Background(), -1)).Error().To(HaveOccurred())
-			Expect(server.recorded()).To(BeEmpty())
+			Expect(server.Client().LeaderboardSeason(context.Background(), -1)).Error().To(HaveOccurred())
+			Expect(server.Requests()).To(BeEmpty())
 		})
 
 		It("reports a list without seasons", func() {
-			emptyServer := newTestServer()
-			emptyServer.HandleFunc("GET /teiserver/api/public/leaderboard", serveString(
+			emptyServer := newServer()
+			emptyServer.HandleFunc("GET /teiserver/api/public/leaderboard", barlivetest.ServeString(
 				http.StatusOK, "application/json", "[]"))
 
-			Expect(emptyServer.client().LeaderboardSeason(context.Background(), 0)).Error().To(HaveOccurred())
+			Expect(emptyServer.Client().LeaderboardSeason(context.Background(), 0)).Error().To(HaveOccurred())
 		})
 	})
 
 	Context("Leaderboard", func() {
 		It("returns the leaderboard of a game type", func() {
-			leaderboard, err := server.client().Leaderboard(context.Background(), 3, barlive.GameTypeFFA)
+			leaderboard, err := server.Client().Leaderboard(context.Background(), 3, barlive.GameTypeFFA)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(leaderboard.Name).To(Equal(barlive.GameTypeFFA))
@@ -108,12 +111,12 @@ var _ = Describe("Leaderboard", func() {
 		})
 
 		It("reports a game type without leaderboard", func() {
-			Expect(server.client().Leaderboard(context.Background(), 3, "Team FFA")).Error().To(
+			Expect(server.Client().Leaderboard(context.Background(), 3, "Team FFA")).Error().To(
 				MatchError(`season 3 has no leaderboard for game type "Team FFA"`))
 		})
 
 		It("reports an unknown season", func() {
-			Expect(server.client().Leaderboard(context.Background(), 99, barlive.GameTypeDuel)).Error().To(HaveOccurred())
+			Expect(server.Client().Leaderboard(context.Background(), 99, barlive.GameTypeDuel)).Error().To(HaveOccurred())
 		})
 	})
 

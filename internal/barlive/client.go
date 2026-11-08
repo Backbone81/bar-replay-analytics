@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 
 	"golang.org/x/time/rate"
@@ -15,13 +16,14 @@ import (
 //
 // Client sets no timeout on its requests: pass a context with a deadline to bound them.
 type Client struct {
+	log        *slog.Logger
 	config     Config
 	httpClient *http.Client
 	limiter    *rate.Limiter
 }
 
 // NewClient returns a Client configured by options.
-func NewClient(options ...Option) *Client {
+func NewClient(log *slog.Logger, options ...Option) *Client {
 	config := DefaultConfig
 	for _, option := range options {
 		option(&config)
@@ -31,18 +33,12 @@ func NewClient(options ...Option) *Client {
 		maxRequestRate = rate.Inf
 	}
 	return &Client{
+		log:    log,
 		config: config,
 		httpClient: &http.Client{
 			Transport: config.Transport,
 		},
 		limiter: rate.NewLimiter(maxRequestRate, 1),
-	}
-}
-
-// reportRequest calls Config.OnRequest, if set, with requestURL.
-func (c *Client) reportRequest(requestURL string) {
-	if c.config.OnRequest != nil {
-		c.config.OnRequest(requestURL)
 	}
 }
 
@@ -68,7 +64,7 @@ func (c *Client) doGetJSON(ctx context.Context, requestURL string, target any) e
 
 	request.Header.Set("Accept", "application/json")
 
-	c.reportRequest(requestURL)
+	c.log.Debug("HTTP GET", "url", requestURL)
 	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return err

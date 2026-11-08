@@ -3,7 +3,6 @@ package barlive
 import (
 	"context"
 	"fmt"
-	"iter"
 	"net/url"
 	"strconv"
 	"time"
@@ -193,88 +192,4 @@ func (c *Client) Replays(ctx context.Context, query ReplaysQuery) (*ReplaysPage,
 		return nil, err
 	}
 	return &page, nil
-}
-
-// AllReplays returns every replay selected by query, newest first, from query.Page on. It requests one page after the
-// other as the caller iterates, and stops after the first error, which it yields with a zero ReplaySummary. Each
-// iteration starts again at query.Page.
-//
-// The pages are requested one at a time, so a replay may be returned twice or skipped if bar-db stores a new replay
-// while the caller iterates.
-func (c *Client) AllReplays(ctx context.Context, query ReplaysQuery) iter.Seq2[ReplaySummary, error] {
-	return func(yield func(ReplaySummary, error) bool) {
-		// Each iteration pages through its own copy, so the next one starts at query.Page again.
-		pageQuery := query
-		if pageQuery.Page == 0 {
-			pageQuery.Page = 1
-		}
-		for {
-			page, err := c.Replays(ctx, pageQuery)
-			if err != nil {
-				yield(ReplaySummary{}, err)
-				return
-			}
-			for _, replay := range page.Data {
-				if !yield(replay, nil) {
-					return
-				}
-			}
-			// A short page is the last one, which saves requesting the empty page after it.
-			if len(page.Data) == 0 || len(page.Data) < page.Limit {
-				return
-			}
-			pageQuery.Page++
-		}
-	}
-}
-
-// RecentReplays returns the replays of the games of gameType which player played in and which started at since or
-// later, newest first. player is a current account name, see ReplaysQuery.Players. maps selects games on any of these
-// maps, by Map.ScriptName; nil selects any map.
-//
-// It selects in bar-db the preset of gameType (GameType.ReplayPreset), games without AIs which ended normally, the
-// maps, and the days from since to now; it then drops the replays which started before since or do not have the shape
-// of gameType (GameType.Matches). The rated and unrated games are both returned: bar-db does not tell them apart.
-// Errors are yielded as by AllReplays.
-func (c *Client) RecentReplays(
-	ctx context.Context, player string, gameType GameType, since time.Time, maps []string,
-) iter.Seq2[ReplaySummary, error] {
-	return func(yield func(ReplaySummary, error) bool) {
-		preset, found := gameType.ReplayPreset()
-		if !found {
-			yield(ReplaySummary{}, fmt.Errorf("no replay preset for game type %q", gameType))
-			return
-		}
-
-		endedNormally := true
-		hasBots := false
-		query := ReplaysQuery{
-			Limit:         MaxReplaysLimit,
-			Preset:        []ReplayPreset{preset},
-			EndedNormally: &endedNormally,
-			HasBots:       &hasBots,
-			Players:       []string{player},
-			Maps:          maps,
-			Date: &DateRange{
-				From: since.UTC(),
-				To:   time.Now().UTC(),
-			},
-		}
-		for replay, err := range c.AllReplays(ctx, query) {
-			if err != nil {
-				yield(ReplaySummary{}, err)
-				return
-			}
-			// The replays come newest first, so the rest of the first day started before since too.
-			if replay.StartTime.Before(since) {
-				return
-			}
-			if !gameType.Matches(&replay) {
-				continue
-			}
-			if !yield(replay, nil) {
-				return
-			}
-		}
-	}
 }
