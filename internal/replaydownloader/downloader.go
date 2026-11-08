@@ -181,7 +181,6 @@ func (d *Downloader) fetchPlayerReplay(
 		"duration", replaySummary.Duration(),
 		"map", replaySummary.Map.ScriptName,
 	)
-	logger.Info("Inspecting replay")
 
 	// We use the replay index to reduce our work of verifying if the replay is already on disk.
 	fileName, found := d.config.Index.Get(replaySummary.ID)
