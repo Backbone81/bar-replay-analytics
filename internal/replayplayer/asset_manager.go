@@ -29,6 +29,9 @@ func NewAssetManager(logger *slog.Logger, dataDir string) (*AssetManager, error)
 	if err != nil {
 		return nil, err
 	}
+	if logger == nil {
+		return nil, errors.New("logger is required")
+	}
 	return &AssetManager{
 		logger:  logger,
 		dataDir: dataDir,
@@ -46,7 +49,7 @@ func (m *AssetManager) downloadGame(ctx context.Context, engineVersion string, n
 }
 
 func (m *AssetManager) runPrDownloader(ctx context.Context, engineVersion string, kind string, name string) error {
-	prDownloader := filepath.Join(m.dataDir, "engine", engineVersion, "pr-downloader")
+	prDownloader := filepath.Join(m.engineDir(engineVersion), "pr-downloader")
 	arguments := []string{
 		"--filesystem-writepath", m.dataDir,
 		"--download-" + kind, name,
@@ -104,11 +107,11 @@ func (m *AssetManager) downloadEngine(ctx context.Context, engineVersion string)
 }
 
 func (m *AssetManager) downloadEngineTry(ctx context.Context, engineVersion string, downloadUrl string) error {
-	filePath := filepath.Join(m.dataDir, "engine", engineVersion+".7z")
+	filePath := filepath.Join(m.engineDir(engineVersion) + ".7z")
 	if err := m.downloadFile(ctx, downloadUrl, filePath); err != nil {
 		return err
 	}
-	defer os.Remove(filePath)
+	defer os.Remove(filePath) //nolint:errcheck
 
 	if err := m.extract7z(ctx, filePath); err != nil {
 		return err
@@ -132,12 +135,20 @@ func (m *AssetManager) downloadFile(ctx context.Context, downloadUrl string, fil
 		return fmt.Errorf("unexpected HTTP status: %s", response.Status)
 	}
 
+	if err := os.MkdirAll(filepath.Dir(filePath), 0o755); err != nil {
+		return err
+	}
+
 	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
 		return err
 	}
 	_, err = io.Copy(file, response.Body)
-	return errors.Join(err, file.Close())
+	err = errors.Join(err, file.Close())
+	if err != nil {
+		_ = os.Remove(filePath)
+	}
+	return err
 }
 
 func (m *AssetManager) extract7z(ctx context.Context, filePath string) error {
@@ -151,6 +162,9 @@ func (m *AssetManager) extract7z(ctx context.Context, filePath string) error {
 
 	for _, file := range reader.File {
 		if err := ctx.Err(); err != nil {
+			// If the context is canceled, we remove the folder we extracted the engine to. Partial extractions might
+			// introduce issues.
+			_ = os.RemoveAll(baseDir)
 			return err
 		}
 		if err := m.extract7zFile(file, baseDir); err != nil {
@@ -164,7 +178,11 @@ func (m *AssetManager) extract7z(ctx context.Context, filePath string) error {
 }
 
 func (m *AssetManager) extract7zFile(file *sevenzip.File, baseDir string) error {
-	destination := filepath.Join(baseDir, filepath.FromSlash(file.Name))
+	destination := filepath.FromSlash(file.Name)
+	if !filepath.IsLocal(destination) {
+		return fmt.Errorf("%q leaves the destination folder", file.Name)
+	}
+	destination = filepath.Join(baseDir, destination)
 	if file.Mode().IsDir() {
 		return os.MkdirAll(destination, 0o755)
 	}
@@ -188,4 +206,8 @@ func (m *AssetManager) extract7zFile(file *sevenzip.File, baseDir string) error 
 	}
 	_, err = io.Copy(writer, reader)
 	return errors.Join(err, writer.Close())
+}
+
+func (m *AssetManager) engineDir(engineVersion string) string {
+	return filepath.Join(m.dataDir, "engine", "recoil_"+engineVersion)
 }

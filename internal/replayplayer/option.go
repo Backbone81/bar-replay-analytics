@@ -10,9 +10,9 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
-func WithDir(dir string) Option {
+func WithDataDir(dataDir string) Option {
 	return func(config *Config) {
-		config.DataDir = dir
+		config.DataDir = dataDir
 	}
 }
 

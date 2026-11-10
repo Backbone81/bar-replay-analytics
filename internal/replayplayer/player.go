@@ -5,11 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/playback/widget"
@@ -75,8 +77,6 @@ func (p *Player) Run(ctx context.Context, filePath string) error {
 	if err := p.runSpringHeadless(ctx, filePath); err != nil {
 		return fmt.Errorf("running spring-headless: %w", err)
 	}
-
-	// TODO: Copy the log file besides the replay file.
 
 	// TODO: Copy the events file besides the replay file.
 
@@ -148,8 +148,22 @@ func (p *Player) prepareWriteDirWidget() error {
 	return nil
 }
 
-func (p *Player) runSpringHeadless(ctx context.Context, filePath string) error {
+// runSpringHeadless plays the replay filePath. The engine's output goes into <replay>.log next to the replay, which it
+// replaces, and into the error if the engine fails.
+func (p *Player) runSpringHeadless(ctx context.Context, filePath string) (err error) {
+	//nolint:gosec // This file does not contain sensitive data
+	logFile, err := os.OpenFile(
+		strings.TrimSuffix(filePath, filepath.Ext(filePath))+".log",
+		os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
+		0o644,
+	)
+	if err != nil {
+		return err
+	}
+	defer logFile.Close()
+
 	var outputBuffer bytes.Buffer
+	output := io.MultiWriter(&outputBuffer, logFile)
 	//nolint:gosec // The user does not control the command input.
 	command := exec.CommandContext(ctx, p.config.SpringHeadlessFilePath,
 		"--isolation",
@@ -159,9 +173,13 @@ func (p *Player) runSpringHeadless(ctx context.Context, filePath string) error {
 	)
 	command.Dir = p.writeDir
 	command.Env = append(os.Environ(), "SPRING_DATADIR="+p.config.DataDir)
+	command.Cancel = func() error {
+		// Ask the engine to quit first. Windows has no SIGTERM, so the engine is killed after WaitDelay there.
+		return command.Process.Signal(syscall.SIGTERM)
+	}
 	command.WaitDelay = 5 * time.Second
-	command.Stdout = &outputBuffer
-	command.Stderr = &outputBuffer
+	command.Stdout = output
+	command.Stderr = output
 
 	if err := command.Run(); err != nil {
 		return errors.Join(
