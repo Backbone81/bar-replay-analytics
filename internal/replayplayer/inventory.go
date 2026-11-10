@@ -14,6 +14,7 @@ type Inventory struct {
 	dataDir string
 
 	engineVersions []string
+	maps           []string
 }
 
 func NewInventory(dataDir string) (*Inventory, error) {
@@ -44,12 +45,33 @@ func (i *Inventory) AddEngineVersion(engineVersion string) {
 	slices.Sort(i.engineVersions)
 }
 
+func (i *Inventory) MapAvailable(mapName string) bool {
+	mapName = i.normalizeMapName(mapName)
+	index := slices.Index(i.maps, mapName)
+	return index != -1
+}
+
+func (i *Inventory) AddMap(mapName string) {
+	if i.MapAvailable(mapName) {
+		return
+	}
+	i.maps = append(i.maps, i.normalizeMapName(mapName))
+	slices.Sort(i.maps)
+}
+
 func (i *Inventory) Refresh() error {
 	engineVersions, err := i.getEngineVersions()
 	if err != nil {
 		return err
 	}
 	i.engineVersions = engineVersions
+
+	maps, err := i.getMaps()
+	if err != nil {
+		return err
+	}
+	i.maps = maps
+
 	return nil
 }
 
@@ -66,7 +88,7 @@ func (i *Inventory) getEngineVersions() ([]string, error) {
 		}
 		stat, err := os.Stat(match)
 		if err != nil {
-			return nil, err
+			continue
 		}
 		if !stat.IsDir() {
 			continue
@@ -84,6 +106,34 @@ func (i *Inventory) getEngineVersions() ([]string, error) {
 	return result, nil
 }
 
+func (i *Inventory) getMaps() ([]string, error) {
+	matches, err := filepath.Glob(filepath.Join(i.dataDir, "maps", "*"))
+	if err != nil {
+		return nil, err
+	}
+
+	var result []string
+	for _, match := range matches {
+		stat, err := os.Stat(match)
+		if err != nil {
+			continue
+		}
+		if stat.IsDir() {
+			continue
+		}
+
+		// We normalize the name to have an easier time identifying it.
+		match = filepath.Base(strings.ToLower(match))
+		if !slices.Contains([]string{".sd7", ".sdz"}, filepath.Ext(match)) {
+			continue
+		}
+		match = strings.TrimSuffix(match, filepath.Ext(match))
+		result = append(result, i.normalizeMapName(match))
+	}
+	slices.Sort(result)
+	return result, nil
+}
+
 func (i *Inventory) fileExists(filePath string) bool {
 	stat, err := os.Stat(filePath)
 	if err != nil {
@@ -93,4 +143,19 @@ func (i *Inventory) fileExists(filePath string) bool {
 		return false
 	}
 	return true
+}
+
+func (i *Inventory) normalizeMapName(mapName string) string {
+	mapNameBytes := []byte(strings.ToLower(mapName))
+	for idx := range mapNameBytes {
+		if 'a' <= mapNameBytes[idx] && mapNameBytes[idx] <= 'z' ||
+			'0' <= mapNameBytes[idx] && mapNameBytes[idx] <= '9' {
+			// We keep lower case ascii characters and numbers
+			continue
+		}
+
+		// All other characters are replaced by an underscore.
+		mapNameBytes[idx] = '_'
+	}
+	return string(mapNameBytes)
 }

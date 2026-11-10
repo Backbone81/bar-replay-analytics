@@ -93,6 +93,48 @@ func (m *AssetManager) addEngineVersion(engineVersion string) {
 	m.inventory.AddEngineVersion(engineVersion)
 }
 
+func (m *AssetManager) EnsureMap(ctx context.Context, engineVersion string, mapName string) error {
+	// We run the first map check under the inventory mutex only and release that mutex immediately. This allows
+	// a fast check without being blocked by downloads.
+	if m.mapAvailable(mapName) {
+		return nil
+	}
+
+	// We know that we need to download the map, so fetch the download mutex which prevents multiple parallel
+	// downloads from downloading the same thing.
+	m.downloadMutex.Lock()
+	defer m.downloadMutex.Unlock()
+
+	// But we need to re-check the inventory under the download mutex again, because it might be that between releasing
+	// the inventory mutex and acquiring the download mutex some other go routine already finished the download.
+	if m.mapAvailable(mapName) {
+		return nil
+	}
+
+	if err := m.downloadMap(ctx, engineVersion, mapName); err != nil {
+		return err
+	}
+
+	// After the download of the map is complete, we update the inventory with the new map while still
+	// holding the download mutex.
+	m.addMap(mapName)
+	return nil
+}
+
+func (m *AssetManager) mapAvailable(mapName string) bool {
+	m.inventoryMutex.Lock()
+	defer m.inventoryMutex.Unlock()
+
+	return m.inventory.MapAvailable(mapName)
+}
+
+func (m *AssetManager) addMap(mapName string) {
+	m.inventoryMutex.Lock()
+	defer m.inventoryMutex.Unlock()
+
+	m.inventory.AddMap(mapName)
+}
+
 func (m *AssetManager) downloadMap(ctx context.Context, engineVersion string, name string) error {
 	m.logger.Info("Downloading map", "name", name)
 	return m.runPrDownloader(ctx, engineVersion, "map", name)
