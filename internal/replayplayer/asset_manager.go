@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bodgit/sevenzip"
@@ -21,6 +23,11 @@ import (
 type AssetManager struct {
 	logger  *slog.Logger
 	dataDir string
+
+	inventoryMutex sync.Mutex
+	inventory      *Inventory
+
+	downloadMutex sync.Mutex
 }
 
 func NewAssetManager(logger *slog.Logger, dataDir string) (*AssetManager, error) {
@@ -32,10 +39,58 @@ func NewAssetManager(logger *slog.Logger, dataDir string) (*AssetManager, error)
 	if logger == nil {
 		return nil, errors.New("logger is required")
 	}
+
+	inventory, err := NewInventory(dataDir)
+	if err != nil {
+		return nil, err
+	}
 	return &AssetManager{
-		logger:  logger,
-		dataDir: dataDir,
+		logger:    logger,
+		dataDir:   dataDir,
+		inventory: inventory,
 	}, nil
+}
+
+func (m *AssetManager) EnsureEngineVersion(ctx context.Context, engineVersion string) (string, error) {
+	// We run the first engine check under the inventory mutex only and release that mutex immediately. This allows
+	// a fast check without being blocked by downloads.
+	if m.engineVersionAvailable(engineVersion) {
+		return m.engineDir(engineVersion), nil
+	}
+
+	// We know that we need to download the engine, so fetch the download mutex which prevents multiple parallel
+	// downloads from downloading the same thing.
+	m.downloadMutex.Lock()
+	defer m.downloadMutex.Unlock()
+
+	// But we need to re-check the inventory under the download mutex again, because it might be that between releasing
+	// the inventory mutex and acquiring the download mutex some other go routine already finished the download.
+	if m.engineVersionAvailable(engineVersion) {
+		return m.engineDir(engineVersion), nil
+	}
+
+	if err := m.downloadEngine(ctx, engineVersion); err != nil {
+		return "", err
+	}
+
+	// After the download of the engine is complete, we update the inventory with the new engine version while still
+	// holding the download mutex.
+	m.addEngineVersion(engineVersion)
+	return m.engineDir(engineVersion), nil
+}
+
+func (m *AssetManager) engineVersionAvailable(engineVersion string) bool {
+	m.inventoryMutex.Lock()
+	defer m.inventoryMutex.Unlock()
+
+	return m.inventory.EngineVersionAvailable(engineVersion)
+}
+
+func (m *AssetManager) addEngineVersion(engineVersion string) {
+	m.inventoryMutex.Lock()
+	defer m.inventoryMutex.Unlock()
+
+	m.inventory.AddEngineVersion(engineVersion)
 }
 
 func (m *AssetManager) downloadMap(ctx context.Context, engineVersion string, name string) error {
@@ -199,6 +254,11 @@ func (m *AssetManager) extract7zFile(file *sevenzip.File, baseDir string) error 
 		return err
 	}
 	defer reader.Close()
+
+	// In case the destination file is already there, we delete it first for a clean overwrite with a new inode.
+	if err := os.Remove(destination); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
 
 	writer, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, file.Mode().Perm())
 	if err != nil {
