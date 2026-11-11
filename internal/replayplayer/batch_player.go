@@ -3,11 +3,17 @@ package replayplayer
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
+	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/backbone81/bar-replay-analytics-go/internal/events"
+	"github.com/backbone81/bar-replay-analytics-go/internal/playback/widget"
 	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
@@ -39,7 +45,10 @@ func NewBatchPlayer(options ...Option) (*BatchPlayer, error) {
 func (p *BatchPlayer) Run(ctx context.Context, paths ...string) error {
 	p.errCounter.Store(0)
 
-	// TODO: resolve the paths for relative paths, absolute paths and directories
+	paths, err := p.resolvePaths(paths)
+	if err != nil {
+		return err
+	}
 
 	// Create players first. This avoids go routines erroring out and not consuming any paths.
 	players := make([]*Player, p.config.ConcurrentReplays)
@@ -101,7 +110,14 @@ func (p *BatchPlayer) runReplays(ctx context.Context, player *Player, replayFile
 	}
 }
 
+// runReplay plays the replay file filePath back with player, unless its events file is current (see
+// isEventsFileCurrent).
 func (p *BatchPlayer) runReplay(ctx context.Context, player *Player, filePath string) error {
+	if p.isEventsFileCurrent(filePath) {
+		p.config.Logger.Info("Skipping replay because its events file is up to date", "file-path", filePath)
+		return nil
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
@@ -109,4 +125,72 @@ func (p *BatchPlayer) runReplay(ctx context.Context, player *Player, filePath st
 		return err
 	}
 	return nil
+}
+
+// resolvePaths returns the replay files paths name, sorted and deduplicated.
+func (p *BatchPlayer) resolvePaths(paths []string) ([]string, error) {
+	var result []string
+	for _, path := range paths {
+		resolvedPaths, err := p.resolvePath(path)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, resolvedPaths...)
+	}
+	slices.Sort(result)
+	return slices.Compact(result), nil
+}
+
+// resolvePath returns the absolute paths of the replay file path name. A relative path is relative to the demos/
+// folder of the data dir, an absolute one is used as is. A folder stands for the replay files in it.
+func (p *BatchPlayer) resolvePath(path string) ([]string, error) {
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(p.config.DataDir, "demos", path)
+	}
+
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+
+	stat, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if stat.IsDir() {
+		return p.replayFilesInFolder(path)
+	}
+	return []string{path}, nil
+}
+
+// replayFilesInFolder returns the paths of the .sdfz files directly in folder (not in its subfolders).
+func (p *BatchPlayer) replayFilesInFolder(folder string) ([]string, error) {
+	entries, err := os.ReadDir(folder)
+	if err != nil {
+		return nil, err
+	}
+	var result []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		if filepath.Ext(entry.Name()) != ".sdfz" {
+			continue
+		}
+		result = append(result, filepath.Join(folder, entry.Name()))
+	}
+	return result, nil
+}
+
+// isEventsFileCurrent returns whether the replay file replayFilePath has an events file next to it. It also verifies
+// that it has at least the format version of the embedded widget. Playing the replay again would therefore write the
+// same events.
+func (p *BatchPlayer) isEventsFileCurrent(replayFilePath string) bool {
+	eventsFilePath := strings.TrimSuffix(replayFilePath, filepath.Ext(replayFilePath)) + "_events.json"
+	file, err := events.ReadFile(eventsFilePath)
+	if err != nil {
+		// Whatever the reason is why we cannot read the events file, we report as not being current to write it again.
+		return false
+	}
+	return file.FormatVersion >= widget.FormatVersion
 }
