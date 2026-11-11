@@ -100,6 +100,11 @@ func (p *BatchPlayer) runReplays(ctx context.Context, player *Player, replayFile
 			return
 		}
 
+		if p.isEventsFileCurrent(replayFilePath) {
+			p.config.Logger.Info("Skipping replay because its events file is up to date", "file-path", replayFilePath)
+			continue
+		}
+
 		// TODO: introduce a player.Prepare which does the downloading, that way we can set a dedicated timeout
 		// to the replay.
 
@@ -113,11 +118,6 @@ func (p *BatchPlayer) runReplays(ctx context.Context, player *Player, replayFile
 // runReplay plays the replay file filePath back with player, unless its events file is current (see
 // isEventsFileCurrent).
 func (p *BatchPlayer) runReplay(ctx context.Context, player *Player, filePath string) error {
-	if p.isEventsFileCurrent(filePath) {
-		p.config.Logger.Info("Skipping replay because its events file is up to date", "file-path", filePath)
-		return nil
-	}
-
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
