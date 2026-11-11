@@ -150,7 +150,7 @@ func (p *Player) prepareWriteDirWidget() error {
 
 // runSpringHeadless plays the replay filePath. The engine's output goes into <replay>.log next to the replay, which it
 // replaces, and into the error if the engine fails.
-func (p *Player) runSpringHeadless(ctx context.Context, filePath string) (err error) {
+func (p *Player) runSpringHeadless(ctx context.Context, filePath string) error {
 	//nolint:gosec // This file does not contain sensitive data
 	logFile, err := os.OpenFile(
 		strings.TrimSuffix(filePath, filepath.Ext(filePath))+".log",
@@ -160,7 +160,7 @@ func (p *Player) runSpringHeadless(ctx context.Context, filePath string) (err er
 	if err != nil {
 		return err
 	}
-	defer logFile.Close()
+	defer logFile.Close() //nolint:errcheck
 
 	var outputBuffer bytes.Buffer
 	output := io.MultiWriter(&outputBuffer, logFile)

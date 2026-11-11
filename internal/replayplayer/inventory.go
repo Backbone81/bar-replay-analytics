@@ -1,6 +1,10 @@
 package replayplayer
 
 import (
+	"bufio"
+	"compress/gzip"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -15,6 +19,7 @@ type Inventory struct {
 
 	engineVersions []string
 	maps           []string
+	games          []string
 }
 
 func NewInventory(dataDir string) (*Inventory, error) {
@@ -33,8 +38,8 @@ func NewInventory(dataDir string) (*Inventory, error) {
 }
 
 func (i *Inventory) EngineVersionAvailable(engineVersion string) bool {
-	index := slices.Index(i.engineVersions, engineVersion)
-	return index != -1
+	_, found := slices.BinarySearch(i.engineVersions, engineVersion)
+	return found
 }
 
 func (i *Inventory) AddEngineVersion(engineVersion string) {
@@ -47,8 +52,8 @@ func (i *Inventory) AddEngineVersion(engineVersion string) {
 
 func (i *Inventory) MapAvailable(mapName string) bool {
 	mapName = i.normalizeMapName(mapName)
-	index := slices.Index(i.maps, mapName)
-	return index != -1
+	_, found := slices.BinarySearch(i.maps, mapName)
+	return found
 }
 
 func (i *Inventory) AddMap(mapName string) {
@@ -57,6 +62,19 @@ func (i *Inventory) AddMap(mapName string) {
 	}
 	i.maps = append(i.maps, i.normalizeMapName(mapName))
 	slices.Sort(i.maps)
+}
+
+func (i *Inventory) GameAvailable(game string) bool {
+	_, found := slices.BinarySearch(i.games, game)
+	return found
+}
+
+func (i *Inventory) AddGame(game string) {
+	if i.GameAvailable(game) {
+		return
+	}
+	i.games = append(i.games, game)
+	slices.Sort(i.games)
 }
 
 func (i *Inventory) Refresh() error {
@@ -71,6 +89,12 @@ func (i *Inventory) Refresh() error {
 		return err
 	}
 	i.maps = maps
+
+	games, err := i.getGames()
+	if err != nil {
+		return err
+	}
+	i.games = games
 
 	return nil
 }
@@ -94,8 +118,10 @@ func (i *Inventory) getEngineVersions() ([]string, error) {
 			continue
 		}
 
-		if (!i.fileExists(filepath.Join(match, "spring-headless")) && !i.fileExists(filepath.Join(match, "spring-headless.exe"))) ||
-			(!i.fileExists(filepath.Join(match, "pr-downloader")) && !i.fileExists(filepath.Join(match, "pr-downloader.exe"))) {
+		if (!i.fileExists(filepath.Join(match, "spring-headless")) &&
+			!i.fileExists(filepath.Join(match, "spring-headless.exe"))) ||
+			(!i.fileExists(filepath.Join(match, "pr-downloader")) &&
+				!i.fileExists(filepath.Join(match, "pr-downloader.exe"))) {
 			continue
 		}
 
@@ -131,6 +157,88 @@ func (i *Inventory) getMaps() ([]string, error) {
 		result = append(result, i.normalizeMapName(match))
 	}
 	slices.Sort(result)
+	return result, nil
+}
+
+func (i *Inventory) getGames() ([]string, error) {
+	availablePackages, err := i.getAvailablePackages()
+	if err != nil {
+		return nil, err
+	}
+
+	matches, err := filepath.Glob(filepath.Join(i.dataDir, "rapid", "*", "byar", "versions.gz"))
+	if err != nil {
+		return nil, err
+	}
+
+	var result []string
+	for _, match := range matches {
+		games, err := i.getGamesFromVersions(match, availablePackages)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, games...)
+	}
+	slices.Sort(result)
+	result = slices.Compact(result)
+	return result, nil
+}
+
+func (i *Inventory) getAvailablePackages() ([]string, error) {
+	entries, err := os.ReadDir(filepath.Join(i.dataDir, "packages"))
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			// On a fresh install there might be no packages yet.
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var result []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		if filepath.Ext(strings.ToLower(entry.Name())) != ".sdp" {
+			continue
+		}
+		result = append(result, entry.Name())
+	}
+	slices.Sort(result)
+	return result, nil
+}
+
+func (i *Inventory) getGamesFromVersions(filePath string, availablePackages []string) ([]string, error) {
+	file, err := os.Open(filePath) //nolint:gosec // The caller is responsible for the right path
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close() //nolint:errcheck
+
+	reader, err := gzip.NewReader(file)
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close() //nolint:errcheck
+
+	var result []string
+	scanner := bufio.NewScanner(reader)
+	for scanner.Scan() {
+		// tag,md5,depends,name
+		fields := strings.Split(scanner.Text(), ",")
+		if len(fields) < 4 {
+			continue
+		}
+		md5 := fields[1]
+		name := fields[3]
+		if _, found := slices.BinarySearch(availablePackages, md5+".sdp"); !found {
+			continue
+		}
+		result = append(result, name)
+	}
+	if scanner.Err() != nil {
+		return nil, scanner.Err()
+	}
 	return result, nil
 }
 
