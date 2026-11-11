@@ -11,6 +11,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"time"
 	"unicode"
 	"unicode/utf8"
 )
@@ -129,6 +130,11 @@ func (h *DemoFileHeader) VersionStringAsString() string {
 // GameIDAsString returns GameID as a lowercase hex string, which is how bar-db names the replay of the game.
 func (h *DemoFileHeader) GameIDAsString() string {
 	return hex.EncodeToString(h.GameID[:])
+}
+
+// GameTimeAsDuration returns the game time as duration.
+func (h *DemoFileHeader) GameTimeAsDuration() time.Duration {
+	return time.Duration(h.GameTime) * time.Second
 }
 
 // MarshalJSON writes Magic and VersionString as strings without NULs and GameID as hex, instead of Go's arrays of

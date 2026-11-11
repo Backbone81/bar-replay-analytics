@@ -8,9 +8,9 @@ import (
 type Config struct {
 	Logger *slog.Logger
 
-	DataDir                string
-	WorkerThreadCount      int
-	SpringHeadlessFilePath string
+	DataDir           string
+	WorkerThreadCount int
+	AssetManager      *AssetManager
 }
 
 var DefaultConfig = Config{
@@ -26,6 +26,9 @@ func (c Config) Validate() error {
 	}
 	if c.WorkerThreadCount < 0 {
 		return errors.New("the worker thread count must not be negative")
+	}
+	if c.AssetManager == nil {
+		return errors.New("the asset manager is required")
 	}
 	return nil
 }

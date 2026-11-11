@@ -14,7 +14,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
 	"github.com/backbone81/bar-replay-analytics-go/internal/playback/widget"
+	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
 	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
@@ -42,6 +44,7 @@ func New(options ...Option) (*Player, error) {
 	}, nil
 }
 
+//nolint:funlen
 func (p *Player) Run(ctx context.Context, filePath string) error {
 	var err error
 	filePath, err = filepath.Abs(filePath)
@@ -49,19 +52,50 @@ func (p *Player) Run(ctx context.Context, filePath string) error {
 		return err
 	}
 
-	// TODO: Inspect the replay to see if the demo stream size is positive and which engine was used.
-	// TODO: Remember the game duration, the map and the players.
+	demoFile, err := demo.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+	if demoFile.FileHeader.DemoStreamSize <= 0 {
+		return errors.New("the demo does not have a positive stream size")
+	}
 
-	// TODO: Download engine in the required version if missing.
+	setupScript, err := tdf.Parse(demoFile.SetupScript)
+	if err != nil {
+		return err
+	}
+	gameType, ok := setupScript.Value(`game\gametype`)
+	if !ok {
+		return errors.New("the setup script has no game\\gametype")
+	}
+	mapName, ok := setupScript.Value(`game\mapname`)
+	if !ok {
+		return errors.New("the setup script has no game\\mapname")
+	}
 
-	// TODO: Download map if missing.
+	engineVersion := demoFile.FileHeader.VersionStringAsString()
+	engineDir, err := p.config.AssetManager.EnsureEngineVersion(ctx, engineVersion)
+	if err != nil {
+		return err
+	}
+	if err := p.config.AssetManager.EnsureMap(ctx, engineVersion, mapName.String()); err != nil {
+		return err
+	}
+	if err := p.config.AssetManager.EnsureGame(ctx, engineVersion, gameType.String()); err != nil {
+		return err
+	}
 
-	logger := p.config.Logger.With("file-path", filePath)
-	start := time.Now()
+	logger := p.config.Logger.With(
+		"file-path", filePath,
+		"map-name", mapName.String(),
+		"engine-version", engineVersion,
+		"game-type", gameType.String(),
+		"duration", demoFile.FileHeader.GameTimeAsDuration(),
+	)
 	logger.Info("Starting replay")
-	var ingameTime time.Duration
+	start := time.Now()
 	defer func() {
-		logger.Info("Finished replay", "wall-time", time.Since(start), "ingame-time", ingameTime)
+		logger.Info("Finished replay", "wall-time", time.Since(start))
 	}()
 
 	// All files are written into a temporary write directory. That way we do not pollute the data directory.
@@ -74,7 +108,7 @@ func (p *Player) Run(ctx context.Context, filePath string) error {
 	if err := p.prepareWriteDir(); err != nil {
 		return fmt.Errorf("preparing write dir: %w", err)
 	}
-	if err := p.runSpringHeadless(ctx, filePath); err != nil {
+	if err := p.runSpringHeadless(ctx, engineDir, filePath); err != nil {
 		return fmt.Errorf("running spring-headless: %w", err)
 	}
 
@@ -150,7 +184,7 @@ func (p *Player) prepareWriteDirWidget() error {
 
 // runSpringHeadless plays the replay filePath. The engine's output goes into <replay>.log next to the replay, which it
 // replaces, and into the error if the engine fails.
-func (p *Player) runSpringHeadless(ctx context.Context, filePath string) error {
+func (p *Player) runSpringHeadless(ctx context.Context, engineDir string, filePath string) error {
 	//nolint:gosec // This file does not contain sensitive data
 	logFile, err := os.OpenFile(
 		strings.TrimSuffix(filePath, filepath.Ext(filePath))+".log",
@@ -165,7 +199,7 @@ func (p *Player) runSpringHeadless(ctx context.Context, filePath string) error {
 	var outputBuffer bytes.Buffer
 	output := io.MultiWriter(&outputBuffer, logFile)
 	//nolint:gosec // The user does not control the command input.
-	command := exec.CommandContext(ctx, p.config.SpringHeadlessFilePath,
+	command := exec.CommandContext(ctx, filepath.Join(engineDir, "spring-headless"),
 		"--isolation",
 		"--write-dir", p.writeDir,
 		"--config", filepath.Join(p.writeDir, "springsettings.cfg"),

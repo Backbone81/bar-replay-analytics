@@ -22,8 +22,8 @@ func WithWorkerThreadCount(workerThreadCount int) Option {
 	}
 }
 
-func WithSpringHeadless(filePath string) Option {
+func WithAssetManager(assetManager *AssetManager) Option {
 	return func(config *Config) {
-		config.SpringHeadlessFilePath = filePath
+		config.AssetManager = assetManager
 	}
 }
