@@ -112,9 +112,12 @@ func (p *Player) Run(ctx context.Context, filePath string) error {
 		return fmt.Errorf("running spring-headless: %w", err)
 	}
 
-	// TODO: Copy the events file besides the replay file.
-
-	return nil
+	// Copy the events file from the write dir back besides the replay.
+	eventsFileName := strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath)) + "_events.json"
+	return utils.CopyFile(
+		filepath.Join(p.writeDir, utils.WidgetsDir, utils.AnalyticsWidgetFolder, "events", eventsFileName),
+		filepath.Join(filepath.Dir(filePath), eventsFileName),
+	)
 }
 
 func (p *Player) prepareWriteDir() error {
