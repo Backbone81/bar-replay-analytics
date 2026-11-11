@@ -20,17 +20,22 @@ import (
 	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
+// Player plays one replay at a time: Prepare makes sure its assets are there, Run plays it back. A Player is not safe
+// for concurrent use, as Run keeps the write dir of the running playback; use one Player per goroutine.
 type Player struct {
 	config Config
 
+	// writeDir is the temporary write dir of the playback Run is running.
 	writeDir string
 }
 
+// New returns a Player for DefaultConfig changed by options.
 func New(options ...Option) (*Player, error) {
 	config := DefaultConfig
 	for _, option := range options {
 		option(&config)
 	}
+	// The engine runs in the write dir, so a relative data dir would point there.
 	var err error
 	config.DataDir, err = filepath.Abs(config.DataDir)
 	if err != nil {
@@ -44,6 +49,8 @@ func New(options ...Option) (*Player, error) {
 	}, nil
 }
 
+// Prepare reads the replay filePath and makes sure its engine, map and game are in the data dir, downloading what is
+// missing. It fails for a replay without a recorded stream (the game crashed), which the engine cannot play back.
 func (p *Player) Prepare(ctx context.Context, filePath string) (*ReplayInfo, error) {
 	var err error
 	filePath, err = filepath.Abs(filePath)
@@ -72,6 +79,7 @@ func (p *Player) Prepare(ctx context.Context, filePath string) (*ReplayInfo, err
 		return nil, errors.New("the setup script has no game\\mapname")
 	}
 
+	// The map and the game are downloaded with the pr-downloader of the replay's engine, so the engine comes first.
 	engineVersion := demoFile.FileHeader.VersionStringAsString()
 	engineDir, err := p.config.AssetManager.EnsureEngineVersion(ctx, engineVersion)
 	if err != nil {
@@ -94,6 +102,8 @@ func (p *Player) Prepare(ctx context.Context, filePath string) (*ReplayInfo, err
 	}, nil
 }
 
+// Run plays the replay replayInfo describes back and copies the events file the analytics widget wrote next to the
+// replay. The engine's output goes to <replay name>.log next to the replay. Canceling ctx stops the engine.
 func (p *Player) Run(ctx context.Context, replayInfo *ReplayInfo) error {
 	logger := p.config.Logger.With(
 		"file-path", replayInfo.FilePath,
@@ -108,7 +118,8 @@ func (p *Player) Run(ctx context.Context, replayInfo *ReplayInfo) error {
 		logger.Info("Finished replay", "wall-time", time.Since(start))
 	}()
 
-	// All files are written into a temporary write directory. That way we do not pollute the data directory.
+	// The engine writes its settings, caches and logs into its write dir. A temporary one per playback leaves the data
+	// dir (the player's install) unchanged and keeps parallel playbacks apart.
 	var err error
 	p.writeDir, err = os.MkdirTemp("", "bar-replay-analytics-*")
 	if err != nil {
@@ -123,7 +134,7 @@ func (p *Player) Run(ctx context.Context, replayInfo *ReplayInfo) error {
 		return fmt.Errorf("running spring-headless: %w", err)
 	}
 
-	// Copy the events file from the write dir back besides the replay.
+	// The widget can only write under LuaUI/ of the write dir, which is removed, so the events file is copied out.
 	eventsFileName := strings.TrimSuffix(
 		filepath.Base(replayInfo.FilePath),
 		filepath.Ext(replayInfo.FilePath),
@@ -134,6 +145,7 @@ func (p *Player) Run(ctx context.Context, replayInfo *ReplayInfo) error {
 	)
 }
 
+// prepareWriteDir fills the new write dir with what the engine needs from it for a playback.
 func (p *Player) prepareWriteDir() error {
 	if err := p.prepareWriteDirArchiveCache(); err != nil {
 		return fmt.Errorf("preparing archive cache: %w", err)
@@ -147,6 +159,8 @@ func (p *Player) prepareWriteDir() error {
 	return nil
 }
 
+// prepareWriteDirArchiveCache copies the data dir's archive cache into the write dir. The engine keeps it in the write
+// dir only; without it, it would scan and checksum every map and game archive of the data dir before each playback.
 func (p *Player) prepareWriteDirArchiveCache() error {
 	archiveCaches, err := filepath.Glob(filepath.Join(p.config.DataDir, utils.CacheDir, "ArchiveCache*.lua"))
 	if err != nil {
@@ -171,10 +185,13 @@ func (p *Player) prepareWriteDirArchiveCache() error {
 	return nil
 }
 
+// prepareWriteDirSpringSettings writes the springsettings.cfg that runSpringHeadless passes as the engine's only config
+// file (--config). Otherwise the engine reads the springsettings.cfg of every data dir and rewrites them as it starts
+// (ConfigHandlerImpl::FinalizeLoad): the player's own settings would apply to the playback and be changed by it.
 func (p *Player) prepareWriteDirSpringSettings() error {
 	lines := []string{
-		// Setting the host port to 0 will make the engine allocate a random free port. That way we do not run into
-		// port collisions when multiple replays run in parallel.
+		// The engine hosts a local server for the replay. Port 0 lets the OS pick a free one, so parallel playbacks do
+		// not collide.
 		"HostPortDefault = 0",
 	}
 	if p.config.WorkerThreadCount > 0 {
@@ -188,6 +205,8 @@ func (p *Player) prepareWriteDirSpringSettings() error {
 	)
 }
 
+// prepareWriteDirWidget writes the embedded analytics widget into the write dir's user widgets folder, so the playback
+// loads it without it being installed in the data dir.
 func (p *Player) prepareWriteDirWidget() error {
 	if err := utils.WriteTemplate(
 		slog.New(slog.DiscardHandler),
@@ -199,8 +218,8 @@ func (p *Player) prepareWriteDirWidget() error {
 	return nil
 }
 
-// runSpringHeadless plays the replay filePath. The engine's output goes into <replay>.log next to the replay, which it
-// replaces, and into the error if the engine fails.
+// runSpringHeadless plays the replay filePath with the engine in engineDir. The engine's output replaces <replay
+// name>.log next to the replay and is also part of the error if the engine fails.
 func (p *Player) runSpringHeadless(ctx context.Context, engineDir string, filePath string) error {
 	//nolint:gosec // This file does not contain sensitive data
 	logFile, err := os.OpenFile(
@@ -217,12 +236,16 @@ func (p *Player) runSpringHeadless(ctx context.Context, engineDir string, filePa
 	output := io.MultiWriter(&outputBuffer, logFile)
 	//nolint:gosec // The user does not control the command input.
 	command := exec.CommandContext(ctx, filepath.Join(engineDir, "spring-headless"),
+		// Isolation keeps the engine from adding the home and system data dirs (DataDirLocater::LocateDataDirs): it
+		// uses only the write dir, the engine dir and SPRING_DATADIR.
 		"--isolation",
 		"--write-dir", p.writeDir,
 		"--config", filepath.Join(p.writeDir, "springsettings.cfg"),
 		filePath,
 	)
+	// The widget writes its events file relative to the working directory.
 	command.Dir = p.writeDir
+	// The data dir is added read only: the engine writes into its write dir only.
 	command.Env = append(os.Environ(), "SPRING_DATADIR="+p.config.DataDir)
 	command.Cancel = func() error {
 		// Ask the engine to quit first. Windows has no SIGTERM, so the engine is killed after WaitDelay there.

@@ -5,15 +5,29 @@ import (
 	"log/slog"
 )
 
+// Config configures a Player and a BatchPlayer. Set it with the Option functions.
 type Config struct {
+	// Logger receives the progress and the errors of the playbacks.
 	Logger *slog.Logger
 
-	DataDir           string
+	// DataDir is the BAR data dir the engine reads engines, maps and games from (passed as SPRING_DATADIR).
+	DataDir string
+
+	// WorkerThreadCount is the engine's WorkerThreadCount setting: the threads of its thread pool, the main thread
+	// included. Zero leaves the engine's default of one thread per logical CPU, which is slower for a replay and
+	// starves parallel playbacks.
 	WorkerThreadCount int
-	AssetManager      *AssetManager
+
+	// AssetManager downloads missing engines, maps and games. It is required and should be shared by all Players of
+	// one data dir, so parallel playbacks do not download the same asset at once.
+	AssetManager *AssetManager
+
+	// ConcurrentReplays is how many replays a BatchPlayer plays at once. NewBatchPlayer replaces zero by a value from
+	// the CPUs and the available memory.
 	ConcurrentReplays int
 }
 
+// DefaultConfig is the Config the Options are applied to. AssetManager has no default, so it must be set.
 var DefaultConfig = Config{
 	Logger: slog.New(slog.DiscardHandler),
 
@@ -22,6 +36,7 @@ var DefaultConfig = Config{
 	ConcurrentReplays: 1,
 }
 
+// Validate returns an error if the Config cannot be used.
 func (c Config) Validate() error {
 	if c.Logger == nil {
 		return errors.New("the logger is required")

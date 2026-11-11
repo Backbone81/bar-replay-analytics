@@ -12,16 +12,22 @@ import (
 	"strings"
 )
 
+// engineFolderRegex matches the engine folders of released engines, whose tags are dates. Other folders in engine/,
+// such as local builds, are not counted: replays name release tags.
 var engineFolderRegex = regexp.MustCompile(`^recoil_\d{4}\.\d{2}\.\d{2}$`)
 
+// Inventory lists the engines, maps and games in a data dir, so a playback can tell without asking the network or
+// starting the engine whether something must be downloaded. It is not safe for concurrent use.
 type Inventory struct {
 	dataDir string
 
-	engineVersions []string
-	maps           []string
-	games          []string
+	// The lists are sorted for binary search.
+	engineVersions []string // engine tags, e.g. 2026.07.04
+	maps           []string // normalized map names (see normalizeMapName)
+	games          []string // rapid names, e.g. "Beyond All Reason test-31720-0f97aa5"
 }
 
+// NewInventory returns the inventory of the data dir dataDir.
 func NewInventory(dataDir string) (*Inventory, error) {
 	dataDir, err := filepath.Abs(dataDir)
 	if err != nil {
@@ -37,11 +43,13 @@ func NewInventory(dataDir string) (*Inventory, error) {
 	return &result, nil
 }
 
+// EngineVersionAvailable returns whether the engine engineVersion is in the data dir.
 func (i *Inventory) EngineVersionAvailable(engineVersion string) bool {
 	_, found := slices.BinarySearch(i.engineVersions, engineVersion)
 	return found
 }
 
+// AddEngineVersion adds the engine engineVersion after it was downloaded, without scanning the data dir again.
 func (i *Inventory) AddEngineVersion(engineVersion string) {
 	if i.EngineVersionAvailable(engineVersion) {
 		return
@@ -50,12 +58,14 @@ func (i *Inventory) AddEngineVersion(engineVersion string) {
 	slices.Sort(i.engineVersions)
 }
 
+// MapAvailable returns whether the map mapName (a start script's mapname) is in the data dir.
 func (i *Inventory) MapAvailable(mapName string) bool {
 	mapName = i.normalizeMapName(mapName)
 	_, found := slices.BinarySearch(i.maps, mapName)
 	return found
 }
 
+// AddMap adds the map mapName after it was downloaded, without scanning the data dir again.
 func (i *Inventory) AddMap(mapName string) {
 	if i.MapAvailable(mapName) {
 		return
@@ -64,11 +74,13 @@ func (i *Inventory) AddMap(mapName string) {
 	slices.Sort(i.maps)
 }
 
+// GameAvailable returns whether the game (a start script's gametype) is in the data dir.
 func (i *Inventory) GameAvailable(game string) bool {
 	_, found := slices.BinarySearch(i.games, game)
 	return found
 }
 
+// AddGame adds the game after it was downloaded, without scanning the data dir again.
 func (i *Inventory) AddGame(game string) {
 	if i.GameAvailable(game) {
 		return
@@ -77,6 +89,7 @@ func (i *Inventory) AddGame(game string) {
 	slices.Sort(i.games)
 }
 
+// Refresh scans the data dir again.
 func (i *Inventory) Refresh() error {
 	engineVersions, err := i.getEngineVersions()
 	if err != nil {
@@ -99,6 +112,9 @@ func (i *Inventory) Refresh() error {
 	return nil
 }
 
+// getEngineVersions returns the tags of the released engines in engine/recoil_<tag>/. An engine counts only with both
+// its spring-headless, which plays the replays, and its pr-downloader, which downloads maps and games, so a partial
+// folder is downloaded again.
 func (i *Inventory) getEngineVersions() ([]string, error) {
 	matches, err := filepath.Glob(filepath.Join(i.dataDir, "engine", "recoil_*"))
 	if err != nil {
@@ -132,6 +148,7 @@ func (i *Inventory) getEngineVersions() ([]string, error) {
 	return result, nil
 }
 
+// getMaps returns the normalized names of the map archives (.sd7, .sdz) in maps/.
 func (i *Inventory) getMaps() ([]string, error) {
 	matches, err := filepath.Glob(filepath.Join(i.dataDir, "maps", "*"))
 	if err != nil {
@@ -148,7 +165,7 @@ func (i *Inventory) getMaps() ([]string, error) {
 			continue
 		}
 
-		// We normalize the name to have an easier time identifying it.
+		// The file name is not the map name (argent_strata_1.1.sd7 for "Argent Strata 1.1"), so both are normalized.
 		match = filepath.Base(strings.ToLower(match))
 		if !slices.Contains([]string{".sd7", ".sdz"}, filepath.Ext(match)) {
 			continue
@@ -160,6 +177,9 @@ func (i *Inventory) getMaps() ([]string, error) {
 	return result, nil
 }
 
+// getGames returns the names of the games in the rapid repos of the data dir whose package is there. A rapid repo's
+// versions.gz lists every version of the game, also those never downloaded; a downloaded one has its package file in
+// packages/.
 func (i *Inventory) getGames() ([]string, error) {
 	availablePackages, err := i.getAvailablePackages()
 	if err != nil {
@@ -184,6 +204,7 @@ func (i *Inventory) getGames() ([]string, error) {
 	return result, nil
 }
 
+// getAvailablePackages returns the sorted file names (<md5>.sdp) of the rapid packages in packages/.
 func (i *Inventory) getAvailablePackages() ([]string, error) {
 	entries, err := os.ReadDir(filepath.Join(i.dataDir, "packages"))
 	if err != nil {
@@ -208,6 +229,8 @@ func (i *Inventory) getAvailablePackages() ([]string, error) {
 	return result, nil
 }
 
+// getGamesFromVersions returns the names of the games in the rapid versions file filePath whose package is in
+// availablePackages.
 func (i *Inventory) getGamesFromVersions(filePath string, availablePackages []string) ([]string, error) {
 	file, err := os.Open(filePath) //nolint:gosec // The caller is responsible for the right path
 	if err != nil {
@@ -224,7 +247,7 @@ func (i *Inventory) getGamesFromVersions(filePath string, availablePackages []st
 	var result []string
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		// tag,md5,depends,name
+		// A line is "tag,md5,depends,name"; the package file is named after the md5.
 		fields := strings.Split(scanner.Text(), ",")
 		if len(fields) < 4 {
 			continue
@@ -242,6 +265,7 @@ func (i *Inventory) getGamesFromVersions(filePath string, availablePackages []st
 	return result, nil
 }
 
+// fileExists returns whether filePath exists and is not a folder.
 func (i *Inventory) fileExists(filePath string) bool {
 	stat, err := os.Stat(filePath)
 	if err != nil {
@@ -253,16 +277,16 @@ func (i *Inventory) fileExists(filePath string) bool {
 	return true
 }
 
+// normalizeMapName returns mapName in lower case with every character but ASCII letters and digits replaced by an
+// underscore. This matches a map's name to the name of its archive file, which the map's uploader chose; a map whose
+// file name differs in more than that is not found, so EnsureMap runs pr-downloader for it.
 func (i *Inventory) normalizeMapName(mapName string) string {
 	mapNameBytes := []byte(strings.ToLower(mapName))
 	for idx := range mapNameBytes {
 		if 'a' <= mapNameBytes[idx] && mapNameBytes[idx] <= 'z' ||
 			'0' <= mapNameBytes[idx] && mapNameBytes[idx] <= '9' {
-			// We keep lower case ascii characters and numbers
 			continue
 		}
-
-		// All other characters are replaced by an underscore.
 		mapNameBytes[idx] = '_'
 	}
 	return string(mapNameBytes)
