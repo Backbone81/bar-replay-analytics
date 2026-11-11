@@ -44,53 +44,63 @@ func New(options ...Option) (*Player, error) {
 	}, nil
 }
 
-//nolint:funlen
-func (p *Player) Run(ctx context.Context, filePath string) error {
+func (p *Player) Prepare(ctx context.Context, filePath string) (*ReplayInfo, error) {
 	var err error
 	filePath, err = filepath.Abs(filePath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	demoFile, err := demo.ReadFile(filePath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if demoFile.FileHeader.DemoStreamSize <= 0 {
-		return errors.New("the demo does not have a positive stream size")
+		return nil, errors.New("the demo does not have a positive stream size")
 	}
 
 	setupScript, err := tdf.Parse(demoFile.SetupScript)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	gameType, ok := setupScript.Value(`game\gametype`)
 	if !ok {
-		return errors.New("the setup script has no game\\gametype")
+		return nil, errors.New("the setup script has no game\\gametype")
 	}
 	mapName, ok := setupScript.Value(`game\mapname`)
 	if !ok {
-		return errors.New("the setup script has no game\\mapname")
+		return nil, errors.New("the setup script has no game\\mapname")
 	}
 
 	engineVersion := demoFile.FileHeader.VersionStringAsString()
 	engineDir, err := p.config.AssetManager.EnsureEngineVersion(ctx, engineVersion)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := p.config.AssetManager.EnsureMap(ctx, engineVersion, mapName.String()); err != nil {
-		return err
+		return nil, err
 	}
 	if err := p.config.AssetManager.EnsureGame(ctx, engineVersion, gameType.String()); err != nil {
-		return err
+		return nil, err
 	}
 
+	return &ReplayInfo{
+		FilePath:      filePath,
+		EngineVersion: engineVersion,
+		EngineDir:     engineDir,
+		MapName:       mapName.String(),
+		GameType:      gameType.String(),
+		Duration:      demoFile.FileHeader.GameTimeAsDuration(),
+	}, nil
+}
+
+func (p *Player) Run(ctx context.Context, replayInfo *ReplayInfo) error {
 	logger := p.config.Logger.With(
-		"file-path", filePath,
-		"map-name", mapName.String(),
-		"engine-version", engineVersion,
-		"game-type", gameType.String(),
-		"duration", demoFile.FileHeader.GameTimeAsDuration(),
+		"file-path", replayInfo.FilePath,
+		"map-name", replayInfo.MapName,
+		"engine-version", replayInfo.EngineVersion,
+		"game-type", replayInfo.GameType,
+		"duration", replayInfo.Duration,
 	)
 	logger.Info("Starting replay")
 	start := time.Now()
@@ -99,6 +109,7 @@ func (p *Player) Run(ctx context.Context, filePath string) error {
 	}()
 
 	// All files are written into a temporary write directory. That way we do not pollute the data directory.
+	var err error
 	p.writeDir, err = os.MkdirTemp("", "bar-replay-analytics-*")
 	if err != nil {
 		return err
@@ -108,15 +119,18 @@ func (p *Player) Run(ctx context.Context, filePath string) error {
 	if err := p.prepareWriteDir(); err != nil {
 		return fmt.Errorf("preparing write dir: %w", err)
 	}
-	if err := p.runSpringHeadless(ctx, engineDir, filePath); err != nil {
+	if err := p.runSpringHeadless(ctx, replayInfo.EngineDir, replayInfo.FilePath); err != nil {
 		return fmt.Errorf("running spring-headless: %w", err)
 	}
 
 	// Copy the events file from the write dir back besides the replay.
-	eventsFileName := strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath)) + "_events.json"
+	eventsFileName := strings.TrimSuffix(
+		filepath.Base(replayInfo.FilePath),
+		filepath.Ext(replayInfo.FilePath),
+	) + "_events.json"
 	return utils.CopyFile(
 		filepath.Join(p.writeDir, utils.WidgetsDir, utils.AnalyticsWidgetFolder, "events", eventsFileName),
-		filepath.Join(filepath.Dir(filePath), eventsFileName),
+		filepath.Join(filepath.Dir(replayInfo.FilePath), eventsFileName),
 	)
 }
 

@@ -105,23 +105,38 @@ func (p *BatchPlayer) runReplays(ctx context.Context, player *Player, replayFile
 			continue
 		}
 
-		// TODO: introduce a player.Prepare which does the downloading, that way we can set a dedicated timeout
-		// to the replay.
-
-		if err := p.runReplay(ctx, player, replayFilePath); err != nil {
+		replayInfo, err := p.prepareReplay(ctx, player, replayFilePath)
+		if err != nil {
+			p.config.Logger.Error("Preparing replay failed", "file-path", replayFilePath, "err", err)
+			p.errCounter.Add(1)
+			continue
+		}
+		if err := p.runReplay(ctx, player, replayInfo); err != nil {
 			p.config.Logger.Error("Replay failed", "file-path", replayFilePath, "err", err)
 			p.errCounter.Add(1)
+			continue
 		}
 	}
 }
 
-// runReplay plays the replay file filePath back with player, unless its events file is current (see
-// isEventsFileCurrent).
-func (p *BatchPlayer) runReplay(ctx context.Context, player *Player, filePath string) error {
+func (p *BatchPlayer) prepareReplay(ctx context.Context, player *Player, filePath string) (*ReplayInfo, error) {
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
+	defer cancel()
+
+	replayInfo, err := player.Prepare(ctx, filePath)
+	if err != nil {
+		return nil, err
+	}
+	return replayInfo, nil
+}
+
+// runReplay plays the replay replayInfo describes back with player, with a timeout for the playback only (the
+// downloads are done by prepareReplay).
+func (p *BatchPlayer) runReplay(ctx context.Context, player *Player, replayInfo *ReplayInfo) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
-	if err := player.Run(ctx, filePath); err != nil {
+	if err := player.Run(ctx, replayInfo); err != nil {
 		return err
 	}
 	return nil
