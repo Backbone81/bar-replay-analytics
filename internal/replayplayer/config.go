@@ -11,6 +11,7 @@ type Config struct {
 	DataDir           string
 	WorkerThreadCount int
 	AssetManager      *AssetManager
+	ConcurrentReplays int
 }
 
 var DefaultConfig = Config{
@@ -18,6 +19,7 @@ var DefaultConfig = Config{
 
 	DataDir:           "data",
 	WorkerThreadCount: 2,
+	ConcurrentReplays: 1,
 }
 
 func (c Config) Validate() error {
@@ -30,5 +32,9 @@ func (c Config) Validate() error {
 	if c.AssetManager == nil {
 		return errors.New("the asset manager is required")
 	}
+	if c.ConcurrentReplays < 1 {
+		return errors.New("concurrent replays must be at least 1")
+	}
+
 	return nil
 }

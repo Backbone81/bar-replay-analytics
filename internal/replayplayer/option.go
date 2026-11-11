@@ -27,3 +27,15 @@ func WithAssetManager(assetManager *AssetManager) Option {
 		config.AssetManager = assetManager
 	}
 }
+
+func WithConcurrentReplays(concurrentReplays int) Option {
+	return func(config *Config) {
+		config.ConcurrentReplays = concurrentReplays
+	}
+}
+
+func WithConfig(newConfig Config) Option {
+	return func(config *Config) {
+		*config = newConfig
+	}
+}
