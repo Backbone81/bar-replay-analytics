@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"compress/gzip"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -12,9 +13,18 @@ import (
 	"strings"
 )
 
-// engineFolderRegex matches the engine folders of released engines, whose tags are dates. Other folders in engine/,
-// such as local builds, are not counted: replays name release tags.
-var engineFolderRegex = regexp.MustCompile(`^recoil_\d{4}\.\d{2}\.\d{2}$`)
+// engineVersionRegex matches the tags of released engines, which are dates. Replays name release tags, so other
+// engine folders in engine/, such as local builds, are not counted.
+var engineVersionRegex = regexp.MustCompile(`^\d{4}\.\d{2}\.\d{2}$`)
+
+// validateEngineVersion returns an error if engineVersion is not the tag of a released engine. The engine version
+// comes from the replay, which is untrusted, and ends up in the engine folder's path and the download URLs.
+func validateEngineVersion(engineVersion string) error {
+	if !engineVersionRegex.MatchString(engineVersion) {
+		return fmt.Errorf("engine version %q is not a release tag (YYYY.MM.DD)", engineVersion)
+	}
+	return nil
+}
 
 // Inventory lists the engines, maps and games in a data dir, so a playback can tell without asking the network or
 // starting the engine whether something must be downloaded. It is not safe for concurrent use.
@@ -23,7 +33,7 @@ type Inventory struct {
 
 	// The lists are sorted for binary search.
 	engineVersions []string // engine tags, e.g. 2026.07.04
-	maps           []string // normalized map names (see normalizeMapName)
+	maps           []string // normalized map names (see NormalizeMapName)
 	games          []string // rapid names, e.g. "Beyond All Reason test-31720-0f97aa5"
 }
 
@@ -60,7 +70,7 @@ func (i *Inventory) AddEngineVersion(engineVersion string) {
 
 // MapAvailable returns whether the map mapName (a start script's mapname) is in the data dir.
 func (i *Inventory) MapAvailable(mapName string) bool {
-	mapName = i.normalizeMapName(mapName)
+	mapName = NormalizeMapName(mapName)
 	_, found := slices.BinarySearch(i.maps, mapName)
 	return found
 }
@@ -70,7 +80,7 @@ func (i *Inventory) AddMap(mapName string) {
 	if i.MapAvailable(mapName) {
 		return
 	}
-	i.maps = append(i.maps, i.normalizeMapName(mapName))
+	i.maps = append(i.maps, NormalizeMapName(mapName))
 	slices.Sort(i.maps)
 }
 
@@ -123,7 +133,8 @@ func (i *Inventory) getEngineVersions() ([]string, error) {
 
 	var result []string
 	for _, match := range matches {
-		if !engineFolderRegex.MatchString(filepath.Base(match)) {
+		engineVersion := strings.TrimPrefix(filepath.Base(match), "recoil_")
+		if validateEngineVersion(engineVersion) != nil {
 			continue
 		}
 		stat, err := os.Stat(match)
@@ -141,7 +152,6 @@ func (i *Inventory) getEngineVersions() ([]string, error) {
 			continue
 		}
 
-		engineVersion := strings.TrimPrefix(filepath.Base(match), "recoil_")
 		result = append(result, engineVersion)
 	}
 	slices.Sort(result)
@@ -171,7 +181,7 @@ func (i *Inventory) getMaps() ([]string, error) {
 			continue
 		}
 		match = strings.TrimSuffix(match, filepath.Ext(match))
-		result = append(result, i.normalizeMapName(match))
+		result = append(result, NormalizeMapName(match))
 	}
 	slices.Sort(result)
 	return result, nil
@@ -277,10 +287,10 @@ func (i *Inventory) fileExists(filePath string) bool {
 	return true
 }
 
-// normalizeMapName returns mapName in lower case with every character but ASCII letters and digits replaced by an
+// NormalizeMapName returns mapName in lower case with every character but ASCII letters and digits replaced by an
 // underscore. This matches a map's name to the name of its archive file, which the map's uploader chose; a map whose
 // file name differs in more than that is not found, so EnsureMap runs pr-downloader for it.
-func (i *Inventory) normalizeMapName(mapName string) string {
+func NormalizeMapName(mapName string) string {
 	mapNameBytes := []byte(strings.ToLower(mapName))
 	for idx := range mapNameBytes {
 		if 'a' <= mapNameBytes[idx] && mapNameBytes[idx] <= 'z' ||

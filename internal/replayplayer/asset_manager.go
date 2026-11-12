@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -15,6 +14,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"text/template"
 	"time"
 
 	"github.com/bodgit/sevenzip"
@@ -27,8 +27,10 @@ import (
 // missing does it take the download mutex, so at most one download runs at a time, and check again: another goroutine
 // may have downloaded the same asset while this one waited.
 type AssetManager struct {
-	logger  *slog.Logger
-	dataDir string
+	config AssetManagerConfig
+
+	// engineDownloadURLTemplates are config.EngineDownloadURLTemplates, parsed.
+	engineDownloadURLTemplates []*template.Template
 
 	// inventoryMutex guards inventory, which is not safe for concurrent use.
 	inventoryMutex sync.Mutex
@@ -38,31 +40,45 @@ type AssetManager struct {
 	downloadMutex sync.Mutex
 }
 
-// NewAssetManager returns an AssetManager for the data dir dataDir, with the inventory of what is already in it.
-func NewAssetManager(logger *slog.Logger, dataDir string) (*AssetManager, error) {
+// NewAssetManager returns an AssetManager for config, with the inventory of what is already in the data dir. It fails
+// if config is invalid or an engine download URL template does not parse.
+func NewAssetManager(config AssetManagerConfig) (*AssetManager, error) {
 	var err error
-	dataDir, err = filepath.Abs(dataDir)
+	config.DataDir, err = filepath.Abs(config.DataDir)
 	if err != nil {
 		return nil, err
 	}
-	if logger == nil {
-		return nil, errors.New("logger is required")
+	if err := config.Validate(); err != nil {
+		return nil, err
 	}
 
-	inventory, err := NewInventory(dataDir)
+	engineDownloadURLTemplates := make([]*template.Template, 0, len(config.EngineDownloadURLTemplates))
+	for _, text := range config.EngineDownloadURLTemplates {
+		engineDownloadURLTemplate, err := template.New("engine download URL").Parse(text)
+		if err != nil {
+			return nil, fmt.Errorf("parsing engine download URL template %q: %w", text, err)
+		}
+		engineDownloadURLTemplates = append(engineDownloadURLTemplates, engineDownloadURLTemplate)
+	}
+
+	inventory, err := NewInventory(config.DataDir)
 	if err != nil {
 		return nil, err
 	}
 	return &AssetManager{
-		logger:    logger,
-		dataDir:   dataDir,
-		inventory: inventory,
+		config:                     config,
+		engineDownloadURLTemplates: engineDownloadURLTemplates,
+		inventory:                  inventory,
 	}, nil
 }
 
 // EnsureEngineVersion makes sure the release build of the engine engineVersion is in the data dir and returns its
-// folder.
+// folder. It fails if engineVersion is not a release tag.
 func (m *AssetManager) EnsureEngineVersion(ctx context.Context, engineVersion string) (string, error) {
+	if err := validateEngineVersion(engineVersion); err != nil {
+		return "", err
+	}
+
 	// Fast path: no wait for running downloads.
 	if m.engineVersionAvailable(engineVersion) {
 		return m.engineDir(engineVersion), nil
@@ -102,8 +118,12 @@ func (m *AssetManager) addEngineVersion(engineVersion string) {
 }
 
 // EnsureMap makes sure the map mapName is in the data dir. It is downloaded with the pr-downloader of the engine
-// engineVersion, which EnsureEngineVersion must have made available.
+// engineVersion, which EnsureEngineVersion must have made available. It fails if engineVersion is not a release tag.
 func (m *AssetManager) EnsureMap(ctx context.Context, engineVersion string, mapName string) error {
+	if err := validateEngineVersion(engineVersion); err != nil {
+		return err
+	}
+
 	// Fast path: no wait for running downloads.
 	if m.mapAvailable(mapName) {
 		return nil
@@ -144,8 +164,12 @@ func (m *AssetManager) addMap(mapName string) {
 
 // EnsureGame makes sure the rapid package of the game (a gametype such as "Beyond All Reason test-31720-0f97aa5") is
 // in the data dir. It is downloaded with the pr-downloader of the engine engineVersion, which EnsureEngineVersion must
-// have made available.
+// have made available. It fails if engineVersion is not a release tag.
 func (m *AssetManager) EnsureGame(ctx context.Context, engineVersion string, game string) error {
+	if err := validateEngineVersion(engineVersion); err != nil {
+		return err
+	}
+
 	// Fast path: no wait for running downloads.
 	if m.gameAvailable(game) {
 		return nil
@@ -185,12 +209,12 @@ func (m *AssetManager) addGame(game string) {
 }
 
 func (m *AssetManager) downloadMap(ctx context.Context, engineVersion string, name string) error {
-	m.logger.Info("Downloading map", "name", name)
+	m.config.Logger.Info("Downloading map", "name", name)
 	return m.runPrDownloader(ctx, engineVersion, "map", name)
 }
 
 func (m *AssetManager) downloadGame(ctx context.Context, engineVersion string, name string) error {
-	m.logger.Info("Downloading game", "name", name)
+	m.config.Logger.Info("Downloading game", "name", name)
 	return m.runPrDownloader(ctx, engineVersion, "game", name)
 }
 
@@ -199,7 +223,7 @@ func (m *AssetManager) downloadGame(ctx context.Context, engineVersion string, n
 func (m *AssetManager) runPrDownloader(ctx context.Context, engineVersion string, kind string, name string) error {
 	prDownloader := filepath.Join(m.engineDir(engineVersion), "pr-downloader")
 	arguments := []string{
-		"--filesystem-writepath", m.dataDir,
+		"--filesystem-writepath", m.config.DataDir,
 		"--download-" + kind, name,
 	}
 	prDownloaderEnvs := []string{
@@ -213,7 +237,7 @@ func (m *AssetManager) runPrDownloader(ctx context.Context, engineVersion string
 	var outputBuffer bytes.Buffer
 	//nolint:gosec // The command parameters are not controlled by the user.
 	command := exec.CommandContext(ctx, prDownloader, arguments...)
-	command.Dir = m.dataDir
+	command.Dir = m.config.DataDir
 	command.Env = append(os.Environ(), prDownloaderEnvs...)
 	command.WaitDelay = 5 * time.Second
 	command.Stdout = &outputBuffer
@@ -230,24 +254,20 @@ func (m *AssetManager) runPrDownloader(ctx context.Context, engineVersion string
 }
 
 // downloadEngine downloads and unpacks the release build of the engine engineVersion into its engine folder. It tries
-// BAR's CDN first, which the BAR lobby uses, then the RecoilEngine release on GitHub.
+// the URLs of AssetManagerConfig.EngineDownloadURLTemplates in order.
 func (m *AssetManager) downloadEngine(ctx context.Context, engineVersion string) error {
-	m.logger.Info("Downloading engine", "version", engineVersion)
-	downloadUrls := []string{
-		fmt.Sprintf(
-			"https://files-cdn.beyondallreason.dev/download?category=engine_%s64&springname=%s",
-			runtime.GOOS,
-			engineVersion,
-		),
-		fmt.Sprintf(
-			"https://github.com/beyond-all-reason/RecoilEngine/releases/download/%s/recoil_%s_amd64-%s.7z",
-			engineVersion,
-			engineVersion,
-			runtime.GOOS,
-		),
+	m.config.Logger.Info("Downloading engine", "version", engineVersion)
+	data := EngineDownloadURLData{
+		EngineVersion: engineVersion,
+		OS:            runtime.GOOS,
 	}
 	var joinedErr error
-	for _, downloadUrl := range downloadUrls {
+	for _, engineDownloadURLTemplate := range m.engineDownloadURLTemplates {
+		downloadUrl, err := m.engineDownloadURL(engineDownloadURLTemplate, data)
+		if err != nil {
+			joinedErr = errors.Join(joinedErr, err)
+			continue
+		}
 		if err := m.downloadEngineTry(ctx, engineVersion, downloadUrl); err != nil {
 			joinedErr = errors.Join(joinedErr, fmt.Errorf("downloading engine from %q: %w", downloadUrl, err))
 			continue
@@ -257,23 +277,34 @@ func (m *AssetManager) downloadEngine(ctx context.Context, engineVersion string)
 	return joinedErr
 }
 
+// engineDownloadURL returns the URL engineDownloadURLTemplate gives for data.
+func (m *AssetManager) engineDownloadURL(engineDownloadURLTemplate *template.Template, data EngineDownloadURLData) (
+	string, error,
+) {
+	var builder strings.Builder
+	if err := engineDownloadURLTemplate.Execute(&builder, data); err != nil {
+		return "", fmt.Errorf("executing engine download URL template: %w", err)
+	}
+	return builder.String(), nil
+}
+
 // downloadEngineTry downloads the engine archive from downloadUrl next to the engine folder, unpacks it into that
 // folder and removes the archive.
 func (m *AssetManager) downloadEngineTry(ctx context.Context, engineVersion string, downloadUrl string) error {
 	filePath := m.engineDir(engineVersion) + ".7z"
-	if err := m.downloadFile(ctx, downloadUrl, filePath); err != nil {
+	if err := m.DownloadFile(ctx, downloadUrl, filePath); err != nil {
 		return err
 	}
 	defer os.Remove(filePath) //nolint:errcheck
 
-	if err := m.extract7z(ctx, filePath); err != nil {
+	if err := m.Extract7z(ctx, filePath); err != nil {
 		return err
 	}
 	return nil
 }
 
-// downloadFile saves the response to a GET of downloadUrl as filePath. A partial file is removed on error.
-func (m *AssetManager) downloadFile(ctx context.Context, downloadUrl string, filePath string) error {
+// DownloadFile saves the response to a GET of downloadUrl as filePath. A partial file is removed on error.
+func (m *AssetManager) DownloadFile(ctx context.Context, downloadUrl string, filePath string) error {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadUrl, nil)
 	if err != nil {
 		return err
@@ -307,9 +338,9 @@ func (m *AssetManager) downloadFile(ctx context.Context, downloadUrl string, fil
 	return err
 }
 
-// extract7z unpacks the 7z archive filePath into the folder of the same name without the extension. The archive is
+// Extract7z unpacks the 7z archive filePath into the folder of the same name without the extension. The archive is
 // unpacked in Go, so no 7-Zip needs to be installed.
-func (m *AssetManager) extract7z(ctx context.Context, filePath string) error {
+func (m *AssetManager) Extract7z(ctx context.Context, filePath string) error {
 	baseDir := strings.TrimSuffix(filePath, filepath.Ext(filePath))
 
 	reader, err := sevenzip.OpenReader(filePath)
@@ -377,5 +408,5 @@ func (m *AssetManager) extract7zFile(file *sevenzip.File, baseDir string) error 
 
 // engineDir returns the folder of the engine engineVersion in the data dir, named like the BAR launcher names it.
 func (m *AssetManager) engineDir(engineVersion string) string {
-	return filepath.Join(m.dataDir, "engine", "recoil_"+engineVersion)
+	return filepath.Join(m.config.DataDir, "engine", "recoil_"+engineVersion)
 }

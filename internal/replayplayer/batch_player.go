@@ -53,7 +53,7 @@ func NewBatchPlayer(options ...Option) (*BatchPlayer, error) {
 func (p *BatchPlayer) Run(ctx context.Context, paths ...string) error {
 	p.errCounter.Store(0)
 
-	paths, err := p.resolvePaths(paths)
+	paths, err := p.ResolvePaths(paths)
 	if err != nil {
 		return err
 	}
@@ -140,7 +140,7 @@ func (p *BatchPlayer) selectReplay(filePath string) (*ReplayInfo, bool, error) {
 		return replayInfo, false, nil
 	}
 
-	if p.isEventsFileCurrent(filePath) {
+	if p.IsEventsFileCurrent(filePath) {
 		p.config.Logger.Info("Skipping replay because its events file is up to date", "file-path", filePath)
 		return nil, false, nil
 	}
@@ -194,9 +194,9 @@ func (p *BatchPlayer) runReplay(ctx context.Context, player *Player, replayInfo 
 	return nil
 }
 
-// resolvePaths returns the replay files paths stand for (see resolvePath), sorted and deduplicated, so a replay named
+// ResolvePaths returns the replay files paths stand for (see resolvePath), sorted and deduplicated, so a replay named
 // twice, e.g. by its file and its folder, is played once.
-func (p *BatchPlayer) resolvePaths(paths []string) ([]string, error) {
+func (p *BatchPlayer) ResolvePaths(paths []string) ([]string, error) {
 	var result []string
 	for _, path := range paths {
 		resolvedPaths, err := p.resolvePath(path)
@@ -252,9 +252,9 @@ func (p *BatchPlayer) replayFilesInFolder(folder string) ([]string, error) {
 	return result, nil
 }
 
-// isEventsFileCurrent returns whether the replay replayFilePath has a complete events file next to it with at least
+// IsEventsFileCurrent returns whether the replay replayFilePath has a complete events file next to it with at least
 // the embedded widget's format version. Playing such a replay again would write the same events.
-func (p *BatchPlayer) isEventsFileCurrent(replayFilePath string) bool {
+func (p *BatchPlayer) IsEventsFileCurrent(replayFilePath string) bool {
 	eventsFilePath := strings.TrimSuffix(replayFilePath, filepath.Ext(replayFilePath)) + "_events.json"
 	file, err := events.ReadFormatVersionFile(eventsFilePath)
 	if err != nil {
