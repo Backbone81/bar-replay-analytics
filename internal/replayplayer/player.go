@@ -14,9 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
 	"github.com/backbone81/bar-replay-analytics-go/internal/playback/widget"
-	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
 	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
@@ -49,57 +47,24 @@ func New(options ...Option) (*Player, error) {
 	}, nil
 }
 
-// Prepare reads the replay filePath and makes sure its engine, map and game are in the data dir, downloading what is
-// missing. It fails for a replay without a recorded stream (the game crashed), which the engine cannot play back.
-func (p *Player) Prepare(ctx context.Context, filePath string) (*ReplayInfo, error) {
-	var err error
-	filePath, err = filepath.Abs(filePath)
-	if err != nil {
-		return nil, err
-	}
-
-	demoFile, err := demo.ReadFile(filePath)
-	if err != nil {
-		return nil, err
-	}
-	if demoFile.FileHeader.DemoStreamSize <= 0 {
-		return nil, errors.New("the demo does not have a positive stream size")
-	}
-
-	setupScript, err := tdf.Parse(demoFile.SetupScript)
-	if err != nil {
-		return nil, err
-	}
-	gameType, ok := setupScript.Value(`game\gametype`)
-	if !ok {
-		return nil, errors.New("the setup script has no game\\gametype")
-	}
-	mapName, ok := setupScript.Value(`game\mapname`)
-	if !ok {
-		return nil, errors.New("the setup script has no game\\mapname")
-	}
-
+// Prepare makes sure the engine, map and game of the replay replayInfo describes (from ReadReplayInfo) are in the data
+// dir, downloading what is missing, and returns a copy of replayInfo with EngineDir set.
+func (p *Player) Prepare(ctx context.Context, replayInfo *ReplayInfo) (*ReplayInfo, error) {
 	// The map and the game are downloaded with the pr-downloader of the replay's engine, so the engine comes first.
-	engineVersion := demoFile.FileHeader.VersionStringAsString()
-	engineDir, err := p.config.AssetManager.EnsureEngineVersion(ctx, engineVersion)
+	engineDir, err := p.config.AssetManager.EnsureEngineVersion(ctx, replayInfo.EngineVersion)
 	if err != nil {
 		return nil, err
 	}
-	if err := p.config.AssetManager.EnsureMap(ctx, engineVersion, mapName.String()); err != nil {
+	if err := p.config.AssetManager.EnsureMap(ctx, replayInfo.EngineVersion, replayInfo.MapName); err != nil {
 		return nil, err
 	}
-	if err := p.config.AssetManager.EnsureGame(ctx, engineVersion, gameType.String()); err != nil {
+	if err := p.config.AssetManager.EnsureGame(ctx, replayInfo.EngineVersion, replayInfo.GameType); err != nil {
 		return nil, err
 	}
 
-	return &ReplayInfo{
-		FilePath:      filePath,
-		EngineVersion: engineVersion,
-		EngineDir:     engineDir,
-		MapName:       mapName.String(),
-		GameType:      gameType.String(),
-		Duration:      demoFile.FileHeader.GameTimeAsDuration(),
-	}, nil
+	result := *replayInfo
+	result.EngineDir = engineDir
+	return &result, nil
 }
 
 // Run plays the replay replayInfo describes back and copies the events file the analytics widget wrote next to the

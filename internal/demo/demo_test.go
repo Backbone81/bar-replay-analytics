@@ -429,6 +429,91 @@ var _ = Describe("Demo", func() {
 		})
 	})
 
+	Context("ReadFileHeaderAndSetupScript", func() {
+		It("reads the header and the setup script, but no statistics", func() {
+			testDemo := newTestDemo()
+			compressed, err := testDemo.compressed()
+			Expect(err).NotTo(HaveOccurred())
+
+			result, err := demo.ReadFileHeaderAndSetupScript(writeTempFile(compressed))
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.FileHeader).To(Equal(testDemo.header))
+			Expect(result.SetupScript).To(Equal(testDemo.setupScript))
+			Expect(result.TeamStats).To(BeNil())
+		})
+
+		It("skips a header extension of a newer engine", func() {
+			testDemo := newTestDemo()
+			testDemo.headerExtension = []byte{1, 2, 3, 4}
+			testDemo.updateSizes()
+			compressed, err := testDemo.compressed()
+			Expect(err).NotTo(HaveOccurred())
+
+			result, err := demo.ReadFileHeaderAndSetupScript(writeTempFile(compressed))
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.SetupScript).To(Equal(testDemo.setupScript))
+		})
+
+		It("reads a demo which is cut off after the setup script", func() {
+			testDemo := newTestDemo()
+			data, err := testDemo.encode()
+			Expect(err).NotTo(HaveOccurred())
+			compressed, err := compress(data[:int(testDemo.header.HeaderSize)+len(testDemo.setupScript)])
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(demo.ReadFileHeaderAndSetupScript(writeTempFile(compressed))).Error().NotTo(HaveOccurred())
+		})
+
+		It("rejects a demo which is cut off in the setup script", func() {
+			testDemo := newTestDemo()
+			data, err := testDemo.encode()
+			Expect(err).NotTo(HaveOccurred())
+			compressed, err := compress(data[:int(testDemo.header.HeaderSize)+len(testDemo.setupScript)-1])
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(demo.ReadFileHeaderAndSetupScript(writeTempFile(compressed))).Error().To(
+				MatchError(ContainSubstring("reading setup script")))
+		})
+
+		It("rejects a setup script larger than MaxDecompressedSize", func() {
+			testDemo := newTestDemo()
+			testDemo.header.ScriptSize = int32(demo.MaxDecompressedSize)
+			compressed, err := testDemo.compressed()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(demo.ReadFileHeaderAndSetupScript(writeTempFile(compressed))).Error().To(
+				MatchError("reading demo: larger than 4096 bytes"))
+		})
+
+		It("rejects an invalid setup script", func() {
+			testDemo := newTestDemo()
+			testDemo.setupScript = "[game]\x00"
+			testDemo.updateSizes()
+			compressed, err := testDemo.compressed()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(demo.ReadFileHeaderAndSetupScript(writeTempFile(compressed))).Error().To(
+				MatchError(ContainSubstring("NUL byte")))
+		})
+
+		It("rejects an invalid header", func() {
+			testDemo := newTestDemo()
+			testDemo.header.Version = 4
+			compressed, err := testDemo.compressed()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(demo.ReadFileHeaderAndSetupScript(writeTempFile(compressed))).Error().To(
+				MatchError(ContainSubstring("invalid DemoFileHeader: version")))
+		})
+
+		It("returns the error of a file that cannot be opened", func() {
+			Expect(demo.ReadFileHeaderAndSetupScript(filepath.Join(GinkgoT().TempDir(), "missing.sdfz"))).Error().To(
+				MatchError(fs.ErrNotExist))
+		})
+	})
+
 	Context("MarshalJSON", func() {
 		It("writes the winning allyteams as an array of numbers", func() {
 			testDemo := newTestDemo()

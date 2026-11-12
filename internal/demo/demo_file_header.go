@@ -109,6 +109,51 @@ func ReadDemoFileHeaderFromFilePath(filePath string) (DemoFileHeader, error) {
 	return ReadDemoFileHeader(data)
 }
 
+// ReadFileHeaderAndSetupScript reads and validates the DemoFileHeader and the setup script of the demo file at
+// filePath and returns them as a Demo without statistics. It decompresses only these two sections, so it is cheap
+// enough to look at many replays, but does not notice damage further on.
+func ReadFileHeaderAndSetupScript(filePath string) (*Demo, error) {
+	file, err := os.Open(filePath) //nolint:gosec // Opening the file the caller names is the purpose.
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close() //nolint:errcheck
+
+	gzipReader, err := gzip.NewReader(file)
+	if err != nil {
+		return nil, fmt.Errorf("decompressing demo: %w", err)
+	}
+	defer gzipReader.Close() //nolint:errcheck
+
+	headerData := make([]byte, demoFileHeaderSize)
+	if _, err := io.ReadFull(gzipReader, headerData); err != nil {
+		return nil, fmt.Errorf("reading DemoFileHeader: %w", err)
+	}
+	header, err := ReadDemoFileHeader(headerData)
+	if err != nil {
+		return nil, err
+	}
+
+	// The validation made HeaderSize >= demoFileHeaderSize and ScriptSize > 0. The limit keeps a forged size from
+	// allocating more than Read would.
+	if int64(header.HeaderSize)+int64(header.ScriptSize) > MaxDecompressedSize {
+		return nil, fmt.Errorf("reading demo: larger than %d bytes", MaxDecompressedSize)
+	}
+	headerExtensionSize := int(header.HeaderSize) - demoFileHeaderSize
+	data := make([]byte, headerExtensionSize+int(header.ScriptSize))
+	if _, err := io.ReadFull(gzipReader, data); err != nil {
+		return nil, fmt.Errorf("reading setup script: %w", err)
+	}
+	setupScript, err := readSetupScript(data[headerExtensionSize:])
+	if err != nil {
+		return nil, err
+	}
+	return &Demo{
+		FileHeader:  header,
+		SetupScript: setupScript,
+	}, nil
+}
+
 // MagicAsString returns Magic up to its terminating NUL, or an empty string if it has none.
 func (h *DemoFileHeader) MagicAsString() string {
 	magic, _, found := bytes.Cut(h.Magic[:], []byte{0})

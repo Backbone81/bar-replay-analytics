@@ -25,6 +25,13 @@ type Config struct {
 	// ConcurrentReplays is how many replays a BatchPlayer plays at once. NewBatchPlayer replaces zero by a value from
 	// the CPUs and the available memory.
 	ConcurrentReplays int
+
+	// Filter selects the replays a BatchPlayer plays back. The zero Filter selects all.
+	Filter Filter
+
+	// MaxReplays is how many replays a BatchPlayer plays back at most: the first ones, in file path order, that match
+	// Filter and whose events file is not current. A replay whose playback fails counts too. Zero means no limit.
+	MaxReplays int
 }
 
 // DefaultConfig is the Config the Options are applied to. AssetManager has no default, so it must be set.
@@ -49,6 +56,9 @@ func (c Config) Validate() error {
 	}
 	if c.ConcurrentReplays < 1 {
 		return errors.New("concurrent replays must be at least 1")
+	}
+	if c.MaxReplays < 0 {
+		return errors.New("the maximum number of replays must not be negative")
 	}
 
 	return nil

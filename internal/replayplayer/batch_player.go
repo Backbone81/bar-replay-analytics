@@ -47,8 +47,9 @@ func NewBatchPlayer(options ...Option) (*BatchPlayer, error) {
 	}, nil
 }
 
-// Run plays the replays paths back (see resolvePath), skipping those whose events file is current. It returns ctx's
-// error if ctx was canceled, otherwise an error if any replay failed.
+// Run plays the replays paths back (see resolvePath), skipping those whose events file is current and those
+// Config.Filter does not match, at most Config.MaxReplays of them. It returns ctx's error if ctx was canceled,
+// otherwise an error if any replay failed.
 func (p *BatchPlayer) Run(ctx context.Context, paths ...string) error {
 	p.errCounter.Store(0)
 
@@ -68,19 +69,20 @@ func (p *BatchPlayer) Run(ctx context.Context, paths ...string) error {
 		players[i] = player
 	}
 
-	// The goroutines take the replays from this unbuffered channel, so each one starts the next replay when it is free.
-	replayFilePathsChan := make(chan string)
+	// The goroutines take the replays from this unbuffered channel, so each one starts the next replay when it is free,
+	// and the replays are selected while the others play.
+	replayInfosChan := make(chan *ReplayInfo)
 
 	var wg sync.WaitGroup
 	for i := range p.config.ConcurrentReplays {
 		wg.Go(func() {
-			p.runReplays(ctx, players[i], replayFilePathsChan)
+			p.runReplays(ctx, players[i], replayInfosChan)
 		})
 	}
 
-	p.feedReplayPaths(ctx, paths, replayFilePathsChan)
+	p.feedReplays(ctx, paths, replayInfosChan)
 
-	close(replayFilePathsChan)
+	close(replayInfosChan)
 	wg.Wait()
 
 	if ctx.Err() != nil {
@@ -92,55 +94,92 @@ func (p *BatchPlayer) Run(ctx context.Context, paths ...string) error {
 	return nil
 }
 
-// feedReplayPaths sends paths to replayFilePathsChan until all are taken or ctx is canceled.
-func (p *BatchPlayer) feedReplayPaths(ctx context.Context, paths []string, replayFilePathsChan chan<- string) {
+// feedReplays sends the replays of paths that are selected (see selectReplay) to replayInfosChan, in the order of
+// paths, until all are sent, Config.MaxReplays are sent or ctx is canceled. Replays that cannot be read are logged and
+// counted as errors.
+func (p *BatchPlayer) feedReplays(ctx context.Context, paths []string, replayInfosChan chan<- *ReplayInfo) {
+	var sent int
 	for _, path := range paths {
+		if p.config.MaxReplays > 0 && sent >= p.config.MaxReplays {
+			p.config.Logger.Info("Maximum number of replays is reached", "count", p.config.MaxReplays)
+			return
+		}
+		if ctx.Err() != nil {
+			return
+		}
+
+		replayInfo, selected, err := p.selectReplay(path)
+		if err != nil {
+			p.config.Logger.Error("Reading replay failed", "file-path", path, "err", err)
+			p.errCounter.Add(1)
+			continue
+		}
+		if !selected {
+			continue
+		}
+
 		select {
-		case replayFilePathsChan <- path:
+		case replayInfosChan <- replayInfo:
+			sent++
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-// runReplays plays the replays it receives on replayFilePathsChan back with player until the channel is closed or ctx
-// is canceled. Errors are logged and counted, so one broken replay does not stop the batch.
-func (p *BatchPlayer) runReplays(ctx context.Context, player *Player, replayFilePathsChan <-chan string) {
-	for replayFilePath := range replayFilePathsChan {
+// selectReplay returns the ReplayInfo of the replay filePath and whether it is to be played back: its events file is
+// not current and Config.Filter matches it. It only reads the replay's header and start script, so nothing is
+// downloaded for a skipped replay.
+func (p *BatchPlayer) selectReplay(filePath string) (*ReplayInfo, bool, error) {
+	replayInfo, err := ReadReplayInfo(filePath)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if !p.config.Filter.Matches(replayInfo) {
+		return replayInfo, false, nil
+	}
+
+	if p.isEventsFileCurrent(filePath) {
+		p.config.Logger.Info("Skipping replay because its events file is up to date", "file-path", filePath)
+		return nil, false, nil
+	}
+	return replayInfo, true, nil
+}
+
+// runReplays plays the replays it receives on replayInfosChan back with player until the channel is closed or ctx is
+// canceled. Errors are logged and counted, so one broken replay does not stop the batch.
+func (p *BatchPlayer) runReplays(ctx context.Context, player *Player, replayInfosChan <-chan *ReplayInfo) {
+	for replayInfo := range replayInfosChan {
 		if ctx.Err() != nil {
 			return
 		}
 
-		if p.isEventsFileCurrent(replayFilePath) {
-			p.config.Logger.Info("Skipping replay because its events file is up to date", "file-path", replayFilePath)
-			continue
-		}
-
-		replayInfo, err := p.prepareReplay(ctx, player, replayFilePath)
+		preparedReplayInfo, err := p.prepareReplay(ctx, player, replayInfo)
 		if err != nil {
-			p.config.Logger.Error("Preparing replay failed", "file-path", replayFilePath, "err", err)
+			p.config.Logger.Error("Preparing replay failed", "file-path", replayInfo.FilePath, "err", err)
 			p.errCounter.Add(1)
 			continue
 		}
-		if err := p.runReplay(ctx, player, replayInfo); err != nil {
-			p.config.Logger.Error("Replay failed", "file-path", replayFilePath, "err", err)
+		if err := p.runReplay(ctx, player, preparedReplayInfo); err != nil {
+			p.config.Logger.Error("Replay failed", "file-path", replayInfo.FilePath, "err", err)
 			p.errCounter.Add(1)
 			continue
 		}
 	}
 }
 
-// prepareReplay prepares the replay filePath with player. The timeout covers the downloads of a new engine, map and
-// game, so a stalled download does not block the batch.
-func (p *BatchPlayer) prepareReplay(ctx context.Context, player *Player, filePath string) (*ReplayInfo, error) {
+// prepareReplay prepares the replay replayInfo describes with player. The timeout covers the downloads of a new
+// engine, map and game, so a stalled download does not block the batch.
+func (p *BatchPlayer) prepareReplay(ctx context.Context, player *Player, replayInfo *ReplayInfo) (*ReplayInfo, error) {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer cancel()
 
-	replayInfo, err := player.Prepare(ctx, filePath)
+	preparedReplayInfo, err := player.Prepare(ctx, replayInfo)
 	if err != nil {
 		return nil, err
 	}
-	return replayInfo, nil
+	return preparedReplayInfo, nil
 }
 
 // runReplay plays the replay replayInfo describes back with player. The timeout covers the playback only (the downloads

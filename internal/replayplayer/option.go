@@ -40,6 +40,20 @@ func WithConcurrentReplays(concurrentReplays int) Option {
 	}
 }
 
+// WithFilter sets Config.Filter.
+func WithFilter(filter Filter) Option {
+	return func(config *Config) {
+		config.Filter = filter
+	}
+}
+
+// WithMaxReplays sets Config.MaxReplays.
+func WithMaxReplays(maxReplays int) Option {
+	return func(config *Config) {
+		config.MaxReplays = maxReplays
+	}
+}
+
 // WithConfig replaces the whole Config. BatchPlayer uses it to give each of its Players its own Config.
 func WithConfig(newConfig Config) Option {
 	return func(config *Config) {
