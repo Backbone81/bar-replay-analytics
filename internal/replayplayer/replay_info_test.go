@@ -45,21 +45,28 @@ var _ = Describe("ReplayInfo", func() {
 
 		It("rejects a replay without a recorded stream", func() {
 			filePath := filepath.Join(GinkgoT().TempDir(), "crashed.sdfz")
-			writeReplay(filePath, testEngineVersion, testSetupScript(testMapName, testGameType), 0)
+			writeReplay(filePath, testEngineVersion, testSetupScript(testMapName, testGameType), 0, testGameTime)
+
+			Expect(replayplayer.ReadReplayInfo(filePath)).Error().To(HaveOccurred())
+		})
+
+		It("rejects a replay without a game time", func() {
+			filePath := filepath.Join(GinkgoT().TempDir(), "not-ended.sdfz")
+			writeReplay(filePath, testEngineVersion, testSetupScript(testMapName, testGameType), 16, 0)
 
 			Expect(replayplayer.ReadReplayInfo(filePath)).Error().To(HaveOccurred())
 		})
 
 		It("rejects a start script without gametype", func() {
 			filePath := filepath.Join(GinkgoT().TempDir(), "game.sdfz")
-			writeReplay(filePath, testEngineVersion, "[game]\n{\n\tmapname="+testMapName+";\n}\n", 16)
+			writeReplay(filePath, testEngineVersion, "[game]\n{\n\tmapname="+testMapName+";\n}\n", 16, testGameTime)
 
 			Expect(replayplayer.ReadReplayInfo(filePath)).Error().To(HaveOccurred())
 		})
 
 		It("rejects a start script without mapname", func() {
 			filePath := filepath.Join(GinkgoT().TempDir(), "game.sdfz")
-			writeReplay(filePath, testEngineVersion, "[game]\n{\n\tgametype="+testGameType+";\n}\n", 16)
+			writeReplay(filePath, testEngineVersion, "[game]\n{\n\tgametype="+testGameType+";\n}\n", 16, testGameTime)
 
 			Expect(replayplayer.ReadReplayInfo(filePath)).Error().To(HaveOccurred())
 		})

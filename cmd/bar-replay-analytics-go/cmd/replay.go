@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -94,8 +95,6 @@ func replayPaths(args []string) ([]string, error) {
 
 // The statuses a command that handles several replays prints for each of them, and counts.
 const (
-	statusPlayed   = "played"
-	statusCurrent  = "current"
 	statusReported = "reported"
 	statusSkipped  = "skipped"
 	statusFailed   = "failed"
@@ -115,6 +114,11 @@ func (c statusCounts) print(statuses ...string) {
 	for _, status := range statuses {
 		printField(status, c[status])
 	}
+}
+
+// printReplayLine prints the outcome for one replay to stdout.
+func printReplayLine(status string, name string, description string) {
+	fmt.Println(strings.TrimRight(fmt.Sprintf("%-10s  %s  %s", status, name, description), " "))
 }
 
 // printField prints one "label: value" line to stdout, with the values of all such lines aligned.

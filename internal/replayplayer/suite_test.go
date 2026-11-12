@@ -472,15 +472,15 @@ func testSetupScript(mapName string, gameType string) string {
 		"}\n"
 }
 
-// writeReplay writes a replay file to filePath with engineVersion, setupScript and a stream of demoStreamSize bytes. It
-// has no statistics: ReadReplayInfo reads only the header and the start script.
-func writeReplay(filePath string, engineVersion string, setupScript string, demoStreamSize int) {
+// writeReplay writes a replay file to filePath with engineVersion, setupScript, a stream of demoStreamSize bytes and a
+// game time of gameTime seconds. It has no statistics: ReadReplayInfo reads only the header and the start script.
+func writeReplay(filePath string, engineVersion string, setupScript string, demoStreamSize int, gameTime int) {
 	header := demo.DemoFileHeader{
 		Version:            demo.DemofileVersion,
 		HeaderSize:         int32(binary.Size(demo.DemoFileHeader{})),
 		ScriptSize:         int32(len(setupScript)),
 		DemoStreamSize:     int32(demoStreamSize),
-		GameTime:           testGameTime,
+		GameTime:           int32(gameTime),
 		PlayerStatElemSize: int32(binary.Size(demo.PlayerStatistics{})),
 		TeamStatElemSize:   int32(binary.Size(demo.TeamStatistics{})),
 		TeamStatPeriod:     15,
@@ -499,7 +499,7 @@ func writeReplay(filePath string, engineVersion string, setupScript string, demo
 
 // writeTestReplay writes a playable test replay on mapName to filePath and returns filePath.
 func writeTestReplay(filePath string, mapName string) string {
-	writeReplay(filePath, testEngineVersion, testSetupScript(mapName, testGameType), 16)
+	writeReplay(filePath, testEngineVersion, testSetupScript(mapName, testGameType), 16, testGameTime)
 	return filePath
 }
 

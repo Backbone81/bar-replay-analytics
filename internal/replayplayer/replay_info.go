@@ -37,7 +37,8 @@ type ReplayInfo struct {
 }
 
 // ReadReplayInfo reads the header and the start script of the replay filePath. It fails for a replay without a
-// recorded stream (the game crashed), which the engine cannot play back.
+// recorded stream (the game crashed), which the engine cannot play back, and for one without a game time (0:00 in the
+// lobby: the engine crashed or the game was not ended), whose stream can hold hours of game.
 func ReadReplayInfo(filePath string) (*ReplayInfo, error) {
 	filePath, err := filepath.Abs(filePath)
 	if err != nil {
@@ -50,6 +51,9 @@ func ReadReplayInfo(filePath string) (*ReplayInfo, error) {
 	}
 	if demoFile.FileHeader.DemoStreamSize <= 0 {
 		return nil, errors.New("the demo does not have a positive stream size")
+	}
+	if demoFile.FileHeader.GameTime <= 0 {
+		return nil, errors.New("the demo does not have a positive game time")
 	}
 
 	setupScript, err := tdf.Parse(demoFile.SetupScript)

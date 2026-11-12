@@ -193,7 +193,7 @@ var _ = Describe("BatchPlayer", func() {
 			failing := writeTestReplay(demosFile(dataDir, "b.sdfz"), testMapName)
 			writeSpringHeadlessBehaviour(failing, springHeadlessBehaviour{ExitCode: 1})
 			unpreparable := demosFile(dataDir, "c.sdfz")
-			writeReplay(unpreparable, "2026.01.01", testSetupScript(testMapName, testGameType), 16)
+			writeReplay(unpreparable, "2026.01.01", testSetupScript(testMapName, testGameType), 16, testGameTime)
 			working := writePlayableReplay(dataDir, "d.sdfz", testMapName)
 
 			Expect(newBatchPlayer(dataDir).Run(ctx, ".")).
