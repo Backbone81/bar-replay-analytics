@@ -1,11 +1,9 @@
 package replayplayer
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -14,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/backbone81/bar-replay-analytics-go/internal/events"
 	"github.com/backbone81/bar-replay-analytics-go/internal/replayplayer/widget"
 	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
@@ -99,15 +98,33 @@ func (p *Player) Run(ctx context.Context, replayInfo *ReplayInfo) error {
 		return fmt.Errorf("running spring-headless: %w", err)
 	}
 
-	// The widget can only write under LuaUI/ of the write dir, which is removed, so the events file is copied out.
+	// The widget can only write under LuaUI/ of the write dir, which is removed, so the events file is copied out. An
+	// incomplete one is not: it would look like the analysis of the whole game.
 	eventsFileName := strings.TrimSuffix(
 		filepath.Base(replayInfo.FilePath),
 		filepath.Ext(replayInfo.FilePath),
 	) + "_events.json"
-	return utils.CopyFile(
-		filepath.Join(p.writeDir, utils.WidgetsDir, utils.AnalyticsWidgetFolder, "events", eventsFileName),
-		filepath.Join(filepath.Dir(replayInfo.FilePath), eventsFileName),
-	)
+	writtenEventsFilePath := filepath.Join(p.writeDir, utils.WidgetsDir, utils.AnalyticsWidgetFolder, "events",
+		eventsFileName)
+	if err := ValidateEventsFile(writtenEventsFilePath); err != nil {
+		return fmt.Errorf("checking the events file: %w", err)
+	}
+	return utils.CopyFile(writtenEventsFilePath, filepath.Join(filepath.Dir(replayInfo.FilePath), eventsFileName))
+}
+
+// ValidateEventsFile returns an error if the events file filePath is missing, incomplete (cut off, or it does not end
+// with the game over) or older than the embedded widget's format version. It reads only the format version and the
+// end (events.ReadFormatVersionFile), which is much faster than reading the whole file.
+func ValidateEventsFile(filePath string) error {
+	file, err := events.ReadFormatVersionFile(filePath)
+	if err != nil {
+		return err
+	}
+	if file.FormatVersion < widget.FormatVersion {
+		return fmt.Errorf("the events file has format version %d, the widget writes %d", file.FormatVersion,
+			widget.FormatVersion)
+	}
+	return nil
 }
 
 // prepareWriteDir fills the new write dir with what the engine needs from it for a playback.
@@ -184,11 +201,12 @@ func (p *Player) prepareWriteDirWidget() error {
 }
 
 // runSpringHeadless plays the replay filePath with the engine in engineDir. The engine's output replaces <replay
-// name>.log next to the replay and is also part of the error if the engine fails.
+// name>.log next to the replay, which the error names if the engine fails.
 func (p *Player) runSpringHeadless(ctx context.Context, engineDir string, filePath string) error {
+	logFilePath := strings.TrimSuffix(filePath, filepath.Ext(filePath)) + ".log"
 	//nolint:gosec // This file does not contain sensitive data
 	logFile, err := os.OpenFile(
-		strings.TrimSuffix(filePath, filepath.Ext(filePath))+".log",
+		logFilePath,
 		os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
 		0o644,
 	)
@@ -197,8 +215,6 @@ func (p *Player) runSpringHeadless(ctx context.Context, engineDir string, filePa
 	}
 	defer logFile.Close() //nolint:errcheck
 
-	var outputBuffer bytes.Buffer
-	output := io.MultiWriter(&outputBuffer, logFile)
 	//nolint:gosec // The user does not control the command input.
 	command := exec.CommandContext(ctx, filepath.Join(engineDir, "spring-headless"),
 		// Isolation keeps the engine from adding the home and system data dirs (DataDirLocater::LocateDataDirs): it
@@ -217,14 +233,13 @@ func (p *Player) runSpringHeadless(ctx context.Context, engineDir string, filePa
 		return command.Process.Signal(syscall.SIGTERM)
 	}
 	command.WaitDelay = 5 * time.Second
-	command.Stdout = output
-	command.Stderr = output
+	command.Stdout = logFile
+	command.Stderr = logFile
 
 	if err := command.Run(); err != nil {
 		return errors.Join(
-			fmt.Errorf("running the replay: %w", err),
+			fmt.Errorf("running the replay (see %s): %w", logFilePath, err),
 			ctx.Err(),
-			errors.New(outputBuffer.String()),
 		)
 	}
 	return nil

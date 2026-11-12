@@ -8,7 +8,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/backbone81/bar-replay-analytics-go/internal/events"
 	"github.com/backbone81/bar-replay-analytics-go/internal/replayplayer"
+	"github.com/backbone81/bar-replay-analytics-go/internal/replayplayer/widget"
 	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
@@ -66,7 +68,7 @@ var _ = Describe("Player", func() {
 			dataDir := newDataDirWithAssets()
 			player := newPlayer(dataDir)
 			replayInfo := newPreparedReplay(ctx, player, dataDir, "game.sdfz")
-			writeSpringHeadlessBehaviour(replayInfo.FilePath, springHeadlessBehaviour{EventsFile: "{}"})
+			writeSpringHeadlessBehaviour(replayInfo.FilePath, springHeadlessBehaviour{EventsFile: currentEventsFileContent()})
 
 			Expect(player.Run(ctx, replayInfo)).To(Succeed())
 
@@ -94,7 +96,7 @@ var _ = Describe("Player", func() {
 			Expect(err).NotTo(HaveOccurred())
 			player := newPlayer(relativeDataDir)
 			replayInfo := newPreparedReplay(ctx, player, dataDir, "game.sdfz")
-			writeSpringHeadlessBehaviour(replayInfo.FilePath, springHeadlessBehaviour{EventsFile: "{}"})
+			writeSpringHeadlessBehaviour(replayInfo.FilePath, springHeadlessBehaviour{EventsFile: currentEventsFileContent()})
 
 			Expect(player.Run(ctx, replayInfo)).To(Succeed())
 
@@ -107,7 +109,7 @@ var _ = Describe("Player", func() {
 			writeFile(filepath.Join(dataDir, utils.CacheDir, "other.lua"), "")
 			player := newPlayer(dataDir)
 			replayInfo := newPreparedReplay(ctx, player, dataDir, "game.sdfz")
-			writeSpringHeadlessBehaviour(replayInfo.FilePath, springHeadlessBehaviour{EventsFile: "{}"})
+			writeSpringHeadlessBehaviour(replayInfo.FilePath, springHeadlessBehaviour{EventsFile: currentEventsFileContent()})
 
 			Expect(player.Run(ctx, replayInfo)).To(Succeed())
 
@@ -124,7 +126,7 @@ var _ = Describe("Player", func() {
 			dataDir := newDataDirWithAssets()
 			player := newPlayer(dataDir, replayplayer.WithWorkerThreadCount(0))
 			replayInfo := newPreparedReplay(ctx, player, dataDir, "game.sdfz")
-			writeSpringHeadlessBehaviour(replayInfo.FilePath, springHeadlessBehaviour{EventsFile: "{}"})
+			writeSpringHeadlessBehaviour(replayInfo.FilePath, springHeadlessBehaviour{EventsFile: currentEventsFileContent()})
 
 			Expect(player.Run(ctx, replayInfo)).To(Succeed())
 
@@ -172,6 +174,22 @@ var _ = Describe("Player", func() {
 			Expect(replaySibling(replayInfo.FilePath, "_events.json")).NotTo(BeAnExistingFile())
 		})
 
+		DescribeTable("fails and does not copy an events file that is not complete and current",
+			func(ctx SpecContext, eventsFile string) {
+				dataDir := newDataDirWithAssets()
+				player := newPlayer(dataDir)
+				replayInfo := newPreparedReplay(ctx, player, dataDir, "game.sdfz")
+				writeSpringHeadlessBehaviour(replayInfo.FilePath, springHeadlessBehaviour{EventsFile: eventsFile})
+
+				Expect(player.Run(ctx, replayInfo)).ToNot(Succeed())
+				Expect(replaySibling(replayInfo.FilePath, "_events.json")).NotTo(BeAnExistingFile())
+			},
+			Entry("without an end", eventsFileContent(widget.FormatVersion, "")),
+			Entry("of a game that did not end", eventsFileContent(widget.FormatVersion, events.EndReasonStalled)),
+			Entry("cut off", currentEventsFileContent()[:10]),
+			Entry("of an older format version", eventsFileContent(widget.FormatVersion-1, events.EndReasonGameOver)),
+		)
+
 		It("fails without the engine", func(ctx SpecContext) {
 			dataDir := newDataDirWithAssets()
 			player := newPlayer(dataDir)
@@ -197,5 +215,37 @@ var _ = Describe("Player", func() {
 			Eventually(result).Should(Receive(MatchError(context.Canceled)))
 			Expect(readFile(replaySibling(replayInfo.FilePath, springHeadlessSignalSuffix))).To(Equal("terminated"))
 		})
+	})
+
+	Context("ValidateEventsFile", func() {
+		It("fails without an events file", func() {
+			eventsFilePath := filepath.Join(GinkgoT().TempDir(), "game_events.json")
+
+			Expect(replayplayer.ValidateEventsFile(eventsFilePath)).To(MatchError(os.ErrNotExist))
+		})
+
+		DescribeTable("accepts a complete events file of at least the widget's format version",
+			func(formatVersion int) {
+				eventsFilePath := filepath.Join(GinkgoT().TempDir(), "game_events.json")
+				writeFile(eventsFilePath, eventsFileContent(formatVersion, events.EndReasonGameOver))
+
+				Expect(replayplayer.ValidateEventsFile(eventsFilePath)).To(Succeed())
+			},
+			Entry("the same version", widget.FormatVersion),
+			Entry("a newer version", widget.FormatVersion+1),
+		)
+
+		DescribeTable("rejects an events file that is not complete and current",
+			func(eventsFile string) {
+				eventsFilePath := filepath.Join(GinkgoT().TempDir(), "game_events.json")
+				writeFile(eventsFilePath, eventsFile)
+
+				Expect(replayplayer.ValidateEventsFile(eventsFilePath)).ToNot(Succeed())
+			},
+			Entry("without an end", eventsFileContent(widget.FormatVersion, "")),
+			Entry("of a game that did not end", eventsFileContent(widget.FormatVersion, events.EndReasonStalled)),
+			Entry("cut off", currentEventsFileContent()[:10]),
+			Entry("of an older format version", eventsFileContent(widget.FormatVersion-1, events.EndReasonGameOver)),
+		)
 	})
 })

@@ -12,8 +12,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/events"
-	"github.com/backbone81/bar-replay-analytics-go/internal/replayplayer/widget"
 	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
@@ -253,13 +251,9 @@ func (p *BatchPlayer) replayFilesInFolder(folder string) ([]string, error) {
 }
 
 // IsEventsFileCurrent returns whether the replay replayFilePath has a complete events file next to it with at least
-// the embedded widget's format version. Playing such a replay again would write the same events.
+// the embedded widget's format version (see ValidateEventsFile). Playing such a replay again would write the same
+// events; a missing, incomplete, unreadable or outdated one is written again.
 func (p *BatchPlayer) IsEventsFileCurrent(replayFilePath string) bool {
 	eventsFilePath := strings.TrimSuffix(replayFilePath, filepath.Ext(replayFilePath)) + "_events.json"
-	file, err := events.ReadFormatVersionFile(eventsFilePath)
-	if err != nil {
-		// A missing, incomplete or unreadable events file is written again.
-		return false
-	}
-	return file.FormatVersion >= widget.FormatVersion
+	return ValidateEventsFile(eventsFilePath) == nil
 }
