@@ -100,16 +100,20 @@ func (p *Player) Run(ctx context.Context, replayInfo *ReplayInfo) error {
 
 	// The widget can only write under LuaUI/ of the write dir, which is removed, so the events file is copied out. An
 	// incomplete one is not: it would look like the analysis of the whole game.
-	eventsFileName := strings.TrimSuffix(
-		filepath.Base(replayInfo.FilePath),
-		filepath.Ext(replayInfo.FilePath),
-	) + "_events.json"
+	eventsFilePath := EventsFilePath(replayInfo.FilePath)
+	eventsFileName := filepath.Base(eventsFilePath)
 	writtenEventsFilePath := filepath.Join(p.writeDir, utils.WidgetsDir, utils.AnalyticsWidgetFolder, "events",
 		eventsFileName)
 	if err := ValidateEventsFile(writtenEventsFilePath); err != nil {
 		return fmt.Errorf("checking the events file: %w", err)
 	}
-	return utils.CopyFile(writtenEventsFilePath, filepath.Join(filepath.Dir(replayInfo.FilePath), eventsFileName))
+	return utils.CopyFile(writtenEventsFilePath, eventsFilePath)
+}
+
+// EventsFilePath returns the path of the events file of the replay file replayFilePath: <replay name>_events.json
+// next to it, where Run copies the file the analytics widget wrote.
+func EventsFilePath(replayFilePath string) string {
+	return strings.TrimSuffix(replayFilePath, filepath.Ext(replayFilePath)) + "_events.json"
 }
 
 // ValidateEventsFile returns an error if the events file filePath is missing, incomplete (cut off, or it does not end

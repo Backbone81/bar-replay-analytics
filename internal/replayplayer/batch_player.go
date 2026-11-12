@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -254,6 +253,5 @@ func (p *BatchPlayer) replayFilesInFolder(folder string) ([]string, error) {
 // the embedded widget's format version (see ValidateEventsFile). Playing such a replay again would write the same
 // events; a missing, incomplete, unreadable or outdated one is written again.
 func (p *BatchPlayer) IsEventsFileCurrent(replayFilePath string) bool {
-	eventsFilePath := strings.TrimSuffix(replayFilePath, filepath.Ext(replayFilePath)) + "_events.json"
-	return ValidateEventsFile(eventsFilePath) == nil
+	return ValidateEventsFile(EventsFilePath(replayFilePath)) == nil
 }

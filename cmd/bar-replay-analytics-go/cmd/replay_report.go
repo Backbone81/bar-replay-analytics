@@ -13,7 +13,7 @@ import (
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
 	"github.com/backbone81/bar-replay-analytics-go/internal/events"
-	"github.com/backbone81/bar-replay-analytics-go/internal/playback"
+	"github.com/backbone81/bar-replay-analytics-go/internal/replayplayer"
 	"github.com/backbone81/bar-replay-analytics-go/internal/replayplayer/widget"
 	"github.com/backbone81/bar-replay-analytics-go/internal/report"
 	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
@@ -65,7 +65,7 @@ again. Each report holds its formatVersion and the eventsFormatVersion of its ev
 // reportReplay writes the report of the replay filePath, and returns its status, "reported", "skipped" (no events
 // file) or "failed", and a description of the outcome.
 func reportReplay(filePath string) (string, string) {
-	eventsFilePath := playback.EventsFilePath(filePath)
+	eventsFilePath := replayplayer.EventsFilePath(filePath)
 	if _, err := os.Stat(eventsFilePath); errors.Is(err, fs.ErrNotExist) {
 		return statusSkipped, "no events file: play the replay back first (replay play)"
 	}
@@ -105,7 +105,7 @@ func reportReplay(filePath string) (string, string) {
 }
 
 // reportPath returns the path of the report of the replay file filePath: <replay name>_report.json next to it, like
-// the events file of its playback (see playback.EventsFilePath).
+// the events file of its playback (see replayplayer.EventsFilePath).
 func reportPath(filePath string) string {
 	return strings.TrimSuffix(filePath, filepath.Ext(filePath)) + "_report.json"
 }

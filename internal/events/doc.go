@@ -1,5 +1,5 @@
 // Package events reads the events file, <replay name>_events.json, that the analytics widget
-// (internal/playback/widget/template/dbg_replay_analytics.lua) writes while a replay plays back headless.
+// (internal/replayplayer/widget/template/dbg_replay_analytics.lua) writes while a replay plays back headless.
 //
 // The file is one JSON object:
 //
