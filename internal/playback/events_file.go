@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/events"
-	"github.com/backbone81/bar-replay-analytics-go/internal/playback/widget"
+	"github.com/backbone81/bar-replay-analytics-go/internal/replayplayer/widget"
 )
 
 // EventsFileStatus is whether the events file of a replay's playback is current.

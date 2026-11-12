@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/playback/widget"
+	"github.com/backbone81/bar-replay-analytics-go/internal/replayplayer/widget"
 )
 
 // expectedLuaFilesHash is the hash of the template's .lua files (see luaFilesHash) when the widget was last checked.

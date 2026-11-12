@@ -102,7 +102,7 @@ make fuzz    # run the fuzz tests until they stop finding new inputs (see script
 
 Two tests make sure the format versions are increased when the output changes:
 
-- **Events:** `internal/playback/widget/version_test.go` holds a hash of the widget's `.lua` files. When the widget
+- **Events:** `internal/replayplayer/widget` holds a hash of the widget's `.lua` files. When the widget
   changes, it fails and prints the new hash: if the events it writes change, increase `FORMAT_VERSION` in
   `dbg_replay_analytics.lua` (the only definition; Go reads it from there), then set the new hash.
 - **Report:** `internal/report/testdata/report*.json` are the reports of a test game. When a report changes, the test

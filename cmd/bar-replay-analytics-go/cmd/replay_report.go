@@ -14,7 +14,7 @@ import (
 	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
 	"github.com/backbone81/bar-replay-analytics-go/internal/events"
 	"github.com/backbone81/bar-replay-analytics-go/internal/playback"
-	"github.com/backbone81/bar-replay-analytics-go/internal/playback/widget"
+	"github.com/backbone81/bar-replay-analytics-go/internal/replayplayer/widget"
 	"github.com/backbone81/bar-replay-analytics-go/internal/report"
 	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
 )

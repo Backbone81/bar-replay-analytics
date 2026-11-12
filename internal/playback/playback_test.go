@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/playback"
-	"github.com/backbone81/bar-replay-analytics-go/internal/playback/widget"
+	"github.com/backbone81/bar-replay-analytics-go/internal/replayplayer/widget"
 )
 
 // analyticsWidgetFile is the file name of the analytics widget.
