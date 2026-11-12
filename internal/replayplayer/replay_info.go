@@ -44,7 +44,7 @@ func ReadReplayInfo(filePath string) (*ReplayInfo, error) {
 		return nil, err
 	}
 
-	demoFile, err := demo.ReadFileHeaderAndSetupScript(filePath)
+	demoFile, err := demo.ReadFile(filePath, demo.ReadUntilSetupScript)
 	if err != nil {
 		return nil, err
 	}

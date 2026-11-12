@@ -69,7 +69,7 @@ func reportReplay(filePath string) (string, string) {
 	if _, err := os.Stat(eventsFilePath); errors.Is(err, fs.ErrNotExist) {
 		return statusSkipped, "no events file: play the replay back first (replay play)"
 	}
-	replay, err := demo.ReadFile(filePath)
+	replay, err := demo.ReadFile(filePath, demo.ReadUntilEnd)
 	if err != nil {
 		return statusFailed, err.Error()
 	}

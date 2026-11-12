@@ -22,5 +22,6 @@
 // A team's statistics are recorded every teamStatPeriod seconds and hold totals since the start of the game. The last
 // entry holds the totals at the end, see TeamStatistics.Frame for its frame.
 //
-// Read validates every field and rejects the whole file on the first invalid one.
+// Read validates every field of the sections it reads and rejects the whole file on the first invalid one. With
+// ReadUntilHeader or ReadUntilSetupScript it stops after that section, without decompressing the rest.
 package demo

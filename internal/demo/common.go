@@ -14,8 +14,9 @@ const MaxPlayers = 251
 // See MAX_TEAMS in rts/Sim/Misc/GlobalConstants.h.
 const MaxTeams = 255
 
-// MaxDecompressedSize is the largest decompressed demo Read and ReadUncompressed accept, against gzip bombs.
-var MaxDecompressedSize int64 = 1024 * 1024 * 1024
+// MaxSectionSize is the largest section of a demo file the Read functions accept, against gzip bombs and forged
+// sizes. It is checked for each section before reading it, the skipped demo stream included.
+var MaxSectionSize int64 = 1024 * 1024 * 1024
 
 // DemofileMagic is the first 16 bytes of a demo file, terminating NUL included.
 // See DEMOFILE_MAGIC in rts/System/LoadSave/demofile.h.

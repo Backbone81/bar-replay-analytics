@@ -21,7 +21,7 @@ JSON. The recorded game itself is not included.
 		if err != nil {
 			return err
 		}
-		replay, err := demo.ReadFile(filePath)
+		replay, err := demo.ReadFile(filePath, demo.ReadUntilEnd)
 		if err != nil {
 			return err
 		}

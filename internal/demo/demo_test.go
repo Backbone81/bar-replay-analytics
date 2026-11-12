@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"math"
 	"os"
@@ -21,12 +22,12 @@ var _ = Describe("Demo", func() {
 	var maxDecompressedSizeBackup int64
 
 	BeforeEach(func() {
-		maxDecompressedSizeBackup = demo.MaxDecompressedSize
-		demo.MaxDecompressedSize = 4096
+		maxDecompressedSizeBackup = demo.MaxSectionSize
+		demo.MaxSectionSize = 4096
 	})
 
 	AfterEach(func() {
-		demo.MaxDecompressedSize = maxDecompressedSizeBackup
+		demo.MaxSectionSize = maxDecompressedSizeBackup
 	})
 
 	Context("Read", func() {
@@ -36,7 +37,7 @@ var _ = Describe("Demo", func() {
 			compressed, err := testDemo.compressed()
 			Expect(err).NotTo(HaveOccurred())
 
-			result, err := demo.Read(bytes.NewReader(compressed))
+			result, err := demo.Read(bytes.NewReader(compressed), demo.ReadUntilEnd)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.FileHeader).To(Equal(testDemo.header))
@@ -56,7 +57,7 @@ var _ = Describe("Demo", func() {
 			compressed, err := testDemo.compressed()
 			Expect(err).NotTo(HaveOccurred())
 
-			result, err := demo.Read(bytes.NewReader(compressed))
+			result, err := demo.Read(bytes.NewReader(compressed), demo.ReadUntilEnd)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.WinningAllyTeams).To(BeEmpty())
@@ -72,7 +73,7 @@ var _ = Describe("Demo", func() {
 			compressed, err := testDemo.compressed()
 			Expect(err).NotTo(HaveOccurred())
 
-			result, err := demo.Read(bytes.NewReader(compressed))
+			result, err := demo.Read(bytes.NewReader(compressed), demo.ReadUntilEnd)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.WinningAllyTeams).To(Equal([]uint8{2, 2}))
@@ -86,7 +87,7 @@ var _ = Describe("Demo", func() {
 			compressed, err := testDemo.compressed()
 			Expect(err).NotTo(HaveOccurred())
 
-			result, err := demo.Read(bytes.NewReader(compressed))
+			result, err := demo.Read(bytes.NewReader(compressed), demo.ReadUntilEnd)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.TeamStats).To(HaveLen(2))
@@ -102,7 +103,7 @@ var _ = Describe("Demo", func() {
 			compressed, err := testDemo.compressed()
 			Expect(err).NotTo(HaveOccurred())
 
-			result, err := demo.Read(bytes.NewReader(compressed))
+			result, err := demo.Read(bytes.NewReader(compressed), demo.ReadUntilEnd)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.FileHeader.HeaderSize).To(BeEquivalentTo(binary.Size(demo.DemoFileHeader{}) + 4))
@@ -121,7 +122,7 @@ var _ = Describe("Demo", func() {
 			compressed, err := testDemo.compressed()
 			Expect(err).NotTo(HaveOccurred())
 
-			result, err := demo.Read(bytes.NewReader(compressed))
+			result, err := demo.Read(bytes.NewReader(compressed), demo.ReadUntilEnd)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.FileHeader).To(Equal(testDemo.header))
@@ -135,7 +136,8 @@ var _ = Describe("Demo", func() {
 			data, err := newTestDemo().encode()
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(demo.Read(bytes.NewReader(data))).Error().To(MatchError(ContainSubstring("decompressing demo")))
+			Expect(demo.Read(bytes.NewReader(data), demo.ReadUntilEnd)).Error().To(
+				MatchError(ContainSubstring("decompressing demo")))
 		})
 
 		It("rejects a gzip stream with a broken checksum", func() {
@@ -143,14 +145,23 @@ var _ = Describe("Demo", func() {
 			Expect(err).NotTo(HaveOccurred())
 			compressed[len(compressed)-8] ^= 0xff // The CRC-32 is in the gzip trailer's first 4 of 8 bytes.
 
-			Expect(demo.Read(bytes.NewReader(compressed))).Error().To(MatchError(gzip.ErrChecksum))
+			Expect(demo.Read(bytes.NewReader(compressed), demo.ReadUntilEnd)).Error().To(MatchError(gzip.ErrChecksum))
 		})
 
-		It("rejects a demo larger than MaxDecompressedSize", func() {
-			compressed, err := compress(make([]byte, demo.MaxDecompressedSize+1))
-			Expect(err).NotTo(HaveOccurred())
+		It("rejects a section larger than MaxSectionSize, also the skipped demo stream", func() {
+			testDemo := newTestDemo()
+			testDemo.demoStream = make([]byte, demo.MaxSectionSize+1)
+			testDemo.updateSizes()
 
-			Expect(demo.Read(bytes.NewReader(compressed))).Error().To(MatchError("reading demo: larger than 4096 bytes"))
+			Expect(testDemo.read()).Error().To(MatchError("demo stream: 4097 bytes, more than the limit of 4096 bytes"))
+		})
+
+		It("accepts a section of exactly MaxSectionSize", func() {
+			testDemo := newTestDemo()
+			testDemo.demoStream = make([]byte, demo.MaxSectionSize)
+			testDemo.updateSizes()
+
+			Expect(testDemo.read()).Error().NotTo(HaveOccurred())
 		})
 
 		DescribeTable("rejects an invalid demo",
@@ -161,17 +172,24 @@ var _ = Describe("Demo", func() {
 				compressed, err := testDemo.compressed()
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(demo.Read(bytes.NewReader(compressed))).Error().To(MatchError(ContainSubstring(expectedError)))
+				Expect(demo.Read(bytes.NewReader(compressed), demo.ReadUntilEnd)).Error().To(
+					MatchError(ContainSubstring(expectedError)))
 			},
 			Entry("with an invalid header",
 				func(testDemo *testDemo) { testDemo.header.Version = 4 },
 				"invalid DemoFileHeader: version"),
 			Entry("with a header size beyond the end of the file",
+				func(testDemo *testDemo) { testDemo.header.HeaderSize = 4000 },
+				"DemoFileHeader extension: 3648 bytes, but only "),
+			Entry("with a header size larger than MaxSectionSize",
 				func(testDemo *testDemo) { testDemo.header.HeaderSize = math.MaxInt32 },
-				"DemoFileHeader: 2147483647 bytes"),
+				"DemoFileHeader extension: 2147483295 bytes, more than the limit of 4096 bytes"),
 			Entry("with a setup script beyond the end of the file",
+				func(testDemo *testDemo) { testDemo.header.ScriptSize = 4000 },
+				"setup script: 4000 bytes, but only "),
+			Entry("with a setup script larger than MaxSectionSize",
 				func(testDemo *testDemo) { testDemo.header.ScriptSize = math.MaxInt32 },
-				"setup script: 2147483647 bytes"),
+				"setup script: 2147483647 bytes, more than the limit of 4096 bytes"),
 			Entry("with a NUL byte in the setup script",
 				func(testDemo *testDemo) {
 					testDemo.setupScript = "[game]\x00{}"
@@ -185,8 +203,8 @@ var _ = Describe("Demo", func() {
 				},
 				"setup script: not valid UTF-8"),
 			Entry("with a demo stream beyond the end of the file",
-				func(testDemo *testDemo) { testDemo.header.DemoStreamSize = math.MaxInt32 },
-				"demo stream: 2147483647 bytes"),
+				func(testDemo *testDemo) { testDemo.header.DemoStreamSize = 4000 },
+				"demo stream: 4000 bytes, but only "),
 			Entry("with winning allyteams beyond the end of the file",
 				func(testDemo *testDemo) {
 					testDemo.playerStats = nil
@@ -229,7 +247,7 @@ var _ = Describe("Demo", func() {
 				"team 0 entry 1: frame 450 is before the previous entry's frame 900"),
 			Entry("with data after the team statistics",
 				func(testDemo *testDemo) { testDemo.trailingData = []byte{0} },
-				"1 unexpected bytes after the team statistics"),
+				"unexpected bytes after the team statistics"),
 		)
 	})
 
@@ -326,7 +344,7 @@ var _ = Describe("Demo", func() {
 			data, err := testDemo.encode()
 			Expect(err).NotTo(HaveOccurred())
 
-			result, err := demo.ReadUncompressed(bytes.NewReader(data))
+			result, err := demo.ReadUncompressed(bytes.NewReader(data), demo.ReadUntilEnd)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.FileHeader).To(Equal(testDemo.header))
@@ -340,12 +358,17 @@ var _ = Describe("Demo", func() {
 			compressed, err := newTestDemo().compressed()
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(demo.ReadUncompressed(bytes.NewReader(compressed))).Error().To(HaveOccurred())
+			Expect(demo.ReadUncompressed(bytes.NewReader(compressed), demo.ReadUntilEnd)).Error().To(HaveOccurred())
 		})
 
-		It("rejects a demo larger than MaxDecompressedSize", func() {
-			Expect(demo.ReadUncompressed(bytes.NewReader(make([]byte, demo.MaxDecompressedSize+1)))).Error().To(
-				MatchError("reading demo: larger than 4096 bytes"))
+		It("rejects a section larger than MaxSectionSize before reading it", func() {
+			testDemo := newTestDemo()
+			testDemo.header.DemoStreamSize = math.MaxInt32
+			data, err := testDemo.encode()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(demo.ReadUncompressed(bytes.NewReader(data), demo.ReadUntilEnd)).Error().To(
+				MatchError("demo stream: 2147483647 bytes, more than the limit of 4096 bytes"))
 		})
 	})
 
@@ -357,7 +380,7 @@ var _ = Describe("Demo", func() {
 			filePath := filepath.Join(GinkgoT().TempDir(), "test.sdfz")
 			Expect(os.WriteFile(filePath, compressed, 0o600)).To(Succeed())
 
-			result, err := demo.ReadFile(filePath)
+			result, err := demo.ReadFile(filePath, demo.ReadUntilEnd)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.FileHeader).To(Equal(testDemo.header))
@@ -365,28 +388,41 @@ var _ = Describe("Demo", func() {
 		})
 
 		It("returns the error of a file that cannot be opened", func() {
-			Expect(demo.ReadFile(filepath.Join(GinkgoT().TempDir(), "missing.sdfz"))).Error().To(MatchError(fs.ErrNotExist))
+			Expect(demo.ReadFile(filepath.Join(GinkgoT().TempDir(), "missing.sdfz"), demo.ReadUntilEnd)).Error().To(
+				MatchError(fs.ErrNotExist))
 		})
 
 		It("returns the error of an invalid demo file", func() {
 			filePath := filepath.Join(GinkgoT().TempDir(), "invalid.sdfz")
 			Expect(os.WriteFile(filePath, []byte("not a demo"), 0o600)).To(Succeed())
 
-			Expect(demo.ReadFile(filePath)).Error().To(MatchError(ContainSubstring("decompressing demo")))
+			Expect(demo.ReadFile(filePath, demo.ReadUntilEnd)).Error().To(MatchError(ContainSubstring("decompressing demo")))
 		})
 	})
 
-	Context("ReadFileHeader", func() {
-		It("reads the header of a demo file", func() {
+	Context("ReadUntilHeader", func() {
+		It("reads only the header of a demo file", func() {
 			testDemo := newTestDemo()
 			compressed, err := testDemo.compressed()
 			Expect(err).NotTo(HaveOccurred())
 
-			header, err := demo.ReadDemoFileHeaderFromFilePath(writeTempFile(compressed))
+			result, err := demo.ReadFile(writeTempFile(compressed), demo.ReadUntilHeader)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(header).To(Equal(testDemo.header))
-			Expect(header.GameIDAsString()).To(Equal("0102030405060708090a0b0c0d0e0f10"))
+			Expect(result).To(Equal(&demo.Demo{FileHeader: testDemo.header}))
+			Expect(result.FileHeader.GameIDAsString()).To(Equal("0102030405060708090a0b0c0d0e0f10"))
+		})
+
+		It("skips a header extension of a newer engine", func() {
+			testDemo := newTestDemo()
+			testDemo.headerExtension = []byte{1, 2, 3, 4}
+			testDemo.updateSizes()
+			data, err := testDemo.encode()
+			Expect(err).NotTo(HaveOccurred())
+			compressed, err := compress(data[:testDemo.header.HeaderSize])
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(demo.Read(bytes.NewReader(compressed), demo.ReadUntilHeader)).Error().NotTo(HaveOccurred())
 		})
 
 		It("reads the header of a demo which is cut off after it", func() {
@@ -395,17 +431,18 @@ var _ = Describe("Demo", func() {
 			compressed, err := compress(data[:binary.Size(demo.DemoFileHeader{})])
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(demo.ReadDemoFileHeaderFromFilePath(writeTempFile(compressed))).Error().NotTo(HaveOccurred())
+			Expect(demo.Read(bytes.NewReader(compressed), demo.ReadUntilHeader)).Error().NotTo(HaveOccurred())
 		})
 
 		It("rejects a demo shorter than the header", func() {
 			data, err := newTestDemo().encode()
 			Expect(err).NotTo(HaveOccurred())
-			compressed, err := compress(data[:binary.Size(demo.DemoFileHeader{})-1])
+			size := binary.Size(demo.DemoFileHeader{})
+			compressed, err := compress(data[:size-1])
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(demo.ReadDemoFileHeaderFromFilePath(writeTempFile(compressed))).Error().To(
-				MatchError(ContainSubstring("reading DemoFileHeader")))
+			Expect(demo.Read(bytes.NewReader(compressed), demo.ReadUntilHeader)).Error().To(MatchError(
+				fmt.Sprintf("DemoFileHeader: %d bytes, but only %d bytes left", size, size-1)))
 		})
 
 		It("rejects an invalid header", func() {
@@ -414,46 +451,31 @@ var _ = Describe("Demo", func() {
 			compressed, err := testDemo.compressed()
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(demo.ReadDemoFileHeaderFromFilePath(writeTempFile(compressed))).Error().To(
+			Expect(demo.Read(bytes.NewReader(compressed), demo.ReadUntilHeader)).Error().To(
 				MatchError(ContainSubstring("invalid DemoFileHeader: version")))
 		})
 
-		It("rejects data that is not gzip-compressed", func() {
-			Expect(demo.ReadDemoFileHeaderFromFilePath(writeTempFile([]byte("not a demo")))).Error().To(
-				MatchError(ContainSubstring("decompressing demo")))
-		})
+		It("does not notice an invalid setup script", func() {
+			testDemo := newTestDemo()
+			testDemo.setupScript = "[game]\x00"
+			testDemo.updateSizes()
+			compressed, err := testDemo.compressed()
+			Expect(err).NotTo(HaveOccurred())
 
-		It("returns the error of a file that cannot be opened", func() {
-			Expect(demo.ReadDemoFileHeaderFromFilePath(filepath.Join(GinkgoT().TempDir(), "missing.sdfz"))).Error().To(
-				MatchError(fs.ErrNotExist))
+			Expect(demo.Read(bytes.NewReader(compressed), demo.ReadUntilHeader)).Error().NotTo(HaveOccurred())
 		})
 	})
 
-	Context("ReadFileHeaderAndSetupScript", func() {
+	Context("ReadUntilSetupScript", func() {
 		It("reads the header and the setup script, but no statistics", func() {
 			testDemo := newTestDemo()
 			compressed, err := testDemo.compressed()
 			Expect(err).NotTo(HaveOccurred())
 
-			result, err := demo.ReadFileHeaderAndSetupScript(writeTempFile(compressed))
+			result, err := demo.ReadFile(writeTempFile(compressed), demo.ReadUntilSetupScript)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result.FileHeader).To(Equal(testDemo.header))
-			Expect(result.SetupScript).To(Equal(testDemo.setupScript))
-			Expect(result.TeamStats).To(BeNil())
-		})
-
-		It("skips a header extension of a newer engine", func() {
-			testDemo := newTestDemo()
-			testDemo.headerExtension = []byte{1, 2, 3, 4}
-			testDemo.updateSizes()
-			compressed, err := testDemo.compressed()
-			Expect(err).NotTo(HaveOccurred())
-
-			result, err := demo.ReadFileHeaderAndSetupScript(writeTempFile(compressed))
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(result.SetupScript).To(Equal(testDemo.setupScript))
+			Expect(result).To(Equal(&demo.Demo{FileHeader: testDemo.header, SetupScript: testDemo.setupScript}))
 		})
 
 		It("reads a demo which is cut off after the setup script", func() {
@@ -463,7 +485,7 @@ var _ = Describe("Demo", func() {
 			compressed, err := compress(data[:int(testDemo.header.HeaderSize)+len(testDemo.setupScript)])
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(demo.ReadFileHeaderAndSetupScript(writeTempFile(compressed))).Error().NotTo(HaveOccurred())
+			Expect(demo.Read(bytes.NewReader(compressed), demo.ReadUntilSetupScript)).Error().NotTo(HaveOccurred())
 		})
 
 		It("rejects a demo which is cut off in the setup script", func() {
@@ -473,18 +495,9 @@ var _ = Describe("Demo", func() {
 			compressed, err := compress(data[:int(testDemo.header.HeaderSize)+len(testDemo.setupScript)-1])
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(demo.ReadFileHeaderAndSetupScript(writeTempFile(compressed))).Error().To(
-				MatchError(ContainSubstring("reading setup script")))
-		})
-
-		It("rejects a setup script larger than MaxDecompressedSize", func() {
-			testDemo := newTestDemo()
-			testDemo.header.ScriptSize = int32(demo.MaxDecompressedSize)
-			compressed, err := testDemo.compressed()
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(demo.ReadFileHeaderAndSetupScript(writeTempFile(compressed))).Error().To(
-				MatchError("reading demo: larger than 4096 bytes"))
+			Expect(demo.Read(bytes.NewReader(compressed), demo.ReadUntilSetupScript)).Error().To(MatchError(
+				fmt.Sprintf("setup script: %d bytes, but only %d bytes left", len(testDemo.setupScript),
+					len(testDemo.setupScript)-1)))
 		})
 
 		It("rejects an invalid setup script", func() {
@@ -494,23 +507,22 @@ var _ = Describe("Demo", func() {
 			compressed, err := testDemo.compressed()
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(demo.ReadFileHeaderAndSetupScript(writeTempFile(compressed))).Error().To(
+			Expect(demo.Read(bytes.NewReader(compressed), demo.ReadUntilSetupScript)).Error().To(
 				MatchError(ContainSubstring("NUL byte")))
 		})
 
-		It("rejects an invalid header", func() {
+		It("does not notice invalid statistics", func() {
 			testDemo := newTestDemo()
-			testDemo.header.Version = 4
+			testDemo.playerStats[0].KeyPresses = -1
 			compressed, err := testDemo.compressed()
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(demo.ReadFileHeaderAndSetupScript(writeTempFile(compressed))).Error().To(
-				MatchError(ContainSubstring("invalid DemoFileHeader: version")))
+			Expect(demo.Read(bytes.NewReader(compressed), demo.ReadUntilSetupScript)).Error().NotTo(HaveOccurred())
 		})
 
 		It("returns the error of a file that cannot be opened", func() {
-			Expect(demo.ReadFileHeaderAndSetupScript(filepath.Join(GinkgoT().TempDir(), "missing.sdfz"))).Error().To(
-				MatchError(fs.ErrNotExist))
+			Expect(demo.ReadFile(filepath.Join(GinkgoT().TempDir(), "missing.sdfz"), demo.ReadUntilSetupScript)).
+				Error().To(MatchError(fs.ErrNotExist))
 		})
 	})
 

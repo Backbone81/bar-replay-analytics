@@ -183,11 +183,11 @@ func playReplay(ctx context.Context, player *playback.Player, filePath string) (
 		}
 	}
 	// Before Prepare, so nothing is downloaded for a skipped replay.
-	header, err := demo.ReadDemoFileHeaderFromFilePath(filePath)
+	demoFile, err := demo.ReadFile(filePath, demo.ReadUntilHeader)
 	if err != nil {
 		return statusFailed, err.Error()
 	}
-	if header.GameTime == 0 {
+	if demoFile.FileHeader.GameTime == 0 {
 		return statusSkipped, "no game length: the engine crashed or the game was not ended"
 	}
 	replay, err := player.Prepare(ctx, filePath)

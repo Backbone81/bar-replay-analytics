@@ -12,7 +12,7 @@ import (
 )
 
 // DemoFile returns a gzip-compressed demo file of the game gameID (hex, as barlive.Replay.ID) with a valid header
-// followed by filler, which is all barlive.Client.DownloadDemoIntoDir and demo.ReadDemoFileHeaderFromFilePath read.
+// followed by filler, which is all barlive.Client.DownloadDemoIntoDir and demo.ReadFile with demo.ReadUntilHeader read.
 func DemoFile(gameID string) ([]byte, error) {
 	header := demo.DemoFileHeader{
 		Version:            demo.DemofileVersion,

@@ -64,57 +64,61 @@ func (d Demo) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// Read decompresses, parses and validates a demo file. It holds the decompressed file in memory, at most
-// MaxDecompressedSize bytes.
-func Read(reader io.Reader) (*Demo, error) {
+// ReadUntil tells the Read functions how far into a demo file to read. A demo file can only be read in order (it is
+// gzip-compressed), so stopping early saves decompressing the rest. A partial read does not notice damage after the
+// sections it reads.
+type ReadUntil int
+
+const (
+	// ReadUntilEnd reads every section and rejects bytes after the team statistics.
+	ReadUntilEnd ReadUntil = iota
+
+	// ReadUntilHeader reads only the DemoFileHeader.
+	ReadUntilHeader
+
+	// ReadUntilSetupScript reads the DemoFileHeader and the setup script.
+	ReadUntilSetupScript
+)
+
+// Read decompresses, parses and validates a demo file up to until. It streams the file: it holds one section at a time
+// in memory, at most MaxSectionSize bytes, and skips the demo stream without keeping it.
+func Read(reader io.Reader, until ReadUntil) (*Demo, error) {
 	gzipReader, err := gzip.NewReader(reader)
 	if err != nil {
 		return nil, fmt.Errorf("decompressing demo: %w", err)
 	}
 	defer gzipReader.Close() //nolint:errcheck
 
-	return ReadUncompressed(gzipReader)
-}
-
-// ReadUncompressed is Read for an already decompressed demo file.
-func ReadUncompressed(reader io.Reader) (*Demo, error) {
-	// One byte over the limit tells a file of exactly MaxDecompressedSize bytes from a larger one.
-	data, err := io.ReadAll(io.LimitReader(reader, MaxDecompressedSize+1))
-	if err != nil {
-		return nil, fmt.Errorf("reading demo: %w", err)
-	}
-	if int64(len(data)) > MaxDecompressedSize {
-		return nil, fmt.Errorf("reading demo: larger than %d bytes", MaxDecompressedSize)
-	}
-	return parse(data)
+	return ReadUncompressed(gzipReader, until)
 }
 
 // ReadFile reads the demo file at filePath with Read.
-func ReadFile(filePath string) (*Demo, error) {
+func ReadFile(filePath string, until ReadUntil) (*Demo, error) {
 	file, err := os.Open(filePath) //nolint:gosec // Opening the file the caller names is the purpose of ReadFile.
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close() //nolint:errcheck
-	return Read(file)
+	return Read(file, until)
 }
 
-// parse parses and validates a decompressed demo file.
+// ReadUncompressed is Read for an already decompressed demo file.
+// It reads, parses and validates a decompressed demo file from reader up to until. The fields of the sections it
+// does not read are left at their zero values.
 //
 //nolint:funlen // One section after the other, in file order, reads best in one function.
-func parse(data []byte) (*Demo, error) {
-	buffer := bytes.NewBuffer(data)
-
-	fileHeader, err := ReadDemoFileHeader(data)
+func ReadUncompressed(reader io.Reader, until ReadUntil) (*Demo, error) {
+	fileHeader, err := readFileHeader(reader)
 	if err != nil {
 		return nil, err
 	}
-	_, err = nextSection(buffer, "DemoFileHeader", fileHeader.HeaderSize)
-	if err != nil {
-		return nil, err
+	if until == ReadUntilHeader {
+		return &Demo{
+			FileHeader: fileHeader,
+		}, nil
 	}
 
-	setupScriptData, err := nextSection(buffer, "setup script", fileHeader.ScriptSize)
+	setupScriptData, err := readSection(reader, "setup script", int64(fileHeader.ScriptSize))
 	if err != nil {
 		return nil, err
 	}
@@ -122,27 +126,24 @@ func parse(data []byte) (*Demo, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	if fileHeader.DemoStreamSize == 0 {
+	// A crashed demo's stream runs to the end of the file, so there is nothing after it to read.
+	if until == ReadUntilSetupScript || fileHeader.DemoStreamSize == 0 {
 		return &Demo{
 			FileHeader:  fileHeader,
 			SetupScript: setupScript,
 		}, nil
 	}
-	_, err = nextSection(buffer, "demo stream", fileHeader.DemoStreamSize)
+
+	if err := skipSection(reader, "demo stream", int64(fileHeader.DemoStreamSize)); err != nil {
+		return nil, err
+	}
+
+	winningAllyTeams, err := readSection(reader, "winning allyteams", int64(fileHeader.WinningAllyTeamsSize))
 	if err != nil {
 		return nil, err
 	}
 
-	winningAllyTeamsData, err := nextSection(buffer, "winning allyteams", fileHeader.WinningAllyTeamsSize)
-	if err != nil {
-		return nil, err
-	}
-	// Copied, so the Demo does not keep the whole decompressed file in memory.
-	winningAllyTeams := make([]uint8, len(winningAllyTeamsData))
-	copy(winningAllyTeams, winningAllyTeamsData)
-
-	playerStatsData, err := nextSection(buffer, "player statistics", fileHeader.PlayerStatSize)
+	playerStatsData, err := readSection(reader, "player statistics", int64(fileHeader.PlayerStatSize))
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +156,7 @@ func parse(data []byte) (*Demo, error) {
 		return nil, err
 	}
 
-	teamStatsData, err := nextSection(buffer, "team statistics", fileHeader.TeamStatSize)
+	teamStatsData, err := readSection(reader, "team statistics", int64(fileHeader.TeamStatSize))
 	if err != nil {
 		return nil, err
 	}
@@ -164,8 +165,8 @@ func parse(data []byte) (*Demo, error) {
 		return nil, err
 	}
 
-	if buffer.Len() != 0 {
-		return nil, fmt.Errorf("%d unexpected bytes after the team statistics", buffer.Len())
+	if err := expectEnd(reader); err != nil {
+		return nil, err
 	}
 	return &Demo{
 		FileHeader:             fileHeader,
@@ -177,14 +178,75 @@ func parse(data []byte) (*Demo, error) {
 	}, nil
 }
 
-// nextSection returns the next size bytes of buffer without copying. size must be >= 0 (Next panics otherwise), which
-// the DemoFileHeader validation ensures.
-func nextSection(buffer *bytes.Buffer, name string, size int32) ([]byte, error) {
-	section := buffer.Next(int(size))
-	if len(section) < int(size) {
-		return nil, fmt.Errorf("%s: %d bytes, but only %d bytes left", name, size, len(section))
+// readFileHeader reads and validates the DemoFileHeader from reader and skips the fields a newer engine appended to
+// it.
+func readFileHeader(reader io.Reader) (DemoFileHeader, error) {
+	data, err := readSection(reader, "DemoFileHeader", int64(demoFileHeaderSize))
+	if err != nil {
+		return DemoFileHeader{}, err
 	}
-	return section, nil
+
+	fileHeader, err := ReadDemoFileHeader(data)
+	if err != nil {
+		return DemoFileHeader{}, err
+	}
+
+	// The validation made HeaderSize >= demoFileHeaderSize.
+	headerExtensionSize := int64(fileHeader.HeaderSize) - int64(demoFileHeaderSize)
+	if err := skipSection(reader, "DemoFileHeader extension", headerExtensionSize); err != nil {
+		return DemoFileHeader{}, err
+	}
+	return fileHeader, nil
+}
+
+// readSection reads the next section, of size bytes, from reader. size must be >= 0, which the DemoFileHeader
+// validation ensures. A size above MaxSectionSize is rejected before anything is allocated, and the buffer grows only
+// with the bytes actually read, so a forged size in a short file allocates no more than the file holds.
+func readSection(reader io.Reader, name string, size int64) ([]byte, error) {
+	if size > MaxSectionSize {
+		return nil, fmt.Errorf("%s: %d bytes, more than the limit of %d bytes", name, size, MaxSectionSize)
+	}
+
+	data, err := io.ReadAll(io.LimitReader(reader, size))
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", name, err)
+	}
+
+	if int64(len(data)) < size {
+		return nil, fmt.Errorf("%s: %d bytes, but only %d bytes left", name, size, len(data))
+	}
+	return data, nil
+}
+
+// skipSection skips the next section, of count bytes, from reader without keeping it. A count above MaxSectionSize is
+// rejected.
+func skipSection(reader io.Reader, name string, count int64) error {
+	if count > MaxSectionSize {
+		return fmt.Errorf("%s: %d bytes, more than the limit of %d bytes", name, count, MaxSectionSize)
+	}
+
+	skipped, err := io.CopyN(io.Discard, reader, count)
+	if errors.Is(err, io.EOF) {
+		return fmt.Errorf("%s: %d bytes, but only %d bytes left", name, count, skipped)
+	}
+	if err != nil {
+		return fmt.Errorf("%s: %w", name, err)
+	}
+	return nil
+}
+
+// expectEnd rejects bytes after the team statistics. Reading up to the end also makes a gzip reader verify its
+// checksum.
+func expectEnd(reader io.Reader) error {
+	var next [1]byte
+	_, err := io.ReadFull(reader, next[:])
+	if errors.Is(err, io.EOF) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("after the team statistics: %w", err)
+	}
+	return errors.New("unexpected bytes after the team statistics")
 }
 
 // readSetupScript rejects NUL bytes (the engine strips trailing ones before writing) and invalid UTF-8.

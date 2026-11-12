@@ -113,11 +113,11 @@ func (c *Client) DownloadDemoIntoDir(ctx context.Context, replay *Replay, dir st
 		return "", err
 	}
 
-	header, err := demo.ReadDemoFileHeaderFromFilePath(partPath)
+	demoFile, err := demo.ReadFile(partPath, demo.ReadUntilHeader)
 	if err != nil {
 		return "", fmt.Errorf("demo file %s: %w", replay.FileName, err)
 	}
-	if gameID := header.GameIDAsString(); gameID != replay.ID {
+	if gameID := demoFile.FileHeader.GameIDAsString(); gameID != replay.ID {
 		return "", fmt.Errorf("demo file %s: holds game %s, want %s", replay.FileName, gameID, replay.ID)
 	}
 

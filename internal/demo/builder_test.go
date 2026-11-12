@@ -128,7 +128,7 @@ func (d *testDemo) compressed() ([]byte, error) {
 func (d *testDemo) read() (*demo.Demo, error) {
 	compressed, err := d.compressed()
 	Expect(err).NotTo(HaveOccurred())
-	return demo.Read(bytes.NewReader(compressed))
+	return demo.Read(bytes.NewReader(compressed), demo.ReadUntilEnd)
 }
 
 // setEngineVersion sets the engine version in the header.

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -12,7 +13,8 @@ import (
 )
 
 // FuzzReadUncompressed feeds ReadUncompressed with mutations of valid demos. Besides not panicking, every demo it
-// accepts must satisfy what its validation promises, encode to JSON and encode back to the same bytes.
+// accepts must satisfy what its validation promises, encode to JSON, encode back to the same bytes and be read the
+// same by the partial reads.
 func FuzzReadUncompressed(f *testing.F) {
 	for _, fuzzDemo := range fuzzSeeds() {
 		data, err := fuzzDemo.encode()
@@ -23,7 +25,7 @@ func FuzzReadUncompressed(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, data []byte) {
-		result, err := demo.ReadUncompressed(bytes.NewReader(data))
+		result, err := demo.ReadUncompressed(bytes.NewReader(data), demo.ReadUntilEnd)
 		if err != nil {
 			if result != nil {
 				t.Fatalf("got a result together with the error %v", err)
@@ -37,7 +39,29 @@ func FuzzReadUncompressed(f *testing.F) {
 		checkConsistent(t, result)
 		checkJSON(t, result)
 		checkRoundTrip(t, data, result)
+		checkPartialReads(t, data, result)
 	})
+}
+
+// checkPartialReads checks that the partial reads of data, which ReadUncompressed accepted as full, succeed and return
+// the full result's sections up to where they stop.
+func checkPartialReads(t *testing.T, data []byte, full *demo.Demo) {
+	t.Helper()
+	header, err := demo.ReadUncompressed(bytes.NewReader(data), demo.ReadUntilHeader)
+	if err != nil {
+		t.Fatalf("ReadUntilHeader: %v", err)
+	}
+	if !reflect.DeepEqual(header, &demo.Demo{FileHeader: full.FileHeader}) {
+		t.Fatalf("ReadUntilHeader: got %+v, want only the header of %+v", header, full)
+	}
+
+	setupScript, err := demo.ReadUncompressed(bytes.NewReader(data), demo.ReadUntilSetupScript)
+	if err != nil {
+		t.Fatalf("ReadUntilSetupScript: %v", err)
+	}
+	if !reflect.DeepEqual(setupScript, &demo.Demo{FileHeader: full.FileHeader, SetupScript: full.SetupScript}) {
+		t.Fatalf("ReadUntilSetupScript: got %+v, want only the header and setup script of %+v", setupScript, full)
+	}
 }
 
 // fuzzSeeds returns valid demos that reach every section of the parser.

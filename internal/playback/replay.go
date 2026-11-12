@@ -77,7 +77,7 @@ func siblingPath(replayFilePath string, suffix string) string {
 
 // readReplay reads the names of the engine, game and map from the replay file filePath, and checks them.
 func readReplay(filePath string) (*Replay, error) {
-	replayFile, err := demo.ReadFile(filePath)
+	replayFile, err := demo.ReadFile(filePath, demo.ReadUntilSetupScript)
 	if err != nil {
 		return nil, err
 	}

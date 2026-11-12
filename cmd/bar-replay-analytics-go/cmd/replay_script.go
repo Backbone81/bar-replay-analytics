@@ -24,7 +24,7 @@ and game options. Names are lowercased, values are strings.
 		if err != nil {
 			return err
 		}
-		replay, err := demo.ReadFile(filePath)
+		replay, err := demo.ReadFile(filePath, demo.ReadUntilEnd)
 		if err != nil {
 			return err
 		}
