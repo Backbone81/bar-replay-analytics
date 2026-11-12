@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/barlive"
-	"github.com/backbone81/bar-replay-analytics-go/internal/replaydownloader"
+	replaydownloader2 "github.com/backbone81/bar-replay-analytics-go/internal/replay/downloader"
 )
 
 // The flags of replayDownloadTopCmd.
@@ -39,20 +39,20 @@ only the missing ones and notices files added or removed by hand. A download is 
 interrupted run leaves no partial replay. --dry-run logs the replays it would download.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		options := []replaydownloader.Option{
-			replaydownloader.WithLogger(log),
-			replaydownloader.WithDir(filepath.Join(barDataDir, "demos", "leaderboard")),
-			replaydownloader.WithPlayers(replayDownloadTopTop),
-			replaydownloader.WithDays(replayDownloadTopDays),
-			replaydownloader.WithGameType(toGameType(replayDownloadTopGameType)),
+		options := []replaydownloader2.Option{
+			replaydownloader2.WithLogger(log),
+			replaydownloader2.WithDir(filepath.Join(barDataDir, "demos", "leaderboard")),
+			replaydownloader2.WithPlayers(replayDownloadTopTop),
+			replaydownloader2.WithDays(replayDownloadTopDays),
+			replaydownloader2.WithGameType(toGameType(replayDownloadTopGameType)),
 		}
 		for _, mapName := range replayDownloadTopMaps {
-			options = append(options, replaydownloader.WithMap(mapName))
+			options = append(options, replaydownloader2.WithMap(mapName))
 		}
 		if replayDownloadTopDryRun {
-			options = append(options, replaydownloader.WithDryRun())
+			options = append(options, replaydownloader2.WithDryRun())
 		}
-		downloader, err := replaydownloader.New(options...)
+		downloader, err := replaydownloader2.New(options...)
 		if err != nil {
 			return err
 		}

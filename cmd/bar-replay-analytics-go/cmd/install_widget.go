@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/replayplayer/widget"
+	"github.com/backbone81/bar-replay-analytics-go/internal/replay/player/widget"
 	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 

@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/replayplayer"
+	replayplayer "github.com/backbone81/bar-replay-analytics-go/internal/replay/player"
 )
 
 // The flags of replayPlayCmd.

@@ -13,8 +13,8 @@ import (
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
 	"github.com/backbone81/bar-replay-analytics-go/internal/events"
-	"github.com/backbone81/bar-replay-analytics-go/internal/replayplayer"
-	"github.com/backbone81/bar-replay-analytics-go/internal/replayplayer/widget"
+	replayplayer "github.com/backbone81/bar-replay-analytics-go/internal/replay/player"
+	"github.com/backbone81/bar-replay-analytics-go/internal/replay/player/widget"
 	"github.com/backbone81/bar-replay-analytics-go/internal/report"
 	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
 )
@@ -105,7 +105,7 @@ func reportReplay(filePath string) (string, string) {
 }
 
 // reportPath returns the path of the report of the replay file filePath: <replay name>_report.json next to it, like
-// the events file of its playback (see replayplayer.EventsFilePath).
+// the events file of its playback (see player.EventsFilePath).
 func reportPath(filePath string) string {
 	return strings.TrimSuffix(filePath, filepath.Ext(filePath)) + "_report.json"
 }
