@@ -63,14 +63,61 @@ func ReadFile(filePath string) (*File, error) {
 	return Read(file)
 }
 
-// Validate returns an error if the file is incomplete, the game did not end, the map has no size, an event is invalid,
-// the frames go backwards, or an event or team refers to a unit def that is not in UnitDefs.
-func (f *File) Validate() error {
+// ReadFormatVersion parses only the format version and the end of an events file, which is enough to tell whether it is
+// complete and current, at a fraction of the time and memory of Read. The returned File has every other field zero.
+// Like Read, it returns an error if the file is not valid JSON or its End is missing or not EndReasonGameOver
+// (File.ValidateEnd); it does not validate anything else.
+func ReadFormatVersion(reader io.Reader) (*File, error) {
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, fmt.Errorf("reading events: %w", err)
+	}
+
+	// json.Unmarshal still scans the whole document, so a file cut off by a crash is rejected.
+	var header struct {
+		FormatVersion int  `json:"formatVersion"`
+		End           *End `json:"end"`
+	}
+	if err := json.Unmarshal(data, &header); err != nil {
+		return nil, fmt.Errorf("parsing events: %w", err)
+	}
+	file := File{
+		FormatVersion: header.FormatVersion,
+		End:           header.End,
+	}
+	if err := file.ValidateEnd(); err != nil {
+		return nil, err
+	}
+	return &file, nil
+}
+
+// ReadFormatVersionFile reads the events file at filePath with ReadFormatVersion. Like ReadFile, it reads the file
+// with os.ReadFile.
+func ReadFormatVersionFile(filePath string) (*File, error) {
+	file, err := os.Open(filePath) //nolint:gosec // Opening the file the caller names is the purpose of ReadFile.
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close() //nolint:errcheck
+	return ReadFormatVersion(file)
+}
+
+// ValidateEnd returns an error if the file is incomplete (it has no End) or the game did not end.
+func (f *File) ValidateEnd() error {
 	if f.End == nil {
 		return errors.New("events: no end, the events file is incomplete")
 	}
 	if f.End.Reason != EndReasonGameOver {
 		return fmt.Errorf("events: ended at frame %d with reason %q, not %q", f.End.Frame, f.End.Reason, EndReasonGameOver)
+	}
+	return nil
+}
+
+// Validate returns an error if the file is incomplete, the game did not end, the map has no size, an event is invalid,
+// the frames go backwards, or an event or team refers to a unit def that is not in UnitDefs.
+func (f *File) Validate() error {
+	if err := f.ValidateEnd(); err != nil {
+		return err
 	}
 	if f.Game.MapSizeX <= 0 || f.Game.MapSizeZ <= 0 {
 		return fmt.Errorf("events: map size %d x %d, want both > 0", f.Game.MapSizeX, f.Game.MapSizeZ)

@@ -252,11 +252,11 @@ func (p *BatchPlayer) replayFilesInFolder(folder string) ([]string, error) {
 	return result, nil
 }
 
-// isEventsFileCurrent returns whether the replay replayFilePath has a readable events file next to it with at least
+// isEventsFileCurrent returns whether the replay replayFilePath has a complete events file next to it with at least
 // the embedded widget's format version. Playing such a replay again would write the same events.
 func (p *BatchPlayer) isEventsFileCurrent(replayFilePath string) bool {
 	eventsFilePath := strings.TrimSuffix(replayFilePath, filepath.Ext(replayFilePath)) + "_events.json"
-	file, err := events.ReadFile(eventsFilePath)
+	file, err := events.ReadFormatVersionFile(eventsFilePath)
 	if err != nil {
 		// A missing, incomplete or unreadable events file is written again.
 		return false

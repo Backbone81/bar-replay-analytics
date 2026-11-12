@@ -22,8 +22,10 @@
 // FormatVersion is the widget's FORMAT_VERSION: it increases whenever what the widget writes changes, so an events file
 // of a lower version than the embedded widget's is outdated.
 //
-// End says why the widget stopped logging. Read accepts only EndReasonGameOver: a file without End is incomplete (the
-// engine crashed or was stopped), and any other reason means the rest of the game is missing.
+// ReadFormatVersion reads only FormatVersion and End, for a cheap check whether a file is current.
+//
+// End says why the widget stopped logging. Read and ReadFormatVersion accept only EndReasonGameOver: a file without End
+// is incomplete (the engine crashed or was stopped), and any other reason means the rest of the game is missing.
 //
 // A field the widget leaves out is a pointer if its zero value is valid (e.g. team 0), else it reads as its zero value.
 package events

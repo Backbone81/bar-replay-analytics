@@ -91,6 +91,62 @@ var _ = Describe("File", func() {
 		})
 	})
 
+	Context("ReadFormatVersion", func() {
+		It("reads only the format version and the end", func() {
+			data := `{"formatVersion":1,` + strings.TrimPrefix(document(gameOverEnd, unitFinished), "{")
+
+			Expect(events.ReadFormatVersion(strings.NewReader(data))).To(Equal(&events.File{
+				FormatVersion: 1,
+				End:           &events.End{Frame: 1800, Reason: events.EndReasonGameOver},
+			}))
+		})
+
+		It("reads a file without format version as format version 0", func() {
+			Expect(events.ReadFormatVersion(strings.NewReader(document(gameOverEnd)))).
+				To(HaveField("FormatVersion", 0))
+		})
+
+		It("does not validate anything but the end", func() {
+			data := strings.Replace(document(gameOverEnd), `"mapSizeZ":8192`, `"mapSizeZ":0`, 1)
+
+			Expect(events.ReadFormatVersion(strings.NewReader(data))).Error().NotTo(HaveOccurred())
+		})
+
+		It("rejects a file that is not valid JSON", func() {
+			Expect(events.ReadFormatVersion(strings.NewReader(`{"formatVersion":1,"events":[`))).
+				Error().To(HaveOccurred())
+		})
+
+		It("rejects a file with data after the document", func() {
+			Expect(events.ReadFormatVersion(strings.NewReader(document(gameOverEnd) + "{}"))).
+				Error().To(HaveOccurred())
+		})
+
+		It("rejects a file without end", func() {
+			Expect(events.ReadFormatVersion(strings.NewReader(`{"formatVersion":1,"events":[]}`))).
+				Error().To(HaveOccurred())
+		})
+
+		It("rejects a file whose game did not end", func() {
+			stalledEnd := `{"frame":1800,"reason":"stalled"}`
+
+			Expect(events.ReadFormatVersion(strings.NewReader(document(stalledEnd)))).Error().To(HaveOccurred())
+		})
+	})
+
+	Context("ReadFormatVersionFile", func() {
+		It("reads the format version and the end of the file", func() {
+			Expect(events.ReadFormatVersionFile(filepath.Join("testdata", "events.json"))).To(Equal(&events.File{
+				FormatVersion: testdataFile().FormatVersion,
+				End:           testdataFile().End,
+			}))
+		})
+
+		It("returns an error for a missing file", func() {
+			Expect(events.ReadFormatVersionFile(filepath.Join("testdata", "missing.json"))).Error().To(HaveOccurred())
+		})
+	})
+
 	Context("ReadFile", func() {
 		It("reads every event type, skips unknown ones and ignores unknown fields", func() {
 			Expect(events.ReadFile(filepath.Join("testdata", "events.json"))).To(Equal(testdataFile()))
