@@ -36,6 +36,16 @@ func NewBatchPlayer(options ...Option) (*BatchPlayer, error) {
 		byMemory := max(1, utils.MemoryAvailable()/(6*1024*1024*1024))
 		config.ConcurrentReplays = min(byCores, byMemory)
 	}
+	if config.AssetManager == nil {
+		assetManagerConfig := DefaultAssetManagerConfig
+		assetManagerConfig.Logger = config.Logger
+		assetManagerConfig.DataDir = config.DataDir
+		assetManager, err := NewAssetManager(assetManagerConfig)
+		if err != nil {
+			return nil, err
+		}
+		config.AssetManager = assetManager
+	}
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}

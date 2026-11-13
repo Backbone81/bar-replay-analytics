@@ -24,14 +24,17 @@ and game options. Names are lowercased, values are strings.
 		if err != nil {
 			return err
 		}
+
 		replay, err := demo.ReadFile(filePath, demo.ReadUntilEnd)
 		if err != nil {
 			return err
 		}
+
 		setupScript, err := tdf.Parse(replay.SetupScript)
 		if err != nil {
 			return fmt.Errorf("setup script: %w", err)
 		}
+
 		return writeJSON(setupScript)
 	},
 }

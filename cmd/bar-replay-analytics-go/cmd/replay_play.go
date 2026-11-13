@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	replayplayer "github.com/backbone81/bar-replay-analytics-go/internal/replay/player"
@@ -43,28 +41,9 @@ directory. A folder stands for the .sdfz files directly in it (not in its subfol
 demos/leaderboard/.`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if replayPlayParallel < 0 {
-			return fmt.Errorf("--parallel: got %d, want >= 0", replayPlayParallel)
-		}
-		if replayPlayEngineThreads < 0 {
-			return fmt.Errorf("--engine-threads: got %d, want >= 0", replayPlayEngineThreads)
-		}
-		if replayPlayMaxReplays < 0 {
-			return fmt.Errorf("--max-replays: got %d, want >= 0", replayPlayMaxReplays)
-		}
-
-		assetManagerConfig := replayplayer.DefaultAssetManagerConfig
-		assetManagerConfig.Logger = log
-		assetManagerConfig.DataDir = barDataDir
-		assetManager, err := replayplayer.NewAssetManager(assetManagerConfig)
-		if err != nil {
-			return err
-		}
-
 		batchPlayer, err := replayplayer.NewBatchPlayer(
 			replayplayer.WithLogger(log),
 			replayplayer.WithDataDir(barDataDir),
-			replayplayer.WithAssetManager(assetManager),
 			replayplayer.WithWorkerThreadCount(replayPlayEngineThreads),
 			replayplayer.WithConcurrentReplays(replayPlayParallel),
 			replayplayer.WithFilter(replayplayer.Filter{

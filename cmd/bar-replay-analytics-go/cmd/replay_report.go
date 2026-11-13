@@ -1,22 +1,13 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
-	"io/fs"
-	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
-	"github.com/backbone81/bar-replay-analytics-go/internal/events"
-	replayplayer "github.com/backbone81/bar-replay-analytics-go/internal/replay/player"
-	"github.com/backbone81/bar-replay-analytics-go/internal/replay/player/widget"
 	"github.com/backbone81/bar-replay-analytics-go/internal/report"
-	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
 )
 
 // The flags of replayReportCmd.
@@ -36,7 +27,9 @@ existing report. Needs <replay name>_events.json from 'replay play'; a replay wi
 events file older than the analytics widget built into this program is written, with a note to play the replay
 again. Each report holds its formatVersion and the eventsFormatVersion of its events file.
 
-` + replayArgsHelp,
+<replay> is a path to a .sdfz file or to a folder, or the name of a file or folder in the
+demos/ folder of the BAR data directory. A folder stands for the .sdfz files directly in it (not in its subfolders),
+such as "leaderboard" for demos/leaderboard/.`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		filePaths, err := replayPaths(args)
@@ -60,54 +53,6 @@ again. Each report holds its formatVersion and the eventsFormatVersion of its ev
 		}
 		return nil
 	},
-}
-
-// reportReplay writes the report of the replay filePath, and returns its status, "reported", "skipped" (no events
-// file) or "failed", and a description of the outcome.
-func reportReplay(filePath string) (string, string) {
-	eventsFilePath := replayplayer.EventsFilePath(filePath)
-	if _, err := os.Stat(eventsFilePath); errors.Is(err, fs.ErrNotExist) {
-		return statusSkipped, "no events file: play the replay back first (replay play)"
-	}
-	replay, err := demo.ReadFile(filePath, demo.ReadUntilEnd)
-	if err != nil {
-		return statusFailed, err.Error()
-	}
-	setupScript, err := tdf.Parse(replay.SetupScript)
-	if err != nil {
-		return statusFailed, fmt.Sprintf("setup script: %v", err)
-	}
-	eventsFile, err := events.ReadFile(eventsFilePath)
-	if err != nil {
-		return statusFailed, fmt.Sprintf("events file of the replay's playback: %v", err)
-	}
-	result, err := report.NewReport(
-		replay,
-		setupScript,
-		eventsFile,
-		report.WithOpeningLength(replayReportOpeningLength),
-		report.WithOpeningIntervalLength(replayReportOpeningIntervalLength),
-		report.WithIntervalLength(replayReportIntervalLength),
-	)
-	if err != nil {
-		return statusFailed, err.Error()
-	}
-	reportFilePath := reportPath(filePath)
-	if err := writeJSONFile(reportFilePath, result); err != nil {
-		return statusFailed, err.Error()
-	}
-	description := reportFilePath
-	if eventsFile.FormatVersion < widget.FormatVersion {
-		description += fmt.Sprintf(" (events file outdated: format %d, the widget writes %d; play the replay "+
-			"again with replay play)", eventsFile.FormatVersion, widget.FormatVersion)
-	}
-	return statusReported, description
-}
-
-// reportPath returns the path of the report of the replay file filePath: <replay name>_report.json next to it, like
-// the events file of its playback (see player.EventsFilePath).
-func reportPath(filePath string) string {
-	return strings.TrimSuffix(filePath, filepath.Ext(filePath)) + "_report.json"
 }
 
 func init() {

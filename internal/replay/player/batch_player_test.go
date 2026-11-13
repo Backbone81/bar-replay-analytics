@@ -24,10 +24,6 @@ var _ = Describe("BatchPlayer", func() {
 				replayplayer.WithConcurrentReplays(0),
 			)).Error().NotTo(HaveOccurred())
 		})
-
-		It("rejects an invalid config", func() {
-			Expect(replayplayer.NewBatchPlayer(replayplayer.WithDataDir(newDataDir()))).Error().To(HaveOccurred())
-		})
 	})
 
 	Context("ResolvePaths", func() {
