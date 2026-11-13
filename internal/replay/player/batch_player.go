@@ -70,6 +70,8 @@ func NewBatchPlayer(options ...Option) (*BatchPlayer, error) {
 // Config.Filter does not match, at most Config.MaxReplays of them. It returns ctx's error if ctx was canceled,
 // otherwise an error if any replay failed.
 func (p *BatchPlayer) Run(ctx context.Context, paths ...string) error {
+	p.config.Logger.Info("Running replays concurrently", "count", p.config.ConcurrentReplays)
+
 	start := time.Now()
 	p.playedCounter.Store(0)
 	p.skippedCounter.Store(0)
