@@ -112,6 +112,9 @@ type springHeadlessCall struct {
 
 	// SpringSettings is the content of the config file (--config).
 	SpringSettings string `json:"springSettings"`
+
+	// WidgetConfig is the content of the widget config file in the write dir, empty if there is none.
+	WidgetConfig string `json:"widgetConfig"`
 }
 
 // prDownloaderBehaviour is what the fake pr-downloader does.
@@ -234,6 +237,11 @@ func newSpringHeadlessCall(args []string) (*springHeadlessCall, error) {
 		if err != nil {
 			return nil, err
 		}
+		data, err := os.ReadFile(filepath.Join(writeDir, utils.WidgetConfigFile))
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return nil, err
+		}
+		call.WidgetConfig = string(data)
 	}
 	if config := argumentValue(args, "--config"); config != "" {
 		data, err := os.ReadFile(config)

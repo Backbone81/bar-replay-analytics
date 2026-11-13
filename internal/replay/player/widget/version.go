@@ -9,6 +9,9 @@ import (
 // FileName is the file name of the analytics widget in Template.
 const FileName = "dbg_replay_analytics.lua"
 
+// Name is the name the analytics widget gives in its GetInfo, by which BAR's widget handler enables it.
+const Name = "Replay Analytics"
+
 // FormatVersion is the version of the events file format the widget writes: the FORMAT_VERSION it sets, its only
 // definition, which it writes into each events file as "formatVersion" (events.File.FormatVersion). An events file of
 // a lower version is outdated.

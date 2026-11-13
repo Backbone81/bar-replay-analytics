@@ -118,8 +118,23 @@ var _ = Describe("Player", func() {
 				writeDirWidgetFiles(),
 				"springsettings.cfg",
 				"cache/ArchiveCache20.lua",
+				"LuaUI/Config/BYAR.lua",
 			)))
 			Expect(call.SpringSettings).To(Equal("HostPortDefault = 0\nWorkerThreadCount = 2"))
+		})
+
+		It("enables the analytics widget and the data dir's user widgets in the widget config", func(ctx SpecContext) {
+			dataDir := newDataDirWithAssets()
+			writeFile(filepath.Join(dataDir, utils.WidgetsDir, "BAR-Advisor", "snd_advisor.lua"),
+				"function widget:GetInfo()\n\treturn {\n\t\tname = \"Advisor\",\n\t}\nend\n")
+			player := newPlayer(dataDir)
+			replayInfo := newPreparedReplay(ctx, player, dataDir, "game.sdfz")
+			writeSpringHeadlessBehaviour(replayInfo.FilePath, springHeadlessBehaviour{EventsFile: currentEventsFileContent()})
+
+			Expect(player.Run(ctx, replayInfo)).To(Succeed())
+
+			Expect(readSpringHeadlessCall(replayInfo.FilePath).WidgetConfig).
+				To(Equal(string(replayplayer.WidgetConfig([]string{`"Advisor"`, `"` + widget.Name + `"`}))))
 		})
 
 		It("leaves the worker thread count to the engine if it is zero", func(ctx SpecContext) {

@@ -143,6 +143,9 @@ func (p *Player) prepareWriteDir() error {
 	if err := p.prepareWriteDirWidget(); err != nil {
 		return fmt.Errorf("preparing widget: %w", err)
 	}
+	if err := p.prepareWriteDirWidgetConfig(); err != nil {
+		return fmt.Errorf("preparing widget config: %w", err)
+	}
 	return nil
 }
 
@@ -203,6 +206,24 @@ func (p *Player) prepareWriteDirWidget() error {
 		return err
 	}
 	return nil
+}
+
+// prepareWriteDirWidgetConfig writes the widget config file into the write dir with the analytics widget and the user
+// widgets of the data dir in its order list (see WidgetConfig), so games whose widget handler enables only the user
+// widgets in that list run them too.
+func (p *Player) prepareWriteDirWidgetConfig() error {
+	nameLiterals, err := UserWidgetNameLiterals(filepath.Join(p.config.DataDir, utils.WidgetsDir))
+	if err != nil {
+		return fmt.Errorf("reading the names of the user widgets: %w", err)
+	}
+
+	filePath := filepath.Join(p.writeDir, utils.WidgetConfigFile)
+	//nolint:gosec // This directory does not contain sensitive data
+	if err := os.MkdirAll(filepath.Dir(filePath), 0o755); err != nil {
+		return err
+	}
+	//nolint:gosec // This file does not contain sensitive data
+	return os.WriteFile(filePath, WidgetConfig(append(nameLiterals, `"`+widget.Name+`"`)), 0o644)
 }
 
 // runSpringHeadless plays the replay filePath with the engine in engineDir. The engine's output replaces <replay
