@@ -481,6 +481,7 @@ func writeReplay(filePath string, engineVersion string, setupScript string, demo
 		ScriptSize:         int32(len(setupScript)),
 		DemoStreamSize:     int32(demoStreamSize),
 		GameTime:           int32(gameTime),
+		UnixTime:           uint64(time.Now().UTC().Unix()),
 		PlayerStatElemSize: int32(binary.Size(demo.PlayerStatistics{})),
 		TeamStatElemSize:   int32(binary.Size(demo.TeamStatistics{})),
 		TeamStatPeriod:     15,

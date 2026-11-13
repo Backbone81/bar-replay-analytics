@@ -20,6 +20,9 @@ var _ = Describe("ReplayInfo", func() {
 			replayInfo, err := replayplayer.ReadReplayInfo(filePath)
 
 			Expect(err).NotTo(HaveOccurred())
+			// The test replays start when they are written, which the header stores in whole seconds.
+			Expect(replayInfo.StartTime).To(BeTemporally("~", time.Now(), time.Minute))
+			Expect(replayInfo.StartTime.Location()).To(Equal(time.UTC))
 			Expect(replayInfo).To(Equal(&replayplayer.ReplayInfo{
 				FilePath:      filePath,
 				EngineVersion: testEngineVersion,
@@ -27,6 +30,7 @@ var _ = Describe("ReplayInfo", func() {
 				GameType:      testGameType,
 				PlayerNames:   []string{"Alice", "BARb Hard", "SimpleAI"},
 				Duration:      testGameTime * time.Second,
+				StartTime:     replayInfo.StartTime,
 			}))
 		})
 

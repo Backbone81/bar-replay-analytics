@@ -32,6 +32,9 @@ type ReplayInfo struct {
 	// short name, as CGameSetup::LoadSkirmishAIs names it.
 	PlayerNames []string
 
+	// StartTime is when the game was started, in UTC, from the header. BAR's replay file names start with it too.
+	StartTime time.Time
+
 	// Duration is the game time the header records.
 	Duration time.Duration
 }
@@ -80,6 +83,7 @@ func ReadReplayInfo(filePath string) (*ReplayInfo, error) {
 		GameType:      gameType.String(),
 		PlayerNames:   playerNames,
 		Duration:      demoFile.FileHeader.GameTimeAsDuration(),
+		StartTime:     time.Unix(int64(demoFile.FileHeader.UnixTime), 0).UTC(), //nolint:gosec // no overflow
 	}, nil
 }
 

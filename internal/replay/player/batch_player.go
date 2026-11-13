@@ -29,6 +29,12 @@ func NewBatchPlayer(options ...Option) (*BatchPlayer, error) {
 	for _, option := range options {
 		option(&config)
 	}
+	// The replay paths are absolute, so the data dir must be too, for Config.LogPath.
+	var err error
+	config.DataDir, err = filepath.Abs(config.DataDir)
+	if err != nil {
+		return nil, err
+	}
 	if config.ConcurrentReplays == 0 {
 		// With WorkerThreadCount 2, a 27-minute 1v1 used 1.4 to 1.7 cores and 4.8 GB; team games and larger maps need
 		// more, hence 2 cores and 6 GB per playback.
@@ -117,7 +123,10 @@ func (p *BatchPlayer) feedReplays(ctx context.Context, paths []string, replayInf
 
 		replayInfo, selected, err := p.selectReplay(path)
 		if err != nil {
-			p.config.Logger.Error("Reading replay failed", "file-path", path, "err", err)
+			p.config.Logger.Error("Reading replay failed",
+				"file-path", p.shortReplayPath(path),
+				"err", err,
+			)
 			p.errCounter.Add(1)
 			continue
 		}
@@ -148,7 +157,10 @@ func (p *BatchPlayer) selectReplay(filePath string) (*ReplayInfo, bool, error) {
 	}
 
 	if p.IsEventsFileCurrent(filePath) {
-		p.config.Logger.Info("Skipping replay because its events file is up to date", "file-path", filePath)
+		p.config.Logger.Info("Skipping replay. Events file up to date.",
+			"file-path", p.shortReplayPath(filePath),
+			"date", p.replayDate(replayInfo),
+		)
 		return nil, false, nil
 	}
 	return replayInfo, true, nil
@@ -164,12 +176,20 @@ func (p *BatchPlayer) runReplays(ctx context.Context, player *Player, replayInfo
 
 		preparedReplayInfo, err := p.prepareReplay(ctx, player, replayInfo)
 		if err != nil {
-			p.config.Logger.Error("Preparing replay failed", "file-path", replayInfo.FilePath, "err", err)
+			p.config.Logger.Error("Preparing replay failed",
+				"file-path", p.shortReplayPath(replayInfo.FilePath),
+				"date", p.replayDate(replayInfo),
+				"err", err,
+			)
 			p.errCounter.Add(1)
 			continue
 		}
 		if err := p.runReplay(ctx, player, preparedReplayInfo); err != nil {
-			p.config.Logger.Error("Replay failed", "file-path", replayInfo.FilePath, "err", err)
+			p.config.Logger.Error("Replay failed",
+				"file-path", p.shortReplayPath(replayInfo.FilePath),
+				"date", p.replayDate(replayInfo),
+				"err", err,
+			)
 			p.errCounter.Add(1)
 			continue
 		}
@@ -264,4 +284,12 @@ func (p *BatchPlayer) replayFilesInFolder(folder string) ([]string, error) {
 // events; a missing, incomplete, unreadable or outdated one is written again.
 func (p *BatchPlayer) IsEventsFileCurrent(replayFilePath string) bool {
 	return ValidateEventsFile(EventsFilePath(replayFilePath)) == nil
+}
+
+func (p *BatchPlayer) replayDate(replayInfo *ReplayInfo) string {
+	return replayInfo.StartTime.Format("2006.01.02")
+}
+
+func (p *BatchPlayer) shortReplayPath(filePath string) string {
+	return utils.RelativePath(utils.DemosDir(p.config.DataDir), filePath)
 }

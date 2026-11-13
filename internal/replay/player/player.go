@@ -70,7 +70,8 @@ func (p *Player) Prepare(ctx context.Context, replayInfo *ReplayInfo) (*ReplayIn
 // replay. The engine's output goes to <replay name>.log next to the replay. Canceling ctx stops the engine.
 func (p *Player) Run(ctx context.Context, replayInfo *ReplayInfo) error {
 	logger := p.config.Logger.With(
-		"file-path", replayInfo.FilePath,
+		"file-path", p.shortReplayPath(replayInfo.FilePath),
+		"date", p.replayDate(replayInfo),
 		"map-name", replayInfo.MapName,
 		"engine-version", replayInfo.EngineVersion,
 		"game-type", replayInfo.GameType,
@@ -247,4 +248,12 @@ func (p *Player) runSpringHeadless(ctx context.Context, engineDir string, filePa
 		)
 	}
 	return nil
+}
+
+func (p *Player) shortReplayPath(filePath string) string {
+	return utils.RelativePath(utils.DemosDir(p.config.DataDir), filePath)
+}
+
+func (p *Player) replayDate(replayInfo *ReplayInfo) string {
+	return replayInfo.StartTime.Format("2006.01.02")
 }
