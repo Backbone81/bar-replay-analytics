@@ -18,6 +18,12 @@ import (
 type BatchPlayer struct {
 	config Config
 
+	// playedCounter counts the replays of the current Run that were played back.
+	playedCounter atomic.Int64
+
+	// skippedCounter counts the replays of the current Run that were not played because their events file is current.
+	skippedCounter atomic.Int64
+
 	// errCounter counts the replays of the current Run that failed. A failed replay does not stop the others.
 	errCounter atomic.Int64
 }
@@ -64,6 +70,9 @@ func NewBatchPlayer(options ...Option) (*BatchPlayer, error) {
 // Config.Filter does not match, at most Config.MaxReplays of them. It returns ctx's error if ctx was canceled,
 // otherwise an error if any replay failed.
 func (p *BatchPlayer) Run(ctx context.Context, paths ...string) error {
+	start := time.Now()
+	p.playedCounter.Store(0)
+	p.skippedCounter.Store(0)
 	p.errCounter.Store(0)
 
 	paths, err := p.ResolvePaths(paths)
@@ -97,6 +106,22 @@ func (p *BatchPlayer) Run(ctx context.Context, paths ...string) error {
 
 	close(replayInfosChan)
 	wg.Wait()
+
+	total := p.playedCounter.Load() + p.skippedCounter.Load() + p.errCounter.Load()
+	played := p.playedCounter.Load() + p.errCounter.Load()
+	duration := time.Since(start).Round(time.Second)
+	var replayRate int
+	if played > 0 {
+		replayRate = int(float64(played) / duration.Hours())
+	}
+	p.config.Logger.Info("Finished all replays",
+		"total", total,
+		"played", p.playedCounter.Load(),
+		"skipped", p.skippedCounter.Load(),
+		"failed", p.errCounter.Load(),
+		"duration", duration,
+		"replays-per-hour", replayRate,
+	)
 
 	if ctx.Err() != nil {
 		return ctx.Err()
@@ -161,6 +186,7 @@ func (p *BatchPlayer) selectReplay(filePath string) (*ReplayInfo, bool, error) {
 			"file-path", p.shortReplayPath(filePath),
 			"date", p.replayDate(replayInfo),
 		)
+		p.skippedCounter.Add(1)
 		return nil, false, nil
 	}
 	return replayInfo, true, nil
@@ -193,6 +219,7 @@ func (p *BatchPlayer) runReplays(ctx context.Context, player *Player, replayInfo
 			p.errCounter.Add(1)
 			continue
 		}
+		p.playedCounter.Add(1)
 	}
 }
 

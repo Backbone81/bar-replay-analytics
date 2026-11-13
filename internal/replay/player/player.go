@@ -75,12 +75,12 @@ func (p *Player) Run(ctx context.Context, replayInfo *ReplayInfo) error {
 		"map-name", replayInfo.MapName,
 		"engine-version", replayInfo.EngineVersion,
 		"game-type", replayInfo.GameType,
-		"duration", replayInfo.Duration,
+		"game-time", replayInfo.Duration.Round(time.Second),
 	)
 	logger.Info("Starting replay")
 	start := time.Now()
 	defer func() {
-		logger.Info("Finished replay", "wall-time", time.Since(start))
+		logger.Info("Finished replay", "duration", time.Since(start).Round(time.Second))
 	}()
 
 	// The engine writes its settings, caches and logs into its write dir. A temporary one per playback leaves the data
