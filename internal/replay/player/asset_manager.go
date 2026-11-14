@@ -18,6 +18,8 @@ import (
 	"time"
 
 	"github.com/bodgit/sevenzip"
+
+	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
 // AssetManager makes sure the engines, maps and games replays need are in the data dir, and downloads them there like
@@ -72,16 +74,16 @@ func NewAssetManager(config AssetManagerConfig) (*AssetManager, error) {
 	}, nil
 }
 
-// EnsureEngineVersion makes sure the release build of the engine engineVersion is in the data dir and returns its
-// folder. It fails if engineVersion is not a release tag.
-func (m *AssetManager) EnsureEngineVersion(ctx context.Context, engineVersion string) (string, error) {
+// EnsureEngineVersion makes sure the release build of the engine engineVersion is in the data dir.
+// It fails if engineVersion is not a release tag.
+func (m *AssetManager) EnsureEngineVersion(ctx context.Context, engineVersion string) error {
 	if err := validateEngineVersion(engineVersion); err != nil {
-		return "", err
+		return err
 	}
 
 	// Fast path: no wait for running downloads.
 	if m.engineVersionAvailable(engineVersion) {
-		return m.engineDir(engineVersion), nil
+		return nil
 	}
 
 	m.downloadMutex.Lock()
@@ -89,16 +91,16 @@ func (m *AssetManager) EnsureEngineVersion(ctx context.Context, engineVersion st
 
 	// Another goroutine may have downloaded it while this one waited for the mutex.
 	if m.engineVersionAvailable(engineVersion) {
-		return m.engineDir(engineVersion), nil
+		return nil
 	}
 
 	if err := m.downloadEngine(ctx, engineVersion); err != nil {
-		return "", err
+		return err
 	}
 
 	// Updated under the download mutex, so a goroutine waiting for it finds the engine on its second check.
 	m.addEngineVersion(engineVersion)
-	return m.engineDir(engineVersion), nil
+	return nil
 }
 
 // engineVersionAvailable calls Inventory.EngineVersionAvailable under the inventory mutex.
@@ -221,7 +223,6 @@ func (m *AssetManager) downloadGame(ctx context.Context, engineVersion string, n
 // runPrDownloader downloads the asset name of kind (map or game) into the data dir with the pr-downloader that comes
 // with the engine engineVersion, as the BAR launcher does. Its output is part of the error if it fails.
 func (m *AssetManager) runPrDownloader(ctx context.Context, engineVersion string, kind string, name string) error {
-	prDownloader := filepath.Join(m.engineDir(engineVersion), "pr-downloader")
 	arguments := []string{
 		"--filesystem-writepath", m.config.DataDir,
 		"--download-" + kind, name,
@@ -236,7 +237,7 @@ func (m *AssetManager) runPrDownloader(ctx context.Context, engineVersion string
 
 	var outputBuffer bytes.Buffer
 	//nolint:gosec // The command parameters are not controlled by the user.
-	command := exec.CommandContext(ctx, prDownloader, arguments...)
+	command := exec.CommandContext(ctx, utils.PrDownloaderFilePath(m.config.DataDir, engineVersion), arguments...)
 	command.Dir = m.config.DataDir
 	command.Env = append(os.Environ(), prDownloaderEnvs...)
 	command.WaitDelay = 5 * time.Second
@@ -291,7 +292,7 @@ func (m *AssetManager) engineDownloadURL(engineDownloadURLTemplate *template.Tem
 // downloadEngineTry downloads the engine archive from downloadUrl next to the engine folder, unpacks it into that
 // folder and removes the archive.
 func (m *AssetManager) downloadEngineTry(ctx context.Context, engineVersion string, downloadUrl string) error {
-	filePath := m.engineDir(engineVersion) + ".7z"
+	filePath := utils.EngineVersionDir(m.config.DataDir, engineVersion) + ".7z"
 	if err := m.DownloadFile(ctx, downloadUrl, filePath); err != nil {
 		return err
 	}
@@ -404,9 +405,4 @@ func (m *AssetManager) extract7zFile(file *sevenzip.File, baseDir string) error 
 	}
 	_, err = io.Copy(writer, reader)
 	return errors.Join(err, writer.Close())
-}
-
-// engineDir returns the folder of the engine engineVersion in the data dir, named like the BAR launcher names it.
-func (m *AssetManager) engineDir(engineVersion string) string {
-	return filepath.Join(m.config.DataDir, "engine", "recoil_"+engineVersion)
 }

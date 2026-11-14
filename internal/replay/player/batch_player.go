@@ -202,8 +202,7 @@ func (p *BatchPlayer) runReplays(ctx context.Context, player *Player, replayInfo
 			return
 		}
 
-		preparedReplayInfo, err := p.prepareReplay(ctx, player, replayInfo)
-		if err != nil {
+		if err := p.prepareReplay(ctx, player, replayInfo); err != nil {
 			p.config.Logger.Error("Preparing replay failed",
 				"file-path", p.shortReplayPath(replayInfo.FilePath),
 				"date", p.replayDate(replayInfo),
@@ -212,7 +211,7 @@ func (p *BatchPlayer) runReplays(ctx context.Context, player *Player, replayInfo
 			p.errCounter.Add(1)
 			continue
 		}
-		if err := p.runReplay(ctx, player, preparedReplayInfo); err != nil {
+		if err := p.runReplay(ctx, player, replayInfo); err != nil {
 			p.config.Logger.Error("Replay failed",
 				"file-path", p.shortReplayPath(replayInfo.FilePath),
 				"date", p.replayDate(replayInfo),
@@ -227,15 +226,11 @@ func (p *BatchPlayer) runReplays(ctx context.Context, player *Player, replayInfo
 
 // prepareReplay prepares the replay replayInfo describes with player. The timeout covers the downloads of a new
 // engine, map and game, so a stalled download does not block the batch.
-func (p *BatchPlayer) prepareReplay(ctx context.Context, player *Player, replayInfo *ReplayInfo) (*ReplayInfo, error) {
+func (p *BatchPlayer) prepareReplay(ctx context.Context, player *Player, replayInfo *ReplayInfo) error {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer cancel()
 
-	preparedReplayInfo, err := player.Prepare(ctx, replayInfo)
-	if err != nil {
-		return nil, err
-	}
-	return preparedReplayInfo, nil
+	return player.Prepare(ctx, replayInfo)
 }
 
 // runReplay plays the replay replayInfo describes back with player. The timeout covers the playback only (the downloads
@@ -270,7 +265,7 @@ func (p *BatchPlayer) ResolvePaths(paths []string) ([]string, error) {
 // stands for the replay files directly in it.
 func (p *BatchPlayer) resolvePath(path string) ([]string, error) {
 	if !filepath.IsAbs(path) {
-		path = filepath.Join(p.config.DataDir, "demos", path)
+		path = filepath.Join(utils.DemosDir(p.config.DataDir), path)
 	}
 
 	path, err := filepath.Abs(path)

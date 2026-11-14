@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"path/filepath"
-
 	"github.com/spf13/cobra"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/replay/player/widget"
@@ -25,7 +23,7 @@ playback.`,
 		return utils.WriteTemplate(
 			log,
 			widget.Template,
-			filepath.Join(barDataDir, utils.WidgetsDir, utils.AnalyticsWidgetFolder),
+			utils.AnalyticsWidgetDir(barDataDir),
 		)
 	},
 }

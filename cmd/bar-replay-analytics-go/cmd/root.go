@@ -90,7 +90,7 @@ func replayPath(arg string) (string, error) {
 	if !errors.Is(err, fs.ErrNotExist) {
 		return "", err
 	}
-	return filepath.Join(barDataDir, "demos", arg), nil
+	return filepath.Join(utils.DemosDir(barDataDir), arg), nil
 }
 
 // replayFileExtension is the extension of BAR's replay files.

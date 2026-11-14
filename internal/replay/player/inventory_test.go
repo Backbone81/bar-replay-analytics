@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	replayplayer "github.com/backbone81/bar-replay-analytics-go/internal/replay/player"
+	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
 var _ = Describe("Inventory", func() {
@@ -64,7 +65,7 @@ var _ = Describe("Inventory", func() {
 		It("does not count an engine whose spring-headless is a folder", func() {
 			dataDir := newDataDir()
 			addEngineFiles(dataDir, "recoil_"+testEngineVersion, "pr-downloader")
-			Expect(os.Mkdir(filepath.Join(engineDir(dataDir, testEngineVersion), "spring-headless"), 0o750)).
+			Expect(os.Mkdir(utils.SpringHeadlessFilePath(dataDir, testEngineVersion), 0o750)).
 				To(Succeed())
 
 			inventory, err := replayplayer.NewInventory(dataDir)
@@ -85,7 +86,7 @@ var _ = Describe("Inventory", func() {
 
 		It("does not count a file named like an engine folder", func() {
 			dataDir := newDataDir()
-			writeFile(engineDir(dataDir, testEngineVersion), "")
+			writeFile(utils.EngineVersionDir(dataDir, testEngineVersion), "")
 
 			inventory, err := replayplayer.NewInventory(dataDir)
 
@@ -127,7 +128,7 @@ var _ = Describe("Inventory", func() {
 
 		It("does not count folders", func() {
 			dataDir := newDataDir()
-			Expect(os.MkdirAll(filepath.Join(dataDir, "maps", testMapFileName), 0o750)).To(Succeed())
+			Expect(os.MkdirAll(filepath.Join(utils.MapsDir(dataDir), testMapFileName), 0o750)).To(Succeed())
 
 			inventory, err := replayplayer.NewInventory(dataDir)
 

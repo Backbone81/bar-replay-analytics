@@ -47,23 +47,16 @@ func New(options ...Option) (*Player, error) {
 }
 
 // Prepare makes sure the engine, map and game of the replay replayInfo describes (from ReadReplayInfo) are in the data
-// dir, downloading what is missing, and returns a copy of replayInfo with EngineDir set.
-func (p *Player) Prepare(ctx context.Context, replayInfo *ReplayInfo) (*ReplayInfo, error) {
+// dir, downloading what is missing.
+func (p *Player) Prepare(ctx context.Context, replayInfo *ReplayInfo) error {
 	// The map and the game are downloaded with the pr-downloader of the replay's engine, so the engine comes first.
-	engineDir, err := p.config.AssetManager.EnsureEngineVersion(ctx, replayInfo.EngineVersion)
-	if err != nil {
-		return nil, err
+	if err := p.config.AssetManager.EnsureEngineVersion(ctx, replayInfo.EngineVersion); err != nil {
+		return err
 	}
 	if err := p.config.AssetManager.EnsureMap(ctx, replayInfo.EngineVersion, replayInfo.MapName); err != nil {
-		return nil, err
+		return err
 	}
-	if err := p.config.AssetManager.EnsureGame(ctx, replayInfo.EngineVersion, replayInfo.GameType); err != nil {
-		return nil, err
-	}
-
-	result := *replayInfo
-	result.EngineDir = engineDir
-	return &result, nil
+	return p.config.AssetManager.EnsureGame(ctx, replayInfo.EngineVersion, replayInfo.GameType)
 }
 
 // Run plays the replay replayInfo describes back and copies the events file the analytics widget wrote next to the
@@ -95,7 +88,7 @@ func (p *Player) Run(ctx context.Context, replayInfo *ReplayInfo) error {
 	if err := p.prepareWriteDir(); err != nil {
 		return fmt.Errorf("preparing write dir: %w", err)
 	}
-	if err := p.runSpringHeadless(ctx, replayInfo.EngineDir, replayInfo.FilePath); err != nil {
+	if err := p.runSpringHeadless(ctx, replayInfo.EngineVersion, replayInfo.FilePath); err != nil {
 		return fmt.Errorf("running spring-headless: %w", err)
 	}
 
@@ -103,8 +96,7 @@ func (p *Player) Run(ctx context.Context, replayInfo *ReplayInfo) error {
 	// incomplete one is not: it would look like the analysis of the whole game.
 	eventsFilePath := EventsFilePath(replayInfo.FilePath)
 	eventsFileName := filepath.Base(eventsFilePath)
-	writtenEventsFilePath := filepath.Join(p.writeDir, utils.WidgetsDir, utils.AnalyticsWidgetFolder, "events",
-		eventsFileName)
+	writtenEventsFilePath := filepath.Join(utils.AnalyticsWidgetDir(p.writeDir), "events", eventsFileName)
 	if err := ValidateEventsFile(writtenEventsFilePath); err != nil {
 		return fmt.Errorf("checking the events file: %w", err)
 	}
@@ -152,14 +144,14 @@ func (p *Player) prepareWriteDir() error {
 // prepareWriteDirArchiveCache copies the data dir's archive cache into the write dir. The engine keeps it in the write
 // dir only; without it, it would scan and checksum every map and game archive of the data dir before each playback.
 func (p *Player) prepareWriteDirArchiveCache() error {
-	archiveCaches, err := filepath.Glob(filepath.Join(p.config.DataDir, utils.CacheDir, "ArchiveCache*.lua"))
+	archiveCaches, err := filepath.Glob(filepath.Join(utils.CacheDir(p.config.DataDir), "ArchiveCache*.lua"))
 	if err != nil {
 		return err
 	}
 
 	//nolint:gosec // This directory does not contain sensitive data
 	if err := os.MkdirAll(
-		filepath.Join(p.writeDir, utils.CacheDir),
+		utils.CacheDir(p.writeDir),
 		0o755,
 	); err != nil {
 		return err
@@ -167,7 +159,7 @@ func (p *Player) prepareWriteDirArchiveCache() error {
 	for _, archiveCache := range archiveCaches {
 		if err := utils.CopyFile(
 			archiveCache,
-			filepath.Join(p.writeDir, utils.CacheDir, filepath.Base(archiveCache)),
+			filepath.Join(utils.CacheDir(p.writeDir), filepath.Base(archiveCache)),
 		); err != nil {
 			return err
 		}
@@ -189,7 +181,7 @@ func (p *Player) prepareWriteDirSpringSettings() error {
 	}
 	//nolint:gosec // This file does not contain sensitive data
 	return os.WriteFile(
-		filepath.Join(p.writeDir, "springsettings.cfg"),
+		utils.SpringsettingsCfgFilePath(p.writeDir),
 		[]byte(strings.Join(lines, "\n")),
 		0o644,
 	)
@@ -201,7 +193,7 @@ func (p *Player) prepareWriteDirWidget() error {
 	if err := utils.WriteTemplate(
 		slog.New(slog.DiscardHandler),
 		widget.Template,
-		filepath.Join(p.writeDir, utils.WidgetsDir, utils.AnalyticsWidgetFolder),
+		utils.AnalyticsWidgetDir(p.writeDir),
 	); err != nil {
 		return err
 	}
@@ -212,7 +204,7 @@ func (p *Player) prepareWriteDirWidget() error {
 // widgets of the data dir in its order list (see WidgetConfig), so games whose widget handler enables only the user
 // widgets in that list run them too.
 func (p *Player) prepareWriteDirWidgetConfig() error {
-	nameLiterals, err := UserWidgetNameLiterals(filepath.Join(p.config.DataDir, utils.WidgetsDir))
+	nameLiterals, err := UserWidgetNameLiterals(utils.WidgetsDir(p.config.DataDir))
 	if err != nil {
 		return fmt.Errorf("reading the names of the user widgets: %w", err)
 	}
@@ -226,9 +218,9 @@ func (p *Player) prepareWriteDirWidgetConfig() error {
 	return os.WriteFile(filePath, WidgetConfig(append(nameLiterals, `"`+widget.Name+`"`)), 0o644)
 }
 
-// runSpringHeadless plays the replay filePath with the engine in engineDir. The engine's output replaces <replay
+// runSpringHeadless plays the replay filePath with the engine engineVersion. The engine's output replaces <replay
 // name>.log next to the replay, which the error names if the engine fails.
-func (p *Player) runSpringHeadless(ctx context.Context, engineDir string, filePath string) error {
+func (p *Player) runSpringHeadless(ctx context.Context, engineVersion string, filePath string) error {
 	logFilePath := strings.TrimSuffix(filePath, filepath.Ext(filePath)) + ".log"
 	//nolint:gosec // This file does not contain sensitive data
 	logFile, err := os.OpenFile(
@@ -242,12 +234,12 @@ func (p *Player) runSpringHeadless(ctx context.Context, engineDir string, filePa
 	defer logFile.Close() //nolint:errcheck
 
 	//nolint:gosec // The user does not control the command input.
-	command := exec.CommandContext(ctx, filepath.Join(engineDir, "spring-headless"),
+	command := exec.CommandContext(ctx, utils.SpringHeadlessFilePath(p.config.DataDir, engineVersion),
 		// Isolation keeps the engine from adding the home and system data dirs (DataDirLocater::LocateDataDirs): it
 		// uses only the write dir, the engine dir and SPRING_DATADIR.
 		"--isolation",
 		"--write-dir", p.writeDir,
-		"--config", filepath.Join(p.writeDir, "springsettings.cfg"),
+		"--config", utils.SpringsettingsCfgFilePath(p.writeDir),
 		filePath,
 	)
 	// The widget writes its events file relative to the working directory.

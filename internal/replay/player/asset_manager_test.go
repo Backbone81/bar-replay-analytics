@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	replayplayer "github.com/backbone81/bar-replay-analytics-go/internal/replay/player"
+	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
 var _ = Describe("AssetManager", func() {
@@ -42,8 +43,7 @@ var _ = Describe("AssetManager", func() {
 			dataDir := newDataDirWithAssets()
 			assetManager := newAssetManager(dataDir)
 
-			Expect(assetManager.EnsureEngineVersion(ctx, testEngineVersion)).
-				To(Equal(engineDir(dataDir, testEngineVersion)))
+			Expect(assetManager.EnsureEngineVersion(ctx, testEngineVersion)).To(Succeed())
 			Expect(assetManager.EnsureMap(ctx, testEngineVersion, testMapName)).To(Succeed())
 			Expect(assetManager.EnsureGame(ctx, testEngineVersion, testGameType)).To(Succeed())
 			Expect(readPrDownloaderCalls(dataDir)).To(BeEmpty())
@@ -60,17 +60,14 @@ var _ = Describe("AssetManager", func() {
 				server.URL+"/engine/never-asked.7z",
 			)
 
-			engineFolder, err := assetManager.EnsureEngineVersion(ctx, testEngineVersion)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(engineFolder).To(Equal(engineDir(dataDir, testEngineVersion)))
+			Expect(assetManager.EnsureEngineVersion(ctx, testEngineVersion)).To(Succeed())
 			Expect(handler.RequestURIs()).To(HaveExactElements(
 				"/missing/"+testEngineVersion+".7z",
 				"/engine/recoil_"+testEngineVersion+"_"+runtime.GOOS+".7z",
 			))
-			Expect(filepath.Join(engineFolder, "spring-headless")).To(BeARegularFile())
-			Expect(filepath.Join(engineFolder, "pr-downloader")).To(BeARegularFile())
-			Expect(engineFolder + ".7z").NotTo(BeAnExistingFile())
+			Expect(utils.SpringHeadlessFilePath(dataDir, testEngineVersion)).To(BeARegularFile())
+			Expect(utils.PrDownloaderFilePath(dataDir, testEngineVersion)).To(BeARegularFile())
+			Expect(utils.EngineVersionDir(dataDir, testEngineVersion) + ".7z").NotTo(BeAnExistingFile())
 		})
 
 		It("does not download an engine again", func(ctx SpecContext) {
@@ -78,9 +75,9 @@ var _ = Describe("AssetManager", func() {
 			assetManager := newAssetManagerWithEngineDownloads(newDataDir(),
 				server.URL+"/engine/{{.EngineVersion}}.7z",
 			)
-			Expect(assetManager.EnsureEngineVersion(ctx, testEngineVersion)).Error().NotTo(HaveOccurred())
+			Expect(assetManager.EnsureEngineVersion(ctx, testEngineVersion)).To(Succeed())
 
-			Expect(assetManager.EnsureEngineVersion(ctx, testEngineVersion)).Error().NotTo(HaveOccurred())
+			Expect(assetManager.EnsureEngineVersion(ctx, testEngineVersion)).To(Succeed())
 			Expect(handler.RequestURIs()).To(HaveLen(1))
 		})
 
@@ -90,9 +87,9 @@ var _ = Describe("AssetManager", func() {
 				handler, server := newEngineServer()
 				assetManager := newAssetManagerWithEngineDownloads(dataDir, server.URL+"/engine/{{.EngineVersion}}.7z")
 
-				Expect(assetManager.EnsureEngineVersion(ctx, engineVersion)).Error().To(HaveOccurred())
+				Expect(assetManager.EnsureEngineVersion(ctx, engineVersion)).NotTo(Succeed())
 				Expect(handler.RequestURIs()).To(BeEmpty())
-				Expect(filepath.Join(dataDir, "engine")).NotTo(BeAnExistingFile())
+				Expect(utils.EngineDir(dataDir)).NotTo(BeAnExistingFile())
 			},
 			Entry("a path out of the engine folder", "../../2026.07.04"),
 			Entry("URL syntax", "2026.07.04&category=other"),
@@ -109,9 +106,9 @@ var _ = Describe("AssetManager", func() {
 				server.URL+"/missing/second.7z",
 			)
 
-			Expect(assetManager.EnsureEngineVersion(ctx, testEngineVersion)).Error().To(HaveOccurred())
+			Expect(assetManager.EnsureEngineVersion(ctx, testEngineVersion)).NotTo(Succeed())
 			Expect(handler.RequestURIs()).To(HaveExactElements("/missing/first.7z", "/missing/second.7z"))
-			Expect(engineDir(dataDir, testEngineVersion)).NotTo(BeAnExistingFile())
+			Expect(utils.EngineVersionDir(dataDir, testEngineVersion)).NotTo(BeAnExistingFile())
 		})
 
 		It("fails if a template cannot be executed", func(ctx SpecContext) {
@@ -119,7 +116,7 @@ var _ = Describe("AssetManager", func() {
 				"https://example.com/{{.Missing}}",
 			)
 
-			Expect(assetManager.EnsureEngineVersion(ctx, testEngineVersion)).Error().To(HaveOccurred())
+			Expect(assetManager.EnsureEngineVersion(ctx, testEngineVersion)).NotTo(Succeed())
 		})
 	})
 

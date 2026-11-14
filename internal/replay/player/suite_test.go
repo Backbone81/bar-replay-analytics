@@ -200,8 +200,7 @@ func fakeSpringHeadless() (int, error) {
 	fmt.Print(behaviour.Output)
 	if behaviour.EventsFile != "" {
 		// The widget writes the events file relative to the working directory, which is the write dir.
-		eventsFilePath := filepath.Join(utils.WidgetsDir, utils.AnalyticsWidgetFolder, "events",
-			filepath.Base(replayBase)+"_events.json")
+		eventsFilePath := filepath.Join(utils.AnalyticsWidgetDir("."), "events", filepath.Base(replayBase)+"_events.json")
 		if err := writeFileForFake(eventsFilePath, []byte(behaviour.EventsFile)); err != nil {
 			return 0, err
 		}
@@ -409,36 +408,29 @@ func newDataDirWithAssets() string {
 	return dataDir
 }
 
-// engineDir returns the folder of the engine engineVersion in dataDir.
-func engineDir(dataDir string, engineVersion string) string {
-	return filepath.Join(dataDir, "engine", "recoil_"+engineVersion)
-}
-
 // addFakeEngine adds the engine engineVersion to dataDir with the test binary as its spring-headless and
-// pr-downloader, and returns its folder.
+// pr-downloader.
 //
 //nolint:unparam
-func addFakeEngine(dataDir string, engineVersion string) string {
+func addFakeEngine(dataDir string, engineVersion string) {
 	testBinary, err := os.Executable()
 	Expect(err).NotTo(HaveOccurred())
-	dir := engineDir(dataDir, engineVersion)
-	Expect(os.MkdirAll(dir, 0o750)).To(Succeed())
-	Expect(os.Symlink(testBinary, filepath.Join(dir, "spring-headless"))).To(Succeed())
-	Expect(os.Symlink(testBinary, filepath.Join(dir, "pr-downloader"))).To(Succeed())
-	return dir
+	Expect(os.MkdirAll(utils.EngineVersionDir(dataDir, engineVersion), 0o750)).To(Succeed())
+	Expect(os.Symlink(testBinary, utils.SpringHeadlessFilePath(dataDir, engineVersion))).To(Succeed())
+	Expect(os.Symlink(testBinary, utils.PrDownloaderFilePath(dataDir, engineVersion))).To(Succeed())
 }
 
 // addEngineFiles adds the folder engine/folderName to dataDir with the files fileNames, which are not executable.
 func addEngineFiles(dataDir string, folderName string, fileNames ...string) {
-	Expect(os.MkdirAll(filepath.Join(dataDir, "engine", folderName), 0o750)).To(Succeed())
+	Expect(os.MkdirAll(filepath.Join(utils.EngineDir(dataDir), folderName), 0o750)).To(Succeed())
 	for _, fileName := range fileNames {
-		writeFile(filepath.Join(dataDir, "engine", folderName, fileName), "")
+		writeFile(filepath.Join(utils.EngineDir(dataDir), folderName, fileName), "")
 	}
 }
 
 // addMapFile adds the map archive fileName to the maps/ of dataDir.
 func addMapFile(dataDir string, fileName string) {
-	writeFile(filepath.Join(dataDir, "maps", fileName), "")
+	writeFile(filepath.Join(utils.MapsDir(dataDir), fileName), "")
 }
 
 // addGame adds the game name with the rapid package md5 to dataDir: a versions.gz that lists it and its package.
@@ -458,12 +450,12 @@ func writeRapidVersions(dataDir string, lines ...string) {
 
 // rapidVersionsFile returns the path of the versions.gz of the BAR rapid repo in dataDir.
 func rapidVersionsFile(dataDir string) string {
-	return filepath.Join(dataDir, "rapid", testRapidRepo, "byar", "versions.gz")
+	return filepath.Join(utils.RapidDir(dataDir), testRapidRepo, "byar", "versions.gz")
 }
 
 // addPackage adds the rapid package file of md5 to dataDir.
 func addPackage(dataDir string, md5 string) {
-	writeFile(filepath.Join(dataDir, "packages", md5+".sdp"), "")
+	writeFile(filepath.Join(utils.PackagesDir(dataDir), md5+".sdp"), "")
 }
 
 // testSetupScript returns a start script with the map mapName and the game gameType, a player, a spectator and two AIs.
@@ -514,7 +506,7 @@ func writeTestReplay(filePath string, mapName string) string {
 
 // demosFile returns the path of fileName in the demos/ of dataDir.
 func demosFile(dataDir string, fileName string) string {
-	return filepath.Join(dataDir, "demos", fileName)
+	return filepath.Join(utils.DemosDir(dataDir), fileName)
 }
 
 // replaySibling returns the path of the file next to the replay replayFilePath that has suffix instead of the
@@ -628,8 +620,8 @@ func newPlayer(dataDir string, options ...replayplayer.Option) *replayplayer.Pla
 	return player
 }
 
-// newPreparedReplay writes a test replay as fileName into the demos/ of dataDir and returns its ReplayInfo, prepared
-// by player.
+// newPreparedReplay writes a test replay as fileName into the demos/ of dataDir, prepares it with player and returns
+// its ReplayInfo.
 func newPreparedReplay(
 	ctx context.Context,
 	player *replayplayer.Player,
@@ -638,9 +630,8 @@ func newPreparedReplay(
 ) *replayplayer.ReplayInfo {
 	replayInfo, err := replayplayer.ReadReplayInfo(writeTestReplay(demosFile(dataDir, fileName), testMapName))
 	Expect(err).NotTo(HaveOccurred())
-	preparedReplayInfo, err := player.Prepare(ctx, replayInfo)
-	Expect(err).NotTo(HaveOccurred())
-	return preparedReplayInfo
+	Expect(player.Prepare(ctx, replayInfo)).To(Succeed())
+	return replayInfo
 }
 
 // runPlayerInBackground runs player on replayInfo in a goroutine and returns the channel its error arrives on.
@@ -768,7 +759,7 @@ func writeDirWidgetFiles() []string {
 		if err != nil || entry.IsDir() {
 			return err
 		}
-		result = append(result, filepath.ToSlash(filepath.Join(utils.WidgetsDir, utils.AnalyticsWidgetFolder, name)))
+		result = append(result, filepath.ToSlash(filepath.Join(utils.AnalyticsWidgetDir("."), name)))
 		return nil
 	})).To(Succeed())
 	return result

@@ -22,18 +22,14 @@ var _ = Describe("Player", func() {
 	})
 
 	Context("Prepare", func() {
-		It("returns a copy of the replay info with the engine folder", func(ctx SpecContext) {
+		It("downloads nothing if the engine, map and game are in the data dir", func(ctx SpecContext) {
 			dataDir := newDataDirWithAssets()
 			player := newPlayer(dataDir)
 			replayInfo, err := replayplayer.ReadReplayInfo(writeTestReplay(demosFile(dataDir, "game.sdfz"), testMapName))
 			Expect(err).NotTo(HaveOccurred())
 
-			preparedReplayInfo, err := player.Prepare(ctx, replayInfo)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(preparedReplayInfo.EngineDir).To(Equal(engineDir(dataDir, testEngineVersion)))
-			Expect(replayInfo.EngineDir).To(BeEmpty())
-			Expect(preparedReplayInfo.FilePath).To(Equal(replayInfo.FilePath))
+			Expect(player.Prepare(ctx, replayInfo)).To(Succeed())
+			Expect(readPrDownloaderCalls(dataDir)).To(BeEmpty())
 		})
 
 		It("downloads a missing map, then a missing game", func(ctx SpecContext) {
@@ -43,7 +39,7 @@ var _ = Describe("Player", func() {
 			replayInfo, err := replayplayer.ReadReplayInfo(writeTestReplay(demosFile(dataDir, "game.sdfz"), testMapName))
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(player.Prepare(ctx, replayInfo)).Error().NotTo(HaveOccurred())
+			Expect(player.Prepare(ctx, replayInfo)).To(Succeed())
 			calls := readPrDownloaderCalls(dataDir)
 			Expect(calls).To(HaveLen(2))
 			Expect(calls[0].Args).To(ContainElements("--download-map", testMapName))
@@ -58,7 +54,7 @@ var _ = Describe("Player", func() {
 			replayInfo, err := replayplayer.ReadReplayInfo(writeTestReplay(demosFile(dataDir, "game.sdfz"), testMapName))
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(player.Prepare(ctx, replayInfo)).Error().To(HaveOccurred())
+			Expect(player.Prepare(ctx, replayInfo)).NotTo(Succeed())
 			Expect(readPrDownloaderCalls(dataDir)).To(HaveLen(1))
 		})
 	})
@@ -78,7 +74,7 @@ var _ = Describe("Player", func() {
 			Expect(call.Args).To(HaveExactElements(
 				"--isolation",
 				"--write-dir", writeDir,
-				"--config", filepath.Join(writeDir, "springsettings.cfg"),
+				"--config", utils.SpringsettingsCfgFilePath(writeDir),
 				replayInfo.FilePath,
 			))
 			Expect(filepath.Base(writeDir)).To(HavePrefix("bar-replay-analytics-"))
@@ -105,8 +101,8 @@ var _ = Describe("Player", func() {
 
 		It("prepares the write dir with the settings, the archive cache and the analytics widget", func(ctx SpecContext) {
 			dataDir := newDataDirWithAssets()
-			writeFile(filepath.Join(dataDir, utils.CacheDir, "ArchiveCache20.lua"), "cache")
-			writeFile(filepath.Join(dataDir, utils.CacheDir, "other.lua"), "")
+			writeFile(filepath.Join(utils.CacheDir(dataDir), "ArchiveCache20.lua"), "cache")
+			writeFile(filepath.Join(utils.CacheDir(dataDir), "other.lua"), "")
 			player := newPlayer(dataDir)
 			replayInfo := newPreparedReplay(ctx, player, dataDir, "game.sdfz")
 			writeSpringHeadlessBehaviour(replayInfo.FilePath, springHeadlessBehaviour{EventsFile: currentEventsFileContent()})
@@ -125,7 +121,7 @@ var _ = Describe("Player", func() {
 
 		It("enables the analytics widget and the data dir's user widgets in the widget config", func(ctx SpecContext) {
 			dataDir := newDataDirWithAssets()
-			writeFile(filepath.Join(dataDir, utils.WidgetsDir, "BAR-Advisor", "snd_advisor.lua"),
+			writeFile(filepath.Join(utils.WidgetsDir(dataDir), "BAR-Advisor", "snd_advisor.lua"),
 				"function widget:GetInfo()\n\treturn {\n\t\tname = \"Advisor\",\n\t}\nend\n")
 			player := newPlayer(dataDir)
 			replayInfo := newPreparedReplay(ctx, player, dataDir, "game.sdfz")
@@ -209,10 +205,9 @@ var _ = Describe("Player", func() {
 			dataDir := newDataDirWithAssets()
 			player := newPlayer(dataDir)
 			replayInfo := newPreparedReplay(ctx, player, dataDir, "game.sdfz")
-			replayInfo.EngineDir = filepath.Join(dataDir, "engine", "missing")
+			Expect(os.RemoveAll(utils.EngineVersionDir(dataDir, testEngineVersion))).To(Succeed())
 
-			Expect(player.Run(ctx, replayInfo)).
-				ToNot(Succeed())
+			Expect(player.Run(ctx, replayInfo)).ToNot(Succeed())
 		})
 
 		It("asks the engine to quit when the context is canceled", func(ctx SpecContext) {

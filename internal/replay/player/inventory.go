@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
 // engineVersionRegex matches the tags of released engines, which are dates. Replays name release tags, so other
@@ -126,7 +128,7 @@ func (i *Inventory) Refresh() error {
 // its spring-headless, which plays the replays, and its pr-downloader, which downloads maps and games, so a partial
 // folder is downloaded again.
 func (i *Inventory) getEngineVersions() ([]string, error) {
-	matches, err := filepath.Glob(filepath.Join(i.dataDir, "engine", "recoil_*"))
+	matches, err := filepath.Glob(filepath.Join(utils.EngineDir(i.dataDir), "recoil_*"))
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +162,7 @@ func (i *Inventory) getEngineVersions() ([]string, error) {
 
 // getMaps returns the normalized names of the map archives (.sd7, .sdz) in maps/.
 func (i *Inventory) getMaps() ([]string, error) {
-	matches, err := filepath.Glob(filepath.Join(i.dataDir, "maps", "*"))
+	matches, err := filepath.Glob(filepath.Join(utils.MapsDir(i.dataDir), "*"))
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +198,7 @@ func (i *Inventory) getGames() ([]string, error) {
 		return nil, err
 	}
 
-	matches, err := filepath.Glob(filepath.Join(i.dataDir, "rapid", "*", "byar", "versions.gz"))
+	matches, err := filepath.Glob(filepath.Join(utils.RapidDir(i.dataDir), "*", "byar", "versions.gz"))
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +218,7 @@ func (i *Inventory) getGames() ([]string, error) {
 
 // getAvailablePackages returns the sorted file names (<md5>.sdp) of the rapid packages in packages/.
 func (i *Inventory) getAvailablePackages() ([]string, error) {
-	entries, err := os.ReadDir(filepath.Join(i.dataDir, "packages"))
+	entries, err := os.ReadDir(utils.PackagesDir(i.dataDir))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			// On a fresh install there might be no packages yet.

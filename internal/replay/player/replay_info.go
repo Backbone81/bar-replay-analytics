@@ -19,9 +19,6 @@ type ReplayInfo struct {
 	// EngineVersion is the engine tag from the replay's header, e.g. 2026.07.04.
 	EngineVersion string
 
-	// EngineDir is the folder of that engine in the data dir. Player.Prepare sets it; ReadReplayInfo leaves it empty.
-	EngineDir string
-
 	// MapName is the start script's mapname.
 	MapName string
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/barlive"
 	replaydownloader2 "github.com/backbone81/bar-replay-analytics-go/internal/replay/downloader"
+	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
 // The flags of replayDownloadTopCmd.
@@ -41,7 +42,7 @@ interrupted run leaves no partial replay. --dry-run logs the replays it would do
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		options := []replaydownloader2.Option{
 			replaydownloader2.WithLogger(log),
-			replaydownloader2.WithDir(filepath.Join(barDataDir, "demos", "leaderboard")),
+			replaydownloader2.WithDir(filepath.Join(utils.DemosDir(barDataDir), "leaderboard")),
 			replaydownloader2.WithPlayers(replayDownloadTopTop),
 			replaydownloader2.WithDays(replayDownloadTopDays),
 			replaydownloader2.WithGameType(toGameType(replayDownloadTopGameType)),
