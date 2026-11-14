@@ -2,7 +2,6 @@ package player_test
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"runtime"
 	"time"
@@ -160,70 +159,6 @@ var _ = Describe("AssetManager", func() {
 				DownloadFile(cancelableCtx, server.URL+"/engine/x.7z", filepath.Join(GinkgoT().TempDir(), "engine.7z"))
 
 			Expect(err).To(MatchError(context.Canceled))
-		})
-	})
-
-	Context("Extract7z", func() {
-		It("unpacks folders and files with their permissions into the folder named after the archive", func(ctx SpecContext) {
-			archive := copyTestdata("engine.7z", GinkgoT().TempDir())
-			destination := filepath.Join(filepath.Dir(archive), "engine")
-
-			Expect(newAssetManager(newDataDir()).Extract7z(ctx, archive)).To(Succeed())
-
-			Expect(readFile(filepath.Join(destination, "spring-headless"))).To(Equal("fake engine\n"))
-			Expect(readFile(filepath.Join(destination, "pr-downloader"))).To(Equal("fake downloader\n"))
-			Expect(readFile(filepath.Join(destination, "AI", "config.json"))).To(Equal("data\n"))
-			Expect(fileMode(filepath.Join(destination, "spring-headless"))).To(Equal(os.FileMode(0o755)))
-			Expect(fileMode(filepath.Join(destination, "AI", "config.json"))).To(Equal(os.FileMode(0o644)))
-		})
-
-		It("replaces existing files by new ones", func(ctx SpecContext) {
-			archive := copyTestdata("engine.7z", GinkgoT().TempDir())
-			existing := filepath.Join(filepath.Dir(archive), "engine", "spring-headless")
-			writeFile(existing, "old engine, longer than the new one\n")
-			Expect(os.Chmod(existing, 0o400)).To(Succeed())
-
-			Expect(newAssetManager(newDataDir()).Extract7z(ctx, archive)).To(Succeed())
-
-			Expect(readFile(existing)).To(Equal("fake engine\n"))
-		})
-
-		It("stops when the context is canceled and leaves no partly unpacked folder", func(ctx SpecContext) {
-			archive := copyTestdata("engine.7z", GinkgoT().TempDir())
-			cancelableCtx, cancel := context.WithCancel(ctx)
-			cancel()
-
-			Expect(newAssetManager(newDataDir()).Extract7z(cancelableCtx, archive)).To(MatchError(context.Canceled))
-
-			Expect(filepath.Join(filepath.Dir(archive), "engine")).NotTo(BeAnExistingFile())
-		})
-
-		It("rejects an entry that leaves the destination folder", func(ctx SpecContext) {
-			dir := filepath.Join(GinkgoT().TempDir(), "inner")
-			Expect(os.Mkdir(dir, 0o750)).To(Succeed())
-			archive := copyTestdata("escaping.7z", dir)
-
-			err := newAssetManager(newDataDir()).Extract7z(ctx, archive)
-
-			Expect(err).To(HaveOccurred())
-			Expect(filepath.Join(filepath.Dir(dir), "escaped")).NotTo(BeAnExistingFile())
-			Expect(filepath.Join(dir, "escaping")).NotTo(BeAnExistingFile())
-		})
-
-		It("rejects a symbolic link and leaves no partly unpacked folder", func(ctx SpecContext) {
-			archive := copyTestdata("symlink.7z", GinkgoT().TempDir())
-
-			err := newAssetManager(newDataDir()).Extract7z(ctx, archive)
-
-			Expect(err).To(HaveOccurred())
-			Expect(filepath.Join(filepath.Dir(archive), "symlink")).NotTo(BeAnExistingFile())
-		})
-
-		It("fails on a file that is no 7z archive", func(ctx SpecContext) {
-			archive := filepath.Join(GinkgoT().TempDir(), "engine.7z")
-			writeFile(archive, "no archive")
-
-			Expect(newAssetManager(newDataDir()).Extract7z(ctx, archive)).ToNot(Succeed())
 		})
 	})
 

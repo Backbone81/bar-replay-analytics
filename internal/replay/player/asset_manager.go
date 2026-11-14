@@ -15,8 +15,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/bodgit/sevenzip"
-
 	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
@@ -288,15 +286,16 @@ func (m *AssetManager) engineDownloadURL(engineDownloadURLTemplate *template.Tem
 }
 
 // downloadEngineTry downloads the engine archive from downloadUrl next to the engine folder, unpacks it into that
-// folder and removes the archive.
+// folder (see utils.Extract7z) and removes the archive.
 func (m *AssetManager) downloadEngineTry(ctx context.Context, engineVersion string, downloadUrl string) error {
-	filePath := utils.EngineVersionDir(m.config.DataDir, engineVersion) + ".7z"
+	engineVersionDir := utils.EngineVersionDir(m.config.DataDir, engineVersion)
+	filePath := engineVersionDir + ".7z"
 	if err := m.DownloadFile(ctx, downloadUrl, filePath); err != nil {
 		return err
 	}
 	defer os.Remove(filePath) //nolint:errcheck
 
-	if err := m.Extract7z(ctx, filePath); err != nil {
+	if err := utils.Extract7z(ctx, filePath, engineVersionDir); err != nil {
 		return err
 	}
 	return nil
@@ -325,63 +324,4 @@ func (m *AssetManager) DownloadFile(ctx context.Context, downloadUrl string, fil
 	}
 
 	return utils.WriteFileFrom(filePath, response.Body, 0o644)
-}
-
-// Extract7z unpacks the 7z archive filePath into the folder of the same name without the extension. The archive is
-// unpacked in Go, so no 7-Zip needs to be installed.
-func (m *AssetManager) Extract7z(ctx context.Context, filePath string) error {
-	baseDir := strings.TrimSuffix(filePath, filepath.Ext(filePath))
-
-	reader, err := sevenzip.OpenReader(filePath)
-	if err != nil {
-		return err
-	}
-	defer reader.Close() //nolint:errcheck
-
-	for _, file := range reader.File {
-		if err := ctx.Err(); err != nil {
-			// A partly unpacked engine would pass as available in the next inventory, so it is removed.
-			_ = os.RemoveAll(baseDir)
-			return err
-		}
-		if err := m.extract7zFile(file, baseDir); err != nil {
-			// As above: no partly unpacked engine.
-			_ = os.RemoveAll(baseDir)
-			return err
-		}
-	}
-	return nil
-}
-
-// extract7zFile unpacks the archive entry file into baseDir. It rejects entries that leave baseDir and anything but
-// folders and regular files, as the archive comes from the internet.
-func (m *AssetManager) extract7zFile(file *sevenzip.File, baseDir string) error {
-	destination := filepath.FromSlash(file.Name)
-	if !filepath.IsLocal(destination) {
-		return fmt.Errorf("%q leaves the destination folder", file.Name)
-	}
-	destination = filepath.Join(baseDir, destination)
-	if file.Mode().IsDir() {
-		//nolint:gosec // This folder does not contain sensitive data
-		return os.MkdirAll(destination, 0o755)
-	}
-	if !file.Mode().IsRegular() {
-		return fmt.Errorf("unsupported file type %s", file.Mode().Type())
-	}
-
-	//nolint:gosec // This folder does not contain sensitive data
-	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
-		return err
-	}
-
-	reader, err := file.Open()
-	if err != nil {
-		return err
-	}
-	defer reader.Close() //nolint:errcheck
-
-	// The rename in WriteFileFrom replaces an existing file rather than overwriting it: the new file gets its own inode,
-	// so a running engine binary (writing it would fail with "text file busy") or a hard link to the old file is not
-	// touched.
-	return utils.WriteFileFrom(destination, reader, file.Mode().Perm())
 }

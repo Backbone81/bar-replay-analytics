@@ -109,3 +109,10 @@ func fileNames(dir string) []string {
 
 // errTestRead is the error of a reader that fails in a test.
 var errTestRead = errors.New("test read error")
+
+// copyTestdata copies the file name from testdata/ to dir and returns the copy's path.
+func copyTestdata(name string, dir string) string {
+	filePath := filepath.Join(dir, name)
+	Expect(utils.CopyFile(filepath.Join("testdata", name), filePath)).To(Succeed())
+	return filePath
+}

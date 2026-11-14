@@ -691,13 +691,6 @@ func ensureMapConcurrently(
 	return errs
 }
 
-// copyTestdata copies the file name from testdata/ to dir and returns the copy's path.
-func copyTestdata(name string, dir string) string {
-	filePath := filepath.Join(dir, name)
-	Expect(utils.CopyFile(filepath.Join("testdata", name), filePath)).To(Succeed())
-	return filePath
-}
-
 // engineServer serves the engine archive testdata/engine.7z for requests under /engine/, a response that breaks off
 // under /truncated/ and 404 for everything else. It records the request URIs.
 type engineServer struct {
@@ -736,13 +729,6 @@ func newEngineServer() (*engineServer, *httptest.Server) {
 	server := httptest.NewServer(handler)
 	DeferCleanup(server.Close)
 	return handler, server
-}
-
-// fileMode returns the permissions of filePath.
-func fileMode(filePath string) os.FileMode {
-	info, err := os.Stat(filePath)
-	Expect(err).NotTo(HaveOccurred())
-	return info.Mode().Perm()
 }
 
 // writeDirWidgetFiles returns the paths of the files of the embedded analytics widget in a write dir, relative to it
