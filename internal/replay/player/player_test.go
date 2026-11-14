@@ -54,7 +54,7 @@ var _ = Describe("Player", func() {
 			replayInfo, err := replayplayer.ReadReplayInfo(writeTestReplay(demosFile(dataDir, "game.sdfz"), testMapName))
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(player.Prepare(ctx, replayInfo)).NotTo(Succeed())
+			Expect(player.Prepare(ctx, replayInfo)).ToNot(Succeed())
 			Expect(readPrDownloaderCalls(dataDir)).To(HaveLen(1))
 		})
 	})
@@ -148,7 +148,7 @@ var _ = Describe("Player", func() {
 			dataDir := newDataDirWithAssets()
 			player := newPlayer(dataDir)
 			replayInfo := newPreparedReplay(ctx, player, dataDir, "game.sdfz")
-			writeFile(replaySibling(replayInfo.FilePath, ".log"), "an older and longer log of an earlier playback\n")
+			writeFile(utils.DemoLogFilePath(replayInfo.FilePath), "an older and longer log of an earlier playback\n")
 			writeSpringHeadlessBehaviour(replayInfo.FilePath, springHeadlessBehaviour{
 				Output:     "[f=0000000] engine output\n",
 				EventsFile: currentEventsFileContent(),
@@ -156,8 +156,8 @@ var _ = Describe("Player", func() {
 
 			Expect(player.Run(ctx, replayInfo)).To(Succeed())
 
-			Expect(readFile(replaySibling(replayInfo.FilePath, "_events.json"))).To(Equal(currentEventsFileContent()))
-			Expect(readFile(replaySibling(replayInfo.FilePath, ".log"))).To(Equal("[f=0000000] engine output\n"))
+			Expect(readFile(utils.DemoEventsFilePath(replayInfo.FilePath))).To(Equal(currentEventsFileContent()))
+			Expect(readFile(utils.DemoLogFilePath(replayInfo.FilePath))).To(Equal("[f=0000000] engine output\n"))
 		})
 
 		It("fails if the engine fails and keeps its output in the log", func(ctx SpecContext) {
@@ -172,8 +172,8 @@ var _ = Describe("Player", func() {
 			err := player.Run(ctx, replayInfo)
 
 			Expect(err).To(HaveOccurred())
-			Expect(readFile(replaySibling(replayInfo.FilePath, ".log"))).To(Equal("Error: map not found\n"))
-			Expect(replaySibling(replayInfo.FilePath, "_events.json")).NotTo(BeAnExistingFile())
+			Expect(readFile(utils.DemoLogFilePath(replayInfo.FilePath))).To(Equal("Error: map not found\n"))
+			Expect(utils.DemoEventsFilePath(replayInfo.FilePath)).NotTo(BeAnExistingFile())
 		})
 
 		It("fails if the analytics widget wrote no events file", func(ctx SpecContext) {
@@ -182,7 +182,7 @@ var _ = Describe("Player", func() {
 			replayInfo := newPreparedReplay(ctx, player, dataDir, "game.sdfz")
 
 			Expect(player.Run(ctx, replayInfo)).To(MatchError(os.ErrNotExist))
-			Expect(replaySibling(replayInfo.FilePath, "_events.json")).NotTo(BeAnExistingFile())
+			Expect(utils.DemoEventsFilePath(replayInfo.FilePath)).NotTo(BeAnExistingFile())
 		})
 
 		DescribeTable("fails and does not copy an events file that is not complete and current",
@@ -193,7 +193,7 @@ var _ = Describe("Player", func() {
 				writeSpringHeadlessBehaviour(replayInfo.FilePath, springHeadlessBehaviour{EventsFile: eventsFile})
 
 				Expect(player.Run(ctx, replayInfo)).ToNot(Succeed())
-				Expect(replaySibling(replayInfo.FilePath, "_events.json")).NotTo(BeAnExistingFile())
+				Expect(utils.DemoEventsFilePath(replayInfo.FilePath)).NotTo(BeAnExistingFile())
 			},
 			Entry("without an end", eventsFileContent(widget.FormatVersion, "")),
 			Entry("of a game that did not end", eventsFileContent(widget.FormatVersion, events.EndReasonStalled)),

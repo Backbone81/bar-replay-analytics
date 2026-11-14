@@ -36,8 +36,8 @@ goes on with the next one and fails at the end.
 
 The replays go to demos/leaderboard/ in the BAR data directory, which the BAR lobby's replay list does not show, under
 the file names of the replay storage. index.json there records which file holds which replay, so a new run downloads
-only the missing ones and notices files added or removed by hand. A download is written to a .part file first, so an
-interrupted run leaves no partial replay. --dry-run logs the replays it would download.`,
+only the missing ones and notices files added or removed by hand. A download is written to a .part-<random> file
+first, so an interrupted run leaves no partial replay. --dry-run logs the replays it would download.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		options := []replaydownloader2.Option{

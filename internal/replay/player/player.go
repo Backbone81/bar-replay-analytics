@@ -94,19 +94,13 @@ func (p *Player) Run(ctx context.Context, replayInfo *ReplayInfo) error {
 
 	// The widget can only write under LuaUI/ of the write dir, which is removed, so the events file is copied out. An
 	// incomplete one is not: it would look like the analysis of the whole game.
-	eventsFilePath := EventsFilePath(replayInfo.FilePath)
+	eventsFilePath := utils.DemoEventsFilePath(replayInfo.FilePath)
 	eventsFileName := filepath.Base(eventsFilePath)
-	writtenEventsFilePath := filepath.Join(utils.AnalyticsWidgetDir(p.writeDir), "events", eventsFileName)
+	writtenEventsFilePath := filepath.Join(utils.AnalyticsWidgetEventsDir(p.writeDir), eventsFileName)
 	if err := ValidateEventsFile(writtenEventsFilePath); err != nil {
 		return fmt.Errorf("checking the events file: %w", err)
 	}
 	return utils.CopyFile(writtenEventsFilePath, eventsFilePath)
-}
-
-// EventsFilePath returns the path of the events file of the replay file replayFilePath: <replay name>_events.json
-// next to it, where Run copies the file the analytics widget wrote.
-func EventsFilePath(replayFilePath string) string {
-	return strings.TrimSuffix(replayFilePath, filepath.Ext(replayFilePath)) + "_events.json"
 }
 
 // ValidateEventsFile returns an error if the events file filePath is missing, incomplete (cut off, or it does not end
@@ -179,12 +173,7 @@ func (p *Player) prepareWriteDirSpringSettings() error {
 	if p.config.WorkerThreadCount > 0 {
 		lines = append(lines, fmt.Sprintf("WorkerThreadCount = %d", p.config.WorkerThreadCount))
 	}
-	//nolint:gosec // This file does not contain sensitive data
-	return os.WriteFile(
-		utils.SpringsettingsCfgFilePath(p.writeDir),
-		[]byte(strings.Join(lines, "\n")),
-		0o644,
-	)
+	return utils.WriteFile(utils.SpringsettingsCfgFilePath(p.writeDir), []byte(strings.Join(lines, "\n")), 0o644)
 }
 
 // prepareWriteDirWidget writes the embedded analytics widget into the write dir's user widgets folder, so the playback
@@ -209,22 +198,20 @@ func (p *Player) prepareWriteDirWidgetConfig() error {
 		return fmt.Errorf("reading the names of the user widgets: %w", err)
 	}
 
-	filePath := filepath.Join(p.writeDir, utils.WidgetConfigFile)
+	filePath := utils.WidgetHandlerConfigFilePath(p.writeDir)
 	//nolint:gosec // This directory does not contain sensitive data
 	if err := os.MkdirAll(filepath.Dir(filePath), 0o755); err != nil {
 		return err
 	}
-	//nolint:gosec // This file does not contain sensitive data
-	return os.WriteFile(filePath, WidgetConfig(append(nameLiterals, `"`+widget.Name+`"`)), 0o644)
+	return utils.WriteFile(filePath, WidgetConfig(append(nameLiterals, `"`+widget.Name+`"`)), 0o644)
 }
 
 // runSpringHeadless plays the replay filePath with the engine engineVersion. The engine's output replaces <replay
 // name>.log next to the replay, which the error names if the engine fails.
 func (p *Player) runSpringHeadless(ctx context.Context, engineVersion string, filePath string) error {
-	logFilePath := strings.TrimSuffix(filePath, filepath.Ext(filePath)) + ".log"
 	//nolint:gosec // This file does not contain sensitive data
 	logFile, err := os.OpenFile(
-		logFilePath,
+		utils.DemoLogFilePath(filePath),
 		os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
 		0o644,
 	)
@@ -256,7 +243,7 @@ func (p *Player) runSpringHeadless(ctx context.Context, engineVersion string, fi
 
 	if err := command.Run(); err != nil {
 		return errors.Join(
-			fmt.Errorf("running the replay (see %s): %w", logFilePath, err),
+			fmt.Errorf("running the replay (see %s): %w", utils.DemoLogFilePath(filePath), err),
 			ctx.Err(),
 		)
 	}

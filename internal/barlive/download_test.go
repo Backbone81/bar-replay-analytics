@@ -1,8 +1,8 @@
 package barlive_test
 
 import (
-	"bytes"
 	"context"
+	"io"
 	"io/fs"
 	"net/http"
 	"net/url"
@@ -56,63 +56,56 @@ var _ = Describe("Download", func() {
 	})
 
 	Context("DownloadDemo", func() {
-		It("writes the demo to the writer", func() {
+		It("returns the demo", func(ctx SpecContext) {
 			server.HandleFunc("GET "+testDemoPath, barlivetest.ServeDemo(testDemoContent))
-			var buffer bytes.Buffer
 
-			Expect(server.Client().DownloadDemo(context.Background(), testDemoFileName, &buffer)).To(Succeed())
-
-			Expect(buffer.Bytes()).To(Equal(testDemoContent))
+			Expect(downloadDemo(ctx, server.Client(), testDemoFileName)).To(Equal(testDemoContent))
 			Expect(server.Requests()[0].Path).To(Equal(testDemoPath))
 		})
 
-		It("accepts an apostrophe, which map names hold", func() {
+		It("accepts an apostrophe, which map names hold", func(ctx SpecContext) {
 			const fileName = "2026-10-28_14-02-51-887_Devil's Postpiles 1.1.1_2026.07.04.sdfz"
 			server.HandleFunc("GET "+barlivetest.StoragePath+"/demos/"+url.PathEscape(fileName),
 				barlivetest.ServeDemo(testDemoContent))
-			var buffer bytes.Buffer
 
-			Expect(server.Client().DownloadDemo(context.Background(), fileName, &buffer)).To(Succeed())
-
-			Expect(buffer.Bytes()).To(Equal(testDemoContent))
+			Expect(downloadDemo(ctx, server.Client(), fileName)).To(Equal(testDemoContent))
 		})
 
-		It("is not rate limited", func() {
+		It("is not rate limited", func(ctx SpecContext) {
 			server.HandleFunc("GET "+testDemoPath, barlivetest.ServeDemo(testDemoContent))
 			client := server.Client(barlive.WithMaxRequestRate(1.0 / 3600))
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer cancel()
 
 			for range 3 {
-				Expect(client.DownloadDemo(ctx, testDemoFileName, &bytes.Buffer{})).To(Succeed())
+				Expect(downloadDemo(ctx, client, testDemoFileName)).To(Equal(testDemoContent))
 			}
 
 			Expect(server.Requests()).To(HaveLen(3))
+		}, SpecTimeout(10*time.Second))
+
+		It("reports a missing demo", func(ctx SpecContext) {
+			Expect(server.Client().DownloadDemo(ctx, testDemoFileName)).Error().To(HaveOccurred())
 		})
 
-		It("reports a missing demo", func() {
-			var buffer bytes.Buffer
-
-			Expect(server.Client().DownloadDemo(context.Background(), testDemoFileName, &buffer)).NotTo(Succeed())
-			Expect(buffer.Len()).To(BeZero())
-		})
-
-		It("reports another status", func() {
+		It("reports another status", func(ctx SpecContext) {
 			server.HandleFunc("GET "+testDemoPath, barlivetest.ServeString(
 				http.StatusServiceUnavailable, "text/plain", "try later"))
 
-			Expect(server.Client().DownloadDemo(context.Background(), testDemoFileName, &bytes.Buffer{})).NotTo(Succeed())
+			Expect(server.Client().DownloadDemo(ctx, testDemoFileName)).Error().To(HaveOccurred())
 		})
 
-		It("reports a download which breaks off", func() {
+		It("reports a download which breaks off while it is read", func(ctx SpecContext) {
 			server.HandleFunc("GET "+testDemoPath, serveBrokenDemo)
+			body, err := server.Client().DownloadDemo(ctx, testDemoFileName)
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(body.Close)
 
-			Expect(server.Client().DownloadDemo(context.Background(), testDemoFileName, &bytes.Buffer{})).NotTo(Succeed())
+			_, err = io.ReadAll(body)
+			Expect(err).To(HaveOccurred())
 		})
 
 		DescribeTable("rejects a file name with unexpected characters without a request",
-			func(fileName string) {
-				Expect(server.Client().DownloadDemo(context.Background(), fileName, &bytes.Buffer{})).NotTo(Succeed())
+			func(ctx SpecContext, fileName string) {
+				Expect(server.Client().DownloadDemo(ctx, fileName)).Error().To(HaveOccurred())
 				Expect(server.Requests()).To(BeEmpty())
 			},
 			Entry("empty", ""),
@@ -157,19 +150,6 @@ var _ = Describe("Download", func() {
 			Expect(path).To(Equal(filepath.Join(dir, testDemoFileName)))
 			Expect(os.ReadFile(path)).To(Equal(content))
 			Expect(os.ReadDir(dir)).To(HaveLen(1))
-		})
-
-		It("replaces a .part file left behind by a killed process", func() {
-			content := testDemoFile(testGameID)
-			server.HandleFunc("GET "+testDemoPath, barlivetest.ServeDemo(content))
-			partPath := filepath.Join(dir, testDemoFileName+".part")
-			Expect(os.WriteFile(partPath, []byte("a longer partial download from before"), 0o600)).To(Succeed())
-
-			path, err := server.Client().DownloadDemoIntoDir(context.Background(), replay, dir)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(os.ReadFile(path)).To(Equal(content))
-			Expect(partPath).NotTo(BeAnExistingFile())
 		})
 
 		It("does not overwrite an existing file and sends no request", func() {

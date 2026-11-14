@@ -9,10 +9,6 @@ import (
 	"strings"
 )
 
-// barDataDirMarker is the folder the BAR launcher creates in its write dir, the BAR data dir, on every start
-// (spring-launcher src/spring_log.js).
-const barDataDirMarker = "launcher-logs"
-
 // barTitle is the BAR launcher's title (BYAR-Chobby dist_cfg/config.json), the name of its write dir on Linux.
 const barTitle = "Beyond All Reason"
 
@@ -31,10 +27,9 @@ func BarDataDir() (string, error) {
 	return "", errors.New("found no BAR data dir")
 }
 
-// IsBarDataDir reports whether dir holds barDataDirMarker.
+// IsBarDataDir reports whether dir holds the folder LauncherLogsDir, which the BAR launcher creates on every start.
 func IsBarDataDir(dir string) bool {
-	info, err := os.Stat(filepath.Join(dir, barDataDirMarker))
-	return err == nil && info.IsDir()
+	return DirExists(LauncherLogsDir(dir))
 }
 
 // BarDataDirCandidates returns the BAR launcher's write dirs on the operating system goos (a runtime.GOOS value), in

@@ -200,7 +200,10 @@ func fakeSpringHeadless() (int, error) {
 	fmt.Print(behaviour.Output)
 	if behaviour.EventsFile != "" {
 		// The widget writes the events file relative to the working directory, which is the write dir.
-		eventsFilePath := filepath.Join(utils.AnalyticsWidgetDir("."), "events", filepath.Base(replayBase)+"_events.json")
+		eventsFilePath := filepath.Join(
+			utils.AnalyticsWidgetEventsDir("."),
+			filepath.Base(utils.DemoEventsFilePath(replayFilePath)),
+		)
 		if err := writeFileForFake(eventsFilePath, []byte(behaviour.EventsFile)); err != nil {
 			return 0, err
 		}
@@ -236,7 +239,7 @@ func newSpringHeadlessCall(args []string) (*springHeadlessCall, error) {
 		if err != nil {
 			return nil, err
 		}
-		data, err := os.ReadFile(filepath.Join(writeDir, utils.WidgetConfigFile))
+		data, err := os.ReadFile(utils.WidgetHandlerConfigFilePath(writeDir))
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return nil, err
 		}
@@ -374,7 +377,7 @@ func writeFileForFake(filePath string, content []byte) error {
 func waitForFile(filePath string, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		if _, err := os.Stat(filePath); err == nil {
+		if utils.FileExists(filePath) {
 			return nil
 		}
 		time.Sleep(10 * time.Millisecond)
@@ -418,14 +421,6 @@ func addFakeEngine(dataDir string, engineVersion string) {
 	Expect(os.MkdirAll(utils.EngineVersionDir(dataDir, engineVersion), 0o750)).To(Succeed())
 	Expect(os.Symlink(testBinary, utils.SpringHeadlessFilePath(dataDir, engineVersion))).To(Succeed())
 	Expect(os.Symlink(testBinary, utils.PrDownloaderFilePath(dataDir, engineVersion))).To(Succeed())
-}
-
-// addEngineFiles adds the folder engine/folderName to dataDir with the files fileNames, which are not executable.
-func addEngineFiles(dataDir string, folderName string, fileNames ...string) {
-	Expect(os.MkdirAll(filepath.Join(utils.EngineDir(dataDir), folderName), 0o750)).To(Succeed())
-	for _, fileName := range fileNames {
-		writeFile(filepath.Join(utils.EngineDir(dataDir), folderName, fileName), "")
-	}
 }
 
 // addMapFile adds the map archive fileName to the maps/ of dataDir.
@@ -548,8 +543,7 @@ func readSpringHeadlessCall(replayFilePath string) springHeadlessCall {
 
 // springHeadlessCalled returns whether the fake spring-headless was called for the replay replayFilePath.
 func springHeadlessCalled(replayFilePath string) bool {
-	_, err := os.Stat(replaySibling(replayFilePath, springHeadlessCallSuffix))
-	return err == nil
+	return utils.FileExists(replaySibling(replayFilePath, springHeadlessCallSuffix))
 }
 
 // writePrDownloaderBehaviour sets what the fake pr-downloader does in dataDir.

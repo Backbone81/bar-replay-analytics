@@ -5,6 +5,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+
+	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
 // ReplayIndex records which demo file of a directory holds which replay, so a tool fetching replays into the
@@ -50,11 +52,7 @@ func (i *ReplayIndex) Save() error {
 		return err
 	}
 
-	//nolint:gosec // This file does not contain confidential data.
-	if err := os.WriteFile(i.filePath, data, 0o644); err != nil {
-		return err
-	}
-	return nil
+	return utils.WriteFile(i.filePath, data, 0o644)
 }
 
 func (i *ReplayIndex) Add(replayId string, fileName string) {

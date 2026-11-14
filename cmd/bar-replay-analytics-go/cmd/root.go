@@ -17,7 +17,6 @@ import (
 	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
 	"github.com/backbone81/bar-replay-analytics-go/internal/events"
 	"github.com/backbone81/bar-replay-analytics-go/internal/logger"
-	replayplayer "github.com/backbone81/bar-replay-analytics-go/internal/replay/player"
 	"github.com/backbone81/bar-replay-analytics-go/internal/replay/player/widget"
 	"github.com/backbone81/bar-replay-analytics-go/internal/report"
 	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
@@ -118,8 +117,7 @@ func replayPaths(args []string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		info, err := os.Stat(filePath)
-		if err != nil || !info.IsDir() {
+		if !utils.DirExists(filePath) {
 			// A missing file fails when its command reads it, with the replay's name in the error.
 			if err := add(filePath); err != nil {
 				return nil, err
@@ -186,36 +184,20 @@ func writeJSON(value any) error {
 	return encoder.Encode(value)
 }
 
-// writeJSONFile writes value as indented JSON to filePath, replacing it. It writes a temporary file next to it and
-// renames that, so filePath is never incomplete.
+// writeJSONFile writes value as indented JSON to filePath, replacing it (see utils.WriteFile).
 func writeJSONFile(filePath string, value any) error {
 	data, err := json.MarshalIndent(value, "", "  ")
 	if err != nil {
 		return err
 	}
-	tempFile, err := os.CreateTemp(filepath.Dir(filePath), filepath.Base(filePath)+".tmp-*")
-	if err != nil {
-		return err
-	}
-	_, err = tempFile.Write(append(data, '\n'))
-	err = errors.Join(err, tempFile.Close())
-	if err == nil {
-		err = os.Chmod(tempFile.Name(), 0o644) //nolint:gosec // This file does not contain sensitive data.
-	}
-	if err == nil {
-		err = os.Rename(tempFile.Name(), filePath)
-	}
-	if err != nil {
-		return errors.Join(err, os.Remove(tempFile.Name()))
-	}
-	return nil
+	return utils.WriteFile(filePath, append(data, '\n'), 0o644)
 }
 
 // reportReplay writes the report of the replay filePath, and returns its status, "reported", "skipped" (no events
 // file) or "failed", and a description of the outcome.
 func reportReplay(filePath string) (string, string) {
-	eventsFilePath := replayplayer.EventsFilePath(filePath)
-	if _, err := os.Stat(eventsFilePath); errors.Is(err, fs.ErrNotExist) {
+	eventsFilePath := utils.DemoEventsFilePath(filePath)
+	if !utils.FileExists(eventsFilePath) {
 		return statusSkipped, "no events file: play the replay back first (replay play)"
 	}
 	replay, err := demo.ReadFile(filePath, demo.ReadUntilEnd)
@@ -241,7 +223,7 @@ func reportReplay(filePath string) (string, string) {
 	if err != nil {
 		return statusFailed, err.Error()
 	}
-	reportFilePath := reportPath(filePath)
+	reportFilePath := utils.DemoReportFilePath(filePath)
 	if err := writeJSONFile(reportFilePath, result); err != nil {
 		return statusFailed, err.Error()
 	}
@@ -251,10 +233,4 @@ func reportReplay(filePath string) (string, string) {
 			"again with replay play)", eventsFile.FormatVersion, widget.FormatVersion)
 	}
 	return statusReported, description
-}
-
-// reportPath returns the path of the report of the replay file filePath: <replay name>_report.json next to it, like
-// the events file of its playback (see player.EventsFilePath).
-func reportPath(filePath string) string {
-	return strings.TrimSuffix(filePath, filepath.Ext(filePath)) + "_report.json"
 }

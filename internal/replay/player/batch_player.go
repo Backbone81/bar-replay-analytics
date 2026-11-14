@@ -307,7 +307,7 @@ func (p *BatchPlayer) replayFilesInFolder(folder string) ([]string, error) {
 // the embedded widget's format version (see ValidateEventsFile). Playing such a replay again would write the same
 // events; a missing, incomplete, unreadable or outdated one is written again.
 func (p *BatchPlayer) IsEventsFileCurrent(replayFilePath string) bool {
-	return ValidateEventsFile(EventsFilePath(replayFilePath)) == nil
+	return ValidateEventsFile(utils.DemoEventsFilePath(replayFilePath)) == nil
 }
 
 func (p *BatchPlayer) replayDate(replayInfo *ReplayInfo) string {

@@ -13,7 +13,7 @@ import (
 
 // makeBarDataDir creates dir as the BAR launcher does on its first start.
 func makeBarDataDir(dir string) {
-	Expect(os.MkdirAll(filepath.Join(dir, "launcher-logs"), 0o750)).To(Succeed())
+	Expect(os.MkdirAll(utils.LauncherLogsDir(dir), 0o750)).To(Succeed())
 }
 
 // writeUserDirs writes content as user-dirs.dirs into a new XDG_CONFIG_HOME.
@@ -100,7 +100,7 @@ var _ = Describe("BarDataDir", func() {
 
 		It("rejects a file named launcher-logs", func() {
 			dir := GinkgoT().TempDir()
-			Expect(os.WriteFile(filepath.Join(dir, "launcher-logs"), nil, 0o600)).To(Succeed())
+			Expect(os.WriteFile(utils.LauncherLogsDir(dir), nil, 0o600)).To(Succeed())
 
 			Expect(utils.IsBarDataDir(dir)).To(BeFalse())
 		})

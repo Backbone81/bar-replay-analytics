@@ -11,6 +11,7 @@ import (
 	"github.com/backbone81/bar-replay-analytics-go/internal/events"
 	replayplayer "github.com/backbone81/bar-replay-analytics-go/internal/replay/player"
 	"github.com/backbone81/bar-replay-analytics-go/internal/replay/player/widget"
+	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
 var _ = Describe("BatchPlayer", func() {
@@ -83,7 +84,7 @@ var _ = Describe("BatchPlayer", func() {
 		DescribeTable("compares a complete events file with the widget's format version",
 			func(formatVersion int, expected bool) {
 				replayFilePath := filepath.Join(GinkgoT().TempDir(), "game.sdfz")
-				writeFile(replaySibling(replayFilePath, "_events.json"),
+				writeFile(utils.DemoEventsFilePath(replayFilePath),
 					eventsFileContent(formatVersion, events.EndReasonGameOver))
 
 				Expect(newBatchPlayer(newDataDir()).IsEventsFileCurrent(replayFilePath)).To(Equal(expected))
@@ -95,14 +96,14 @@ var _ = Describe("BatchPlayer", func() {
 
 		It("is false for an events file without an end", func() {
 			replayFilePath := filepath.Join(GinkgoT().TempDir(), "game.sdfz")
-			writeFile(replaySibling(replayFilePath, "_events.json"), eventsFileContent(widget.FormatVersion, ""))
+			writeFile(utils.DemoEventsFilePath(replayFilePath), eventsFileContent(widget.FormatVersion, ""))
 
 			Expect(newBatchPlayer(newDataDir()).IsEventsFileCurrent(replayFilePath)).To(BeFalse())
 		})
 
 		It("is false for an events file of a game that did not end", func() {
 			replayFilePath := filepath.Join(GinkgoT().TempDir(), "game.sdfz")
-			writeFile(replaySibling(replayFilePath, "_events.json"),
+			writeFile(utils.DemoEventsFilePath(replayFilePath),
 				eventsFileContent(widget.FormatVersion, events.EndReasonStalled))
 
 			Expect(newBatchPlayer(newDataDir()).IsEventsFileCurrent(replayFilePath)).To(BeFalse())
@@ -110,7 +111,7 @@ var _ = Describe("BatchPlayer", func() {
 
 		It("is false for an events file that was cut off", func() {
 			replayFilePath := filepath.Join(GinkgoT().TempDir(), "game.sdfz")
-			writeFile(replaySibling(replayFilePath, "_events.json"), currentEventsFileContent()[:10])
+			writeFile(utils.DemoEventsFilePath(replayFilePath), currentEventsFileContent()[:10])
 
 			Expect(newBatchPlayer(newDataDir()).IsEventsFileCurrent(replayFilePath)).To(BeFalse())
 		})
@@ -124,23 +125,23 @@ var _ = Describe("BatchPlayer", func() {
 
 			Expect(newBatchPlayer(dataDir).Run(ctx, ".")).To(Succeed())
 
-			Expect(readFile(replaySibling(first, "_events.json"))).To(Equal(currentEventsFileContent()))
-			Expect(readFile(replaySibling(second, "_events.json"))).To(Equal(currentEventsFileContent()))
+			Expect(readFile(utils.DemoEventsFilePath(first))).To(Equal(currentEventsFileContent()))
+			Expect(readFile(utils.DemoEventsFilePath(second))).To(Equal(currentEventsFileContent()))
 		})
 
 		It("skips a replay whose events file is current and plays one whose events file is outdated", func(ctx SpecContext) {
 			dataDir := newDataDirWithAssets()
 			current := writePlayableReplay(dataDir, "current.sdfz", testMapName)
-			writeFile(replaySibling(current, "_events.json"), currentEventsFileContent())
+			writeFile(utils.DemoEventsFilePath(current), currentEventsFileContent())
 			outdated := writePlayableReplay(dataDir, "outdated.sdfz", testMapName)
-			writeFile(replaySibling(outdated, "_events.json"),
+			writeFile(utils.DemoEventsFilePath(outdated),
 				eventsFileContent(widget.FormatVersion-1, events.EndReasonGameOver))
 
 			Expect(newBatchPlayer(dataDir).Run(ctx, ".")).To(Succeed())
 
 			Expect(springHeadlessCalled(current)).To(BeFalse())
 			Expect(springHeadlessCalled(outdated)).To(BeTrue())
-			Expect(readFile(replaySibling(outdated, "_events.json"))).To(Equal(currentEventsFileContent()))
+			Expect(readFile(utils.DemoEventsFilePath(outdated))).To(Equal(currentEventsFileContent()))
 		})
 
 		It("plays only the replays the filter matches", func(ctx SpecContext) {
@@ -195,7 +196,7 @@ var _ = Describe("BatchPlayer", func() {
 			Expect(newBatchPlayer(dataDir).Run(ctx, ".")).
 				ToNot(Succeed())
 
-			Expect(readFile(replaySibling(working, "_events.json"))).To(Equal(currentEventsFileContent()))
+			Expect(readFile(utils.DemoEventsFilePath(working))).To(Equal(currentEventsFileContent()))
 		})
 
 		It("plays the replays in parallel", func(ctx SpecContext) {

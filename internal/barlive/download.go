@@ -14,6 +14,7 @@ import (
 	"regexp"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
+	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
 // demoFileNamePattern matches the characters demo file names are made of, so a name from bar-db cannot leave the
@@ -31,60 +32,62 @@ func ValidateDemoFileName(demoFileName string) error {
 	return nil
 }
 
-// DownloadDemo downloads the demo file demoFileName from the storage and writes it to writer. If it fails, writer may
-// have received part of the file.
-func (c *Client) DownloadDemo(ctx context.Context, demoFileName string, writer io.Writer) error {
+// DownloadDemo requests the demo file demoFileName from the storage and returns its content as it arrives. The caller
+// reads and closes it. A missing demo and any HTTP status but 200 fail before content is returned; a download that
+// breaks off fails while it is read.
+func (c *Client) DownloadDemo(ctx context.Context, demoFileName string) (io.ReadCloser, error) {
 	if err := ValidateDemoFileName(demoFileName); err != nil {
-		return err
+		return nil, err
 	}
 
 	requestURL, err := url.JoinPath(c.config.StorageURL, "demos", url.PathEscape(demoFileName))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if err := c.downloadDemo(ctx, requestURL, writer); err != nil {
-		return fmt.Errorf("GET %s: %w", requestURL, err)
+	body, err := c.downloadDemo(ctx, requestURL)
+	if err != nil {
+		return nil, fmt.Errorf("GET %s: %w", requestURL, err)
 	}
-	return nil
+	return body, nil
 }
 
 // downloadDemo implements DownloadDemo for the URL of the demo.
-func (c *Client) downloadDemo(ctx context.Context, requestURL string, writer io.Writer) error {
+func (c *Client) downloadDemo(ctx context.Context, requestURL string) (io.ReadCloser, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	c.log.Debug("HTTP GET", "url", requestURL)
 	response, err := c.httpClient.Do(request)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer response.Body.Close() //nolint:errcheck
 
 	if response.StatusCode == http.StatusNotFound {
-		return errors.New("demo file not found on remote server")
+		return nil, errors.Join(errors.New("demo file not found on remote server"), response.Body.Close())
 	}
 
 	if response.StatusCode != http.StatusOK {
 		var responseData bytes.Buffer
 		_, _ = io.Copy(&responseData, response.Body)
-		return fmt.Errorf("unexpected HTTP status %s: %s", response.Status, responseData.String())
+		return nil, errors.Join(
+			fmt.Errorf("unexpected HTTP status %s: %s", response.Status, responseData.String()),
+			response.Body.Close(),
+		)
 	}
 
-	_, err = io.Copy(writer, response.Body)
-	return err
+	return response.Body, nil
 }
 
-// DownloadDemoIntoDir downloads the demo file of replay, as DownloadDemo does, stores it in dir under Replay.FileName
-// and returns its path. It takes the whole Replay to check the file's game ID against Replay.ID. It never overwrites a
+// DownloadDemoIntoDir downloads the demo file of replay (see DownloadDemo), stores it in dir under Replay.FileName and
+// returns its path. It takes the whole Replay to check the file's game ID against Replay.ID. It never overwrites a
 // file: if dir already holds one of that name, it returns an error matching fs.ErrExist.
 //
-// The download goes to the file name with ".part" appended, which is renamed only once it is complete and its header
-// names the game of replay (Replay.ID), so dir never holds a partial or wrong file under the name. The .part file is
-// removed if the download fails or the context is cancelled. One left behind by a killed process stays visible next to
-// the replays and is overwritten by the next download of the replay.
+// The download is written with utils.WriteFileFrom, so dir never holds a partial file under the name. Then the header
+// of the stored file must name the game of replay (Replay.ID); a file of another game, or no demo at all, is removed
+// again. A process killed between storing and checking leaves the file unchecked.
 func (c *Client) DownloadDemoIntoDir(ctx context.Context, replay *Replay, dir string) (string, error) {
 	if err := ValidateDemoFileName(replay.FileName); err != nil {
 		return "", err
@@ -94,38 +97,43 @@ func (c *Client) DownloadDemoIntoDir(ctx context.Context, replay *Replay, dir st
 		return "", err
 	}
 
-	partPath := filePath + ".part"
-	// ValidateDemoFileName made sure that partPath stays inside dir; replays are not confidential, see filePermissions.
-	file, err := os.OpenFile(partPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644) //nolint:gosec
-	if err != nil {
+	if err := c.downloadDemoIntoFile(ctx, replay.FileName, filePath); err != nil {
 		return "", err
 	}
-	renamed := false
+
+	if err := checkDemoGameID(filePath, replay.ID); err != nil {
+		return "", errors.Join(
+			fmt.Errorf("demo file %s: %w", replay.FileName, err),
+			os.Remove(filePath),
+		)
+	}
+	return filePath, nil
+}
+
+// downloadDemoIntoFile downloads the demo file demoFileName (see DownloadDemo) and writes it to filePath, readable by
+// everyone, as replays are not confidential (see utils.WriteFileFrom).
+func (c *Client) downloadDemoIntoFile(ctx context.Context, demoFileName string, filePath string) (err error) {
+	body, err := c.DownloadDemo(ctx, demoFileName)
+	if err != nil {
+		return err
+	}
 	defer func() {
-		if !renamed {
-			_ = os.Remove(partPath)
-		}
+		err = errors.Join(err, body.Close())
 	}()
 
-	// Close can report a failed write, so its error counts like that of the download.
-	downloadErr := c.DownloadDemo(ctx, replay.FileName, file)
-	if err := errors.Join(downloadErr, file.Close()); err != nil {
-		return "", err
-	}
+	return utils.WriteFileFrom(filePath, body, 0o644)
+}
 
-	demoFile, err := demo.ReadFile(partPath, demo.ReadUntilHeader)
+// checkDemoGameID returns an error if the file filePath is no demo file or its header does not name the game gameID.
+func checkDemoGameID(filePath string, gameID string) error {
+	demoFile, err := demo.ReadFile(filePath, demo.ReadUntilHeader)
 	if err != nil {
-		return "", fmt.Errorf("demo file %s: %w", replay.FileName, err)
+		return err
 	}
-	if gameID := demoFile.FileHeader.GameIDAsString(); gameID != replay.ID {
-		return "", fmt.Errorf("demo file %s: holds game %s, want %s", replay.FileName, gameID, replay.ID)
+	if fileGameID := demoFile.FileHeader.GameIDAsString(); fileGameID != gameID {
+		return fmt.Errorf("holds game %s, want %s", fileGameID, gameID)
 	}
-
-	if err := os.Rename(partPath, filePath); err != nil {
-		return "", err
-	}
-	renamed = true
-	return filePath, nil
+	return nil
 }
 
 // checkNotExist returns an error matching fs.ErrExist if filePath exists, or the error of looking it up.

@@ -63,10 +63,10 @@ func UserWidgetNameLiterals(widgetsDir string) ([]string, error) {
 	return slices.Compact(literals), nil
 }
 
-// WidgetConfig returns a widget config file (see utils.WidgetConfigFile) whose order list enables the widgets named by
-// nameLiterals, Lua string literals written into it as they are. BAR's widget handler before commit 50fbf4d02f
-// (2026-07-15) enables a user widget only if the order list has it, so without this file the playback would run none
-// of them. A name given twice, also in different quotes, is a repeated key, which Lua allows.
+// WidgetConfig returns a widget handler config (see utils.WidgetHandlerConfigFilePath) whose order list enables the
+// widgets named by nameLiterals, Lua string literals written into it as they are. BAR's widget handler before commit
+// 50fbf4d02f (2026-07-15) enables a user widget only if the order list has it, so without this file the playback would
+// run none of them. A name given twice, also in different quotes, is a repeated key, which Lua allows.
 func WidgetConfig(nameLiterals []string) []byte {
 	nameLiterals = slices.Clone(nameLiterals)
 	slices.Sort(nameLiterals)

@@ -1,14 +1,10 @@
 package player_test
 
 import (
-	"os"
-	"path/filepath"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	replayplayer "github.com/backbone81/bar-replay-analytics-go/internal/replay/player"
-	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
 var _ = Describe("Inventory", func() {
@@ -21,175 +17,21 @@ var _ = Describe("Inventory", func() {
 		Expect(inventory.GameAvailable(testGameType)).To(BeFalse())
 	})
 
-	Context("engines", func() {
-		It("finds an engine with spring-headless and pr-downloader", func() {
-			dataDir := newDataDir()
-			addEngineFiles(dataDir, "recoil_"+testEngineVersion, "spring-headless", "pr-downloader")
+	It("finds the engine, map and game in the data dir", func() {
+		inventory, err := replayplayer.NewInventory(newDataDirWithAssets())
 
-			inventory, err := replayplayer.NewInventory(dataDir)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(inventory.EngineVersionAvailable(testEngineVersion)).To(BeTrue())
-		})
-
-		It("finds an engine with the Windows executables", func() {
-			dataDir := newDataDir()
-			addEngineFiles(dataDir, "recoil_"+testEngineVersion, "spring-headless.exe", "pr-downloader.exe")
-
-			inventory, err := replayplayer.NewInventory(dataDir)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(inventory.EngineVersionAvailable(testEngineVersion)).To(BeTrue())
-		})
-
-		It("does not count an engine without pr-downloader", func() {
-			dataDir := newDataDir()
-			addEngineFiles(dataDir, "recoil_"+testEngineVersion, "spring-headless")
-
-			inventory, err := replayplayer.NewInventory(dataDir)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(inventory.EngineVersionAvailable(testEngineVersion)).To(BeFalse())
-		})
-
-		It("does not count an engine without spring-headless", func() {
-			dataDir := newDataDir()
-			addEngineFiles(dataDir, "recoil_"+testEngineVersion, "pr-downloader")
-
-			inventory, err := replayplayer.NewInventory(dataDir)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(inventory.EngineVersionAvailable(testEngineVersion)).To(BeFalse())
-		})
-
-		It("does not count an engine whose spring-headless is a folder", func() {
-			dataDir := newDataDir()
-			addEngineFiles(dataDir, "recoil_"+testEngineVersion, "pr-downloader")
-			Expect(os.Mkdir(utils.SpringHeadlessFilePath(dataDir, testEngineVersion), 0o750)).
-				To(Succeed())
-
-			inventory, err := replayplayer.NewInventory(dataDir)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(inventory.EngineVersionAvailable(testEngineVersion)).To(BeFalse())
-		})
-
-		It("does not count an engine folder that is not named after a release tag", func() {
-			dataDir := newDataDir()
-			addEngineFiles(dataDir, "recoil_local-build", "spring-headless", "pr-downloader")
-
-			inventory, err := replayplayer.NewInventory(dataDir)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(inventory.EngineVersionAvailable("local-build")).To(BeFalse())
-		})
-
-		It("does not count a file named like an engine folder", func() {
-			dataDir := newDataDir()
-			writeFile(utils.EngineVersionDir(dataDir, testEngineVersion), "")
-
-			inventory, err := replayplayer.NewInventory(dataDir)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(inventory.EngineVersionAvailable(testEngineVersion)).To(BeFalse())
-		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(inventory.EngineVersionAvailable(testEngineVersion)).To(BeTrue())
+		Expect(inventory.MapAvailable(testMapName)).To(BeTrue())
+		Expect(inventory.MapAvailable("argent strata 1.1")).To(BeTrue())
+		Expect(inventory.GameAvailable(testGameType)).To(BeTrue())
 	})
 
-	Context("maps", func() {
-		It("finds a map by its name in a .sd7 archive", func() {
-			dataDir := newDataDir()
-			addMapFile(dataDir, testMapFileName)
+	It("fails if the data dir cannot be read", func() {
+		dataDir := newDataDir()
+		writeFile(rapidVersionsFile(dataDir), "not gzipped")
 
-			inventory, err := replayplayer.NewInventory(dataDir)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(inventory.MapAvailable(testMapName)).To(BeTrue())
-		})
-
-		It("finds a map in a .sdz archive whose file name has upper case letters", func() {
-			dataDir := newDataDir()
-			addMapFile(dataDir, "Supreme_Isthmus_V1.8.SDZ")
-
-			inventory, err := replayplayer.NewInventory(dataDir)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(inventory.MapAvailable("Supreme Isthmus v1.8")).To(BeTrue())
-		})
-
-		It("does not count files which are no map archives", func() {
-			dataDir := newDataDir()
-			addMapFile(dataDir, "argent_strata_1.1.txt")
-
-			inventory, err := replayplayer.NewInventory(dataDir)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(inventory.MapAvailable(testMapName)).To(BeFalse())
-		})
-
-		It("does not count folders", func() {
-			dataDir := newDataDir()
-			Expect(os.MkdirAll(filepath.Join(utils.MapsDir(dataDir), testMapFileName), 0o750)).To(Succeed())
-
-			inventory, err := replayplayer.NewInventory(dataDir)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(inventory.MapAvailable(testMapName)).To(BeFalse())
-		})
-	})
-
-	Context("games", func() {
-		It("finds a game whose package is there", func() {
-			dataDir := newDataDir()
-			addGame(dataDir, testGamePackage, testGameType)
-
-			inventory, err := replayplayer.NewInventory(dataDir)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(inventory.GameAvailable(testGameType)).To(BeTrue())
-		})
-
-		It("does not count a listed game whose package is missing", func() {
-			dataDir := newDataDir()
-			writeRapidVersions(dataDir,
-				"byar:test,"+testGamePackage+",,"+testGameType,
-				"byar:test,fedcba9876543210fedcba9876543210,,Beyond All Reason test-31000-1234567",
-			)
-			addPackage(dataDir, testGamePackage)
-
-			inventory, err := replayplayer.NewInventory(dataDir)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(inventory.GameAvailable(testGameType)).To(BeTrue())
-			Expect(inventory.GameAvailable("Beyond All Reason test-31000-1234567")).To(BeFalse())
-		})
-
-		It("finds no game without packages/", func() {
-			dataDir := newDataDir()
-			writeRapidVersions(dataDir, "byar:test,"+testGamePackage+",,"+testGameType)
-
-			inventory, err := replayplayer.NewInventory(dataDir)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(inventory.GameAvailable(testGameType)).To(BeFalse())
-		})
-
-		It("skips lines with too few fields", func() {
-			dataDir := newDataDir()
-			writeRapidVersions(dataDir, "byar:test,"+testGamePackage, "byar:test,"+testGamePackage+",,"+testGameType)
-			addPackage(dataDir, testGamePackage)
-
-			inventory, err := replayplayer.NewInventory(dataDir)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(inventory.GameAvailable(testGameType)).To(BeTrue())
-		})
-
-		It("fails on a versions file that is not gzipped", func() {
-			dataDir := newDataDir()
-			writeFile(rapidVersionsFile(dataDir), "byar:test,"+testGamePackage+",,"+testGameType+"\n")
-
-			Expect(replayplayer.NewInventory(dataDir)).Error().To(HaveOccurred())
-		})
+		Expect(replayplayer.NewInventory(dataDir)).Error().To(HaveOccurred())
 	})
 
 	Context("Add", func() {
@@ -236,14 +78,4 @@ var _ = Describe("Inventory", func() {
 
 		Expect(inventory.MapAvailable(testMapName)).To(BeTrue())
 	})
-
-	DescribeTable("NormalizeMapName",
-		func(mapName string, expected string) {
-			Expect(replayplayer.NormalizeMapName(mapName)).To(Equal(expected))
-		},
-		Entry("lower case with underscores", "Argent Strata 1.1", "argent_strata_1_1"),
-		Entry("an archive file name", "argent_strata_1.1", "argent_strata_1_1"),
-		Entry("other characters", "Tabula-v7 (remake)", "tabula_v7__remake_"),
-		Entry("non-ASCII letters, byte by byte", "Glacé", "glac__"),
-	)
 })

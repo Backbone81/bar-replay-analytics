@@ -5,8 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"io/fs"
 	"net/http"
 	"os"
 	"os/exec"
@@ -77,7 +75,7 @@ func NewAssetManager(config AssetManagerConfig) (*AssetManager, error) {
 // EnsureEngineVersion makes sure the release build of the engine engineVersion is in the data dir.
 // It fails if engineVersion is not a release tag.
 func (m *AssetManager) EnsureEngineVersion(ctx context.Context, engineVersion string) error {
-	if err := validateEngineVersion(engineVersion); err != nil {
+	if err := utils.ValidateEngineVersion(engineVersion); err != nil {
 		return err
 	}
 
@@ -122,7 +120,7 @@ func (m *AssetManager) addEngineVersion(engineVersion string) {
 // EnsureMap makes sure the map mapName is in the data dir. It is downloaded with the pr-downloader of the engine
 // engineVersion, which EnsureEngineVersion must have made available. It fails if engineVersion is not a release tag.
 func (m *AssetManager) EnsureMap(ctx context.Context, engineVersion string, mapName string) error {
-	if err := validateEngineVersion(engineVersion); err != nil {
+	if err := utils.ValidateEngineVersion(engineVersion); err != nil {
 		return err
 	}
 
@@ -168,7 +166,7 @@ func (m *AssetManager) addMap(mapName string) {
 // in the data dir. It is downloaded with the pr-downloader of the engine engineVersion, which EnsureEngineVersion must
 // have made available. It fails if engineVersion is not a release tag.
 func (m *AssetManager) EnsureGame(ctx context.Context, engineVersion string, game string) error {
-	if err := validateEngineVersion(engineVersion); err != nil {
+	if err := utils.ValidateEngineVersion(engineVersion); err != nil {
 		return err
 	}
 
@@ -304,7 +302,7 @@ func (m *AssetManager) downloadEngineTry(ctx context.Context, engineVersion stri
 	return nil
 }
 
-// DownloadFile saves the response to a GET of downloadUrl as filePath. A partial file is removed on error.
+// DownloadFile saves the response to a GET of downloadUrl as filePath, replacing it (see utils.WriteFileFrom).
 func (m *AssetManager) DownloadFile(ctx context.Context, downloadUrl string, filePath string) error {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadUrl, nil)
 	if err != nil {
@@ -326,17 +324,7 @@ func (m *AssetManager) DownloadFile(ctx context.Context, downloadUrl string, fil
 		return err
 	}
 
-	//nolint:gosec // The caller is responsible for the file path
-	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
-	if err != nil {
-		return err
-	}
-	_, err = io.Copy(file, response.Body)
-	err = errors.Join(err, file.Close())
-	if err != nil {
-		_ = os.Remove(filePath)
-	}
-	return err
+	return utils.WriteFileFrom(filePath, response.Body, 0o644)
 }
 
 // Extract7z unpacks the 7z archive filePath into the folder of the same name without the extension. The archive is
@@ -392,17 +380,8 @@ func (m *AssetManager) extract7zFile(file *sevenzip.File, baseDir string) error 
 	}
 	defer reader.Close() //nolint:errcheck
 
-	// An existing file is removed rather than overwritten: the new file gets its own inode, so a running engine binary
-	// (writing it would fail with "text file busy") or a hard link to the old file is not touched.
-	if err := os.Remove(destination); err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return err
-	}
-
-	//nolint:gosec // The folder is safe
-	writer, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, file.Mode().Perm())
-	if err != nil {
-		return err
-	}
-	_, err = io.Copy(writer, reader)
-	return errors.Join(err, writer.Close())
+	// The rename in WriteFileFrom replaces an existing file rather than overwriting it: the new file gets its own inode,
+	// so a running engine binary (writing it would fail with "text file busy") or a hard link to the old file is not
+	// touched.
+	return utils.WriteFileFrom(destination, reader, file.Mode().Perm())
 }

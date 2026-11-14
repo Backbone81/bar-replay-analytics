@@ -87,7 +87,7 @@ var _ = Describe("AssetManager", func() {
 				handler, server := newEngineServer()
 				assetManager := newAssetManagerWithEngineDownloads(dataDir, server.URL+"/engine/{{.EngineVersion}}.7z")
 
-				Expect(assetManager.EnsureEngineVersion(ctx, engineVersion)).NotTo(Succeed())
+				Expect(assetManager.EnsureEngineVersion(ctx, engineVersion)).ToNot(Succeed())
 				Expect(handler.RequestURIs()).To(BeEmpty())
 				Expect(utils.EngineDir(dataDir)).NotTo(BeAnExistingFile())
 			},
@@ -106,7 +106,7 @@ var _ = Describe("AssetManager", func() {
 				server.URL+"/missing/second.7z",
 			)
 
-			Expect(assetManager.EnsureEngineVersion(ctx, testEngineVersion)).NotTo(Succeed())
+			Expect(assetManager.EnsureEngineVersion(ctx, testEngineVersion)).ToNot(Succeed())
 			Expect(handler.RequestURIs()).To(HaveExactElements("/missing/first.7z", "/missing/second.7z"))
 			Expect(utils.EngineVersionDir(dataDir, testEngineVersion)).NotTo(BeAnExistingFile())
 		})
@@ -116,7 +116,7 @@ var _ = Describe("AssetManager", func() {
 				"https://example.com/{{.Missing}}",
 			)
 
-			Expect(assetManager.EnsureEngineVersion(ctx, testEngineVersion)).NotTo(Succeed())
+			Expect(assetManager.EnsureEngineVersion(ctx, testEngineVersion)).ToNot(Succeed())
 		})
 	})
 

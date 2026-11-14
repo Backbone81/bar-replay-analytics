@@ -11,6 +11,7 @@ import (
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/barlive"
 	"github.com/backbone81/bar-replay-analytics-go/internal/replay/index"
+	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
 type Downloader struct {
@@ -187,7 +188,7 @@ func (d *Downloader) fetchPlayerReplay(
 	if found {
 		// We found the replay in the index, but the corresponding file might be missing from disk. We therefore check
 		// if the file is indeed on disk.
-		if _, err := os.Stat(filepath.Join(d.config.Dir, fileName)); err == nil {
+		if utils.FileExists(filepath.Join(d.config.Dir, fileName)) {
 			logger.Info("Replay already available on disk")
 			return nil
 		}
@@ -206,7 +207,7 @@ func (d *Downloader) fetchPlayerReplay(
 		// The file name did contain unexpected characters. Reject it.
 		return err
 	}
-	if _, err := os.Stat(filepath.Join(d.config.Dir, replay.FileName)); err == nil {
+	if utils.FileExists(filepath.Join(d.config.Dir, replay.FileName)) {
 		logger.Info("Replay file already on disk but missing from index. Adding to index.")
 		d.config.Index.Add(replay.ID, replay.FileName)
 		return nil
