@@ -15,7 +15,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
+	"github.com/backbone81/bar-replay-analytics/internal/utils"
 )
 
 // AssetManager makes sure the engines, maps and games replays need are in the data dir, and downloads them there like

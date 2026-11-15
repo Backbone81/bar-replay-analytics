@@ -9,7 +9,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
+	"github.com/backbone81/bar-replay-analytics/internal/demo"
 )
 
 // FuzzReadUncompressed feeds ReadUncompressed with mutations of valid demos. Besides not panicking, every demo it

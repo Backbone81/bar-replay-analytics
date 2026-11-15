@@ -1,7 +1,7 @@
 package report
 
 import (
-	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
+	"github.com/backbone81/bar-replay-analytics/internal/tdf"
 )
 
 // GameSpeed is the number of game frames per second of game time.

@@ -4,7 +4,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	replayplayer "github.com/backbone81/bar-replay-analytics-go/internal/replay/player"
+	replayplayer "github.com/backbone81/bar-replay-analytics/internal/replay/player"
 )
 
 var _ = Describe("Inventory", func() {

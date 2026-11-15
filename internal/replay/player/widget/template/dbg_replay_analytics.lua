@@ -37,7 +37,7 @@ local STALL_QUIT_SECONDS = 20
 local PREGAME_QUIT_SECONDS = 300 -- loading and the start position phase take longer
 
 -- The version of the events file's format, written as "formatVersion". Increase it whenever the events this widget
--- writes change (an event, field or value added, removed or computed differently), so that bar-replay-analytics-go
+-- writes change (an event, field or value added, removed or computed differently), so that bar-replay-analytics
 -- plays replays with older events files again. Its tests hold a hash of this file to remind of it.
 local FORMAT_VERSION = 1
 
@@ -382,7 +382,7 @@ end
 
 -- Platform.isHeadless exists since engine 2026.06.10, Engine.isHeadless from 2026.06.03 to 2026.06.09. Older engines
 -- cannot tell, so the widget assumes headless there: the check only guards against an accidentally installed widget,
--- and bar-replay-analytics-go writes the widget into each playback's write dir.
+-- and bar-replay-analytics writes the widget into each playback's write dir.
 local function isHeadless()
 	if Platform.isHeadless ~= nil then
 		return Platform.isHeadless

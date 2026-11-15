@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
+	"github.com/backbone81/bar-replay-analytics/internal/utils"
 )
 
 // Inventory lists the engines, maps and games in a data dir, so a playback can tell without asking the network or

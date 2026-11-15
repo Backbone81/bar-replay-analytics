@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/replay/index"
+	"github.com/backbone81/bar-replay-analytics/internal/replay/index"
 )
 
 var _ = Describe("ReplayIndex", func() {

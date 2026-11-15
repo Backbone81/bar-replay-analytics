@@ -1,7 +1,7 @@
 package report
 
 import (
-	"github.com/backbone81/bar-replay-analytics-go/internal/events"
+	"github.com/backbone81/bar-replay-analytics/internal/events"
 )
 
 // FirstFinishedEntry is the first unit or building of one unit def a player built.

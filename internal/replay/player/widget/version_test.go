@@ -10,13 +10,13 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/replay/player/widget"
+	"github.com/backbone81/bar-replay-analytics/internal/replay/player/widget"
 )
 
 // expectedLuaFilesHash is the hash of the template's .lua files (see luaFilesHash) when the widget was last checked.
 // When the widget changes, the test fails: decide whether the events it writes changed (then increase FORMAT_VERSION
 // in the widget), then set expectedLuaFilesHash to the hash the test prints.
-const expectedLuaFilesHash = "42abedcc494bd127fdc1437efa504fd9cd40ff6bb4c79b141c32a40dca619622"
+const expectedLuaFilesHash = "c57d781ab68fc82dfb10e9f2814d42cc1836fc5ab1721eb15267e1694c6bb0c5"
 
 var _ = Describe("FormatVersion", func() {
 	It("was reconsidered when the widget changed", func() {

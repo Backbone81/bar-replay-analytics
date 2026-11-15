@@ -4,8 +4,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
-	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
+	"github.com/backbone81/bar-replay-analytics/internal/demo"
+	"github.com/backbone81/bar-replay-analytics/internal/tdf"
 )
 
 // Metadata describes the game of a replay.

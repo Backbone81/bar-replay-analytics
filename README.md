@@ -3,7 +3,7 @@
 Analyze your [Beyond All Reason](https://www.beyondallreason.info/) games from their replays, and let an AI agent
 coach you.
 
-`bar-replay-analytics-go` plays a replay back at maximum speed in the background and turns it into a report: your
+`bar-replay-analytics` plays a replay back at maximum speed in the background and turns it into a report: your
 economy minute by minute, metal extractors, idle constructors, what you killed and lost, your build order, side by
 side with your opponent's. It also downloads the replays of the best players from the leaderboards, so you can compare
 your games with theirs.
@@ -13,15 +13,25 @@ instructions for that agent.
 
 ## Quick start
 
-You need [Go](https://go.dev/dl/).
+**1. Install the tool.** Download the file for your system from the
+[latest release](https://github.com/backbone81/bar-replay-analytics/releases/latest):
 
-**1. Install the tool.**
+| System | File |
+| --- | --- |
+| Windows | `bar-replay-analytics_<version>_windows_amd64.exe` |
+| Linux | `bar-replay-analytics_<version>_linux_amd64` |
+
+It is a single program with nothing else to install. Rename it to `bar-replay-analytics` (`bar-replay-analytics.exe`
+on Windows) and put it into a folder on your `PATH`, or run it from where it is. On Linux, make it executable first
+(`chmod +x bar-replay-analytics`). The release's `checksums.txt` lists the SHA-256 of every file.
+
+If you have [Go](https://go.dev/dl/), you can build and install it instead:
 
 ```sh
-go install github.com/backbone81/bar-replay-analytics-go/cmd/bar-replay-analytics-go@latest
+go install github.com/backbone81/bar-replay-analytics/cmd/bar-replay-analytics@latest
 ```
 
-It lands in `go/bin/` in your home folder. Add that folder to your `PATH` if `bar-replay-analytics-go` is not found.
+It lands in `go/bin/` in your home folder. Add that folder to your `PATH` if `bar-replay-analytics` is not found.
 
 **2. Check that it finds BAR.** The tool works in your BAR data folder, which holds `demos/`, where BAR saves every
 game you play. It looks for it where the BAR installers put it:
@@ -39,7 +49,7 @@ than the first. `replay play` prints the folder it uses.
 **3. Get coached.** Make a folder for your coaching, set it up for the agent and start your AI agent there:
 
 ```sh
-bar-replay-analytics-go init
+bar-replay-analytics init
 ```
 
 This writes the agent's instructions (`AGENTS.md`), templates of the player profile and training log it keeps, and a
@@ -57,16 +67,16 @@ as `leaderboard` for `demos/leaderboard/`: every `.sdfz` file directly in it. Ev
 
 ```sh
 # Analyze replays
-bar-replay-analytics-go replay play <replay>...         # play back, several at a time: <replay>_events.json
-bar-replay-analytics-go replay report <replay>...       # the reports (need the playback): <replay>_report.json
-bar-replay-analytics-go replay script <replay>          # map, players, AIs and game options, no playback needed
-bar-replay-analytics-go replay inspect <replay>         # everything the replay file holds
+bar-replay-analytics replay play <replay>...         # play back, several at a time: <replay>_events.json
+bar-replay-analytics replay report <replay>...       # the reports (need the playback): <replay>_report.json
+bar-replay-analytics replay script <replay>          # map, players, AIs and game options, no playback needed
+bar-replay-analytics replay inspect <replay>         # everything the replay file holds
 
 # Leaderboards and replays of strong players
-bar-replay-analytics-go replay download-top [--game-type duel] [--top 10] [--days 7] [--map "<mapname>"] [--dry-run]
+bar-replay-analytics replay download-top [--game-type duel] [--top 10] [--days 7] [--map "<mapname>"] [--dry-run]
 
 # Set up the current folder for an AI coach
-bar-replay-analytics-go init
+bar-replay-analytics init
 ```
 
 Good to know:
@@ -95,7 +105,7 @@ Good to know:
 Needs Go and Docker (for the linter).
 
 ```sh
-make build   # tidy, format, vet, lint, then build ./bar-replay-analytics-go
+make build   # tidy, format, vet, lint, then build ./bar-replay-analytics
 make test    # the same checks, then all tests
 make fuzz    # run the fuzz tests until they stop finding new inputs (see scripts/fuzz.sh)
 ```

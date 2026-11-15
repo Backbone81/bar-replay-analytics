@@ -3,8 +3,8 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	replayplayer "github.com/backbone81/bar-replay-analytics-go/internal/replay/player"
-	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
+	replayplayer "github.com/backbone81/bar-replay-analytics/internal/replay/player"
+	"github.com/backbone81/bar-replay-analytics/internal/utils"
 )
 
 // The flags of replayPlayCmd.

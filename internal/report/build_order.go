@@ -3,7 +3,7 @@ package report
 import (
 	"fmt"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/events"
+	"github.com/backbone81/bar-replay-analytics/internal/events"
 )
 
 // BuildOrderEntry is one entry of a build order: a unit or building a player built.

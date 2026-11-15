@@ -1,7 +1,7 @@
 # Replay Analytics widget
 
 `dbg_replay_analytics.lua` is a Beyond All Reason user widget from
-[bar-replay-analytics-go](https://github.com/backbone81/bar-replay-analytics-go), a tool that analyzes replays.
+[bar-replay-analytics](https://github.com/backbone81/bar-replay-analytics), a tool that analyzes replays.
 
 The widget is active only when a replay is played back in a headless engine (`spring-headless`). It then plays the
 replay at maximum speed, logs unit, economy and builder events to `events/<replay name>_events.json` in this folder,

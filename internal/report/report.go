@@ -6,11 +6,11 @@ import (
 	"os"
 	"slices"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
-	"github.com/backbone81/bar-replay-analytics-go/internal/events"
-	"github.com/backbone81/bar-replay-analytics-go/internal/replay/player/widget"
-	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
-	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
+	"github.com/backbone81/bar-replay-analytics/internal/demo"
+	"github.com/backbone81/bar-replay-analytics/internal/events"
+	"github.com/backbone81/bar-replay-analytics/internal/replay/player/widget"
+	"github.com/backbone81/bar-replay-analytics/internal/tdf"
+	"github.com/backbone81/bar-replay-analytics/internal/utils"
 )
 
 // FormatVersion is the version of the report's format. Increase it whenever the report of the same replay and events

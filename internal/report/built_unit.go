@@ -3,7 +3,7 @@ package report
 import (
 	"iter"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/events"
+	"github.com/backbone81/bar-replay-analytics/internal/events"
 )
 
 // builtUnit is a unit a player built: a builder or factory started it and it was finished in a later frame.

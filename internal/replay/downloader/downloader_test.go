@@ -11,10 +11,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/barlive"
-	"github.com/backbone81/bar-replay-analytics-go/internal/barlive/barlivetest"
-	replaydownloader2 "github.com/backbone81/bar-replay-analytics-go/internal/replay/downloader"
-	"github.com/backbone81/bar-replay-analytics-go/internal/replay/index"
+	"github.com/backbone81/bar-replay-analytics/internal/barlive"
+	"github.com/backbone81/bar-replay-analytics/internal/barlive/barlivetest"
+	replaydownloader2 "github.com/backbone81/bar-replay-analytics/internal/replay/downloader"
+	"github.com/backbone81/bar-replay-analytics/internal/replay/index"
 )
 
 // The replays the specs use, with the file names of the storage.

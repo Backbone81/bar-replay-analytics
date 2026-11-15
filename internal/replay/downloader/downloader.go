@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/barlive"
-	"github.com/backbone81/bar-replay-analytics-go/internal/replay/index"
-	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
+	"github.com/backbone81/bar-replay-analytics/internal/barlive"
+	"github.com/backbone81/bar-replay-analytics/internal/replay/index"
+	"github.com/backbone81/bar-replay-analytics/internal/utils"
 )
 
 type Downloader struct {

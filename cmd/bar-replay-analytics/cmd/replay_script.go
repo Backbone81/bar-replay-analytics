@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
-	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
+	"github.com/backbone81/bar-replay-analytics/internal/demo"
+	"github.com/backbone81/bar-replay-analytics/internal/tdf"
 )
 
 // replayScriptCmd prints the setup script of a replay.

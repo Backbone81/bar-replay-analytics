@@ -3,7 +3,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
+	"github.com/backbone81/bar-replay-analytics/internal/demo"
 )
 
 // replayInspectCmd prints everything the tool reads from a replay.

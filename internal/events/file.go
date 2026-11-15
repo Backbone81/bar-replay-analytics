@@ -7,7 +7,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/replay/player/widget"
+	"github.com/backbone81/bar-replay-analytics/internal/replay/player/widget"
 )
 
 // File is the content of an events file.

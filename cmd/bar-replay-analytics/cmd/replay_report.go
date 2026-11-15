@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/report"
-	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
+	"github.com/backbone81/bar-replay-analytics/internal/report"
+	"github.com/backbone81/bar-replay-analytics/internal/utils"
 )
 
 // The flags of replayReportCmd.

@@ -7,8 +7,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	replayplayer "github.com/backbone81/bar-replay-analytics-go/internal/replay/player"
-	"github.com/backbone81/bar-replay-analytics-go/internal/replay/player/widget"
+	replayplayer "github.com/backbone81/bar-replay-analytics/internal/replay/player"
+	"github.com/backbone81/bar-replay-analytics/internal/replay/player/widget"
 )
 
 var _ = Describe("WidgetConfig", func() {
@@ -84,7 +84,7 @@ var _ = Describe("WidgetConfig", func() {
 				`"Replay Analytics"`, `'Say "hi"'`, `"Advisor"`,
 				`"Advisor"`,
 			}))).To(Equal(
-				"-- Widget order written by bar-replay-analytics-go for the playback\n" +
+				"-- Widget order written by bar-replay-analytics for the playback\n" +
 					"return {\n" +
 					"\torder = {\n" +
 					"\t\t[\"Advisor\"] = 12345,\n" +

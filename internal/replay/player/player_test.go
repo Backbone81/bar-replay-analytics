@@ -8,10 +8,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/events"
-	replayplayer "github.com/backbone81/bar-replay-analytics-go/internal/replay/player"
-	"github.com/backbone81/bar-replay-analytics-go/internal/replay/player/widget"
-	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
+	"github.com/backbone81/bar-replay-analytics/internal/events"
+	replayplayer "github.com/backbone81/bar-replay-analytics/internal/replay/player"
+	"github.com/backbone81/bar-replay-analytics/internal/replay/player/widget"
+	"github.com/backbone81/bar-replay-analytics/internal/utils"
 )
 
 var _ = Describe("Player", func() {

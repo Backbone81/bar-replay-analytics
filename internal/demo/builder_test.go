@@ -7,7 +7,7 @@ import (
 
 	. "github.com/onsi/gomega"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
+	"github.com/backbone81/bar-replay-analytics/internal/demo"
 )
 
 // testDemo holds the content of a demo file to encode for tests. Encode writes the header as it is, so a test can

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/barlive"
+	"github.com/backbone81/bar-replay-analytics/internal/barlive"
 )
 
 // Fake is a Server which plays Teiserver, bar-db and the replay storage from the data in its fields. Set the fields

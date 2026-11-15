@@ -6,8 +6,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/events"
-	"github.com/backbone81/bar-replay-analytics-go/internal/report"
+	"github.com/backbone81/bar-replay-analytics/internal/events"
+	"github.com/backbone81/bar-replay-analytics/internal/report"
 )
 
 var _ = Describe("Combat", func() {

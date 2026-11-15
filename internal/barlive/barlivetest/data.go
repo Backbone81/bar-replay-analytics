@@ -7,8 +7,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/barlive"
-	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
+	"github.com/backbone81/bar-replay-analytics/internal/barlive"
+	"github.com/backbone81/bar-replay-analytics/internal/demo"
 )
 
 // DemoFile returns a gzip-compressed demo file of the game gameID (hex, as barlive.Replay.ID) with a valid header

@@ -8,8 +8,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/events"
-	"github.com/backbone81/bar-replay-analytics-go/internal/replay/player/widget"
+	"github.com/backbone81/bar-replay-analytics/internal/events"
+	"github.com/backbone81/bar-replay-analytics/internal/replay/player/widget"
 )
 
 var _ = Describe("File", func() {

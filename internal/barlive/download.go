@@ -13,8 +13,8 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
-	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
+	"github.com/backbone81/bar-replay-analytics/internal/demo"
+	"github.com/backbone81/bar-replay-analytics/internal/utils"
 )
 
 // demoFileNamePattern matches the characters demo file names are made of, so a name from bar-db cannot leave the

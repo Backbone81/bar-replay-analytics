@@ -10,8 +10,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/barlive"
-	"github.com/backbone81/bar-replay-analytics-go/internal/barlive/barlivetest"
+	"github.com/backbone81/bar-replay-analytics/internal/barlive"
+	"github.com/backbone81/bar-replay-analytics/internal/barlive/barlivetest"
 )
 
 // maxRequestRate is the number of requests per second the client is limited to.

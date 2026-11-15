@@ -4,8 +4,8 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/barlive"
-	"github.com/backbone81/bar-replay-analytics-go/internal/replay/index"
+	"github.com/backbone81/bar-replay-analytics/internal/barlive"
+	"github.com/backbone81/bar-replay-analytics/internal/replay/index"
 )
 
 type Config struct {

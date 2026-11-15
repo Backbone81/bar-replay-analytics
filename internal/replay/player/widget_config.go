@@ -73,7 +73,7 @@ func WidgetConfig(nameLiterals []string) []byte {
 	nameLiterals = slices.Compact(nameLiterals)
 
 	var builder strings.Builder
-	builder.WriteString("-- Widget order written by bar-replay-analytics-go for the playback\nreturn {\n\torder = {\n")
+	builder.WriteString("-- Widget order written by bar-replay-analytics for the playback\nreturn {\n\torder = {\n")
 	for _, literal := range nameLiterals {
 		fmt.Fprintf(&builder, "\t\t[%s] = %d,\n", literal, widgetOrder)
 	}

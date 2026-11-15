@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
+	"github.com/backbone81/bar-replay-analytics/internal/tdf"
 )
 
 // FuzzParse feeds Parse with mutations of valid and invalid scripts. Besides not panicking, every script it accepts

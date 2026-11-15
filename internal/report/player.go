@@ -3,8 +3,8 @@ package report
 import (
 	"fmt"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/events"
-	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
+	"github.com/backbone81/bar-replay-analytics/internal/events"
+	"github.com/backbone81/bar-replay-analytics/internal/tdf"
 )
 
 // Player is one player of the game, human or AI: the units and resources one player or AI controls, or several players

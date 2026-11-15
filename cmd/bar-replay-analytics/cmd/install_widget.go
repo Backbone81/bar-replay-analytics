@@ -3,8 +3,8 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/replay/player/widget"
-	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
+	"github.com/backbone81/bar-replay-analytics/internal/replay/player/widget"
+	"github.com/backbone81/bar-replay-analytics/internal/utils"
 )
 
 // installWidgetCmd installs the analytics widget into the BAR data directory.

@@ -1,3 +1,6 @@
-/bar-replay-analytics-go
+/bar-replay-analytics
 /tmp
 __pycache__
+
+# Added by goreleaser init:
+dist/

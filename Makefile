@@ -32,7 +32,7 @@ prepare:
 
 .PHONY: build
 build: prepare
-	go build ./cmd/bar-replay-analytics-go
+	go build ./cmd/bar-replay-analytics
 
 .PHONY: test
 test: prepare
@@ -41,3 +41,28 @@ test: prepare
 .PHONY: fuzz
 fuzz: prepare
 	PACKAGE='$(PACKAGE)' FUZZ_TARGET='$(FUZZ_TARGET)' FUZZ_IDLE_MINUTES='$(FUZZ_IDLE_MINUTES)' FUZZ_MAX_MINUTES='$(FUZZ_MAX_MINUTES)' FUZZ_PARALLEL='$(FUZZ_PARALLEL)' scripts/fuzz.sh
+
+# GoReleaser takes the current and previous tag from git
+release-test release-notes release: export GORELEASER_CURRENT_TAG = $(shell git describe --tags --abbrev=0)
+release-test release-notes release: export GORELEASER_PREVIOUS_TAG = $(shell git describe --tags --abbrev=0 '$(GORELEASER_CURRENT_TAG)^')
+
+.PHONY: release-test
+release-test:
+	goreleaser check
+	goreleaser healthcheck
+	goreleaser build --snapshot --clean
+	goreleaser release --snapshot --clean --skip=publish
+
+.PHONY: release-notes
+release-notes:
+	mkdir -p tmp
+	scripts/release-notes.sh > tmp/release-notes.md
+	@echo
+	@echo "========== Release notes =========="
+	@cat tmp/release-notes.md
+
+.PHONY: release
+release: release-test release-notes
+release: export GITHUB_TOKEN ?= unknown
+release:
+	goreleaser release --clean --release-notes tmp/release-notes.md

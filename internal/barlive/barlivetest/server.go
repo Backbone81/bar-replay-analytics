@@ -10,7 +10,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/barlive"
+	"github.com/backbone81/bar-replay-analytics/internal/barlive"
 )
 
 // StoragePath is the path under which the clients of a Server find the replay storage.

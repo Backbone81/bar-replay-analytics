@@ -5,7 +5,7 @@ import (
 	"math"
 	"slices"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/events"
+	"github.com/backbone81/bar-replay-analytics/internal/events"
 )
 
 // killedByLength is the most killers UnitTypeCasualties.KilledBy lists: the top few show what counters a unit type.

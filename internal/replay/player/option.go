@@ -3,7 +3,7 @@ package player
 import (
 	"log/slog"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
+	"github.com/backbone81/bar-replay-analytics/internal/utils"
 )
 
 // Option changes a field of the Config that New and NewBatchPlayer start from (DefaultConfig).

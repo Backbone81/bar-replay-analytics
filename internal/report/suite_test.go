@@ -10,9 +10,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
-	"github.com/backbone81/bar-replay-analytics-go/internal/events"
-	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
+	"github.com/backbone81/bar-replay-analytics/internal/demo"
+	"github.com/backbone81/bar-replay-analytics/internal/events"
+	"github.com/backbone81/bar-replay-analytics/internal/tdf"
 )
 
 // update makes the golden test write testdata/report.json instead of only comparing with it.

@@ -1,4 +1,4 @@
-module github.com/backbone81/bar-replay-analytics-go
+module github.com/backbone81/bar-replay-analytics
 
 go 1.26.0
 

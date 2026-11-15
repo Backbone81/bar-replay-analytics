@@ -6,8 +6,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	replayplayer "github.com/backbone81/bar-replay-analytics-go/internal/replay/player"
-	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
+	replayplayer "github.com/backbone81/bar-replay-analytics/internal/replay/player"
+	"github.com/backbone81/bar-replay-analytics/internal/utils"
 )
 
 var _ = Describe("Option", func() {

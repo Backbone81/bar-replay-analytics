@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/events"
+	"github.com/backbone81/bar-replay-analytics/internal/events"
 )
 
 // Builder is one commander or constructor of a player, while the player held it: from when it was finished or given to

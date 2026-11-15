@@ -5,9 +5,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/barlive"
-	replaydownloader2 "github.com/backbone81/bar-replay-analytics-go/internal/replay/downloader"
-	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
+	"github.com/backbone81/bar-replay-analytics/internal/barlive"
+	replaydownloader2 "github.com/backbone81/bar-replay-analytics/internal/replay/downloader"
+	"github.com/backbone81/bar-replay-analytics/internal/utils"
 )
 
 // The flags of replayDownloadTopCmd.

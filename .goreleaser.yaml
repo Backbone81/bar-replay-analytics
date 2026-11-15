@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
+
+version: 2
+
+project_name: bar-replay-analytics
+
+builds:
+  - main: ./cmd/bar-replay-analytics
+    env:
+      - CGO_ENABLED=0
+    # Reproducible builds: keep local file system paths out of the binary.
+    flags:
+      - -trimpath
+    goos:
+      - linux
+      - windows
+    # BAR ships its engine for amd64 only (BAR's CDN has no arm64 engines), so replay play needs amd64.
+    goarch:
+      - amd64
+
+archives:
+  - formats: ["binary"]

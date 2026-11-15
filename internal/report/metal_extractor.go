@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/events"
+	"github.com/backbone81/bar-replay-analytics/internal/events"
 )
 
 // MetalExtractors provides the number of metal extractors a player held, by tech level, so that expanding and

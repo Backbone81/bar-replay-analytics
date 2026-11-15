@@ -3,7 +3,7 @@ package report
 import (
 	"math"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/events"
+	"github.com/backbone81/bar-replay-analytics/internal/events"
 )
 
 // ResurrectEnergyCostFactor is the part of a unit's energy cost a resurrection of it costs, BAR's resurrect

@@ -3,7 +3,7 @@ package report
 import (
 	"strconv"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/events"
+	"github.com/backbone81/bar-replay-analytics/internal/events"
 )
 
 // MapGrid divides the map into cells, so that the report can tell where something happened (Player.LossLocations)

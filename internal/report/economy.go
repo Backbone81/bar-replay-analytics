@@ -4,8 +4,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
-	"github.com/backbone81/bar-replay-analytics-go/internal/events"
+	"github.com/backbone81/bar-replay-analytics/internal/demo"
+	"github.com/backbone81/bar-replay-analytics/internal/events"
 )
 
 // Economy is what a player produced and used of metal and energy, from its TeamStatistics history (economyHistory),

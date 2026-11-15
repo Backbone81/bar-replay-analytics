@@ -12,8 +12,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/logger"
-	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
+	"github.com/backbone81/bar-replay-analytics/internal/logger"
+	"github.com/backbone81/bar-replay-analytics/internal/utils"
 )
 
 // needsBarDataDir is the annotation of the commands that use barDataDir. The root command's PersistentPreRunE finds the
@@ -29,7 +29,7 @@ var (
 
 // rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
-	Use:   "bar-replay-analytics-go",
+	Use:   "bar-replay-analytics",
 	Short: "Analyze replays of Beyond All Reason",
 	Long: `Analyzes replays of Beyond All Reason for coaching: reads them, plays them back headless and reports on the
 game. Also downloads replays from https://bar-rts.com, such as the recent games of the best players on the

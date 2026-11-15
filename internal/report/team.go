@@ -3,7 +3,7 @@ package report
 import (
 	"slices"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
+	"github.com/backbone81/bar-replay-analytics/internal/tdf"
 )
 
 // Team is one side of the game: the players allied with each other. The engine calls this an allyteam.

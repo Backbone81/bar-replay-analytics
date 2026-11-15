@@ -3,8 +3,8 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/coaching"
-	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
+	"github.com/backbone81/bar-replay-analytics/internal/coaching"
+	"github.com/backbone81/bar-replay-analytics/internal/utils"
 )
 
 // initCmd writes the workspace of an AI agent that coaches a player into the current folder.

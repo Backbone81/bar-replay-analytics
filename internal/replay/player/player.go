@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/events"
-	"github.com/backbone81/bar-replay-analytics-go/internal/replay/player/widget"
-	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
+	"github.com/backbone81/bar-replay-analytics/internal/events"
+	"github.com/backbone81/bar-replay-analytics/internal/replay/player/widget"
+	"github.com/backbone81/bar-replay-analytics/internal/utils"
 )
 
 // Player plays one replay at a time: Prepare makes sure its assets are there, Run plays it back. A Player is not safe

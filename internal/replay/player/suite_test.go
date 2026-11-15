@@ -23,11 +23,11 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
-	"github.com/backbone81/bar-replay-analytics-go/internal/events"
-	replayplayer "github.com/backbone81/bar-replay-analytics-go/internal/replay/player"
-	"github.com/backbone81/bar-replay-analytics-go/internal/replay/player/widget"
-	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
+	"github.com/backbone81/bar-replay-analytics/internal/demo"
+	"github.com/backbone81/bar-replay-analytics/internal/events"
+	replayplayer "github.com/backbone81/bar-replay-analytics/internal/replay/player"
+	"github.com/backbone81/bar-replay-analytics/internal/replay/player/widget"
+	"github.com/backbone81/bar-replay-analytics/internal/utils"
 )
 
 // The suite's test binary is also the fake engine and the fake pr-downloader, as the tests of os/exec do it: the tests
