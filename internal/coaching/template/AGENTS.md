@@ -24,15 +24,17 @@ events file and the report are written next to the replay by the commands themse
 The commands work in the player's BAR data directory: the folder with `demos/`, `maps/` and `engine/`. They find
 it by themselves where the BAR installers put it:
 
-- Windows: `%LOCALAPPDATA%\Programs\Beyond-All-Reason\data`
-- Linux, AppImage: `~/.local/state/Beyond All Reason`
+- Windows: `%LOCALAPPDATA%\Programs\Beyond-All-Reason\data` (the installer's default folder)
 - Linux, Flatpak: `~/.var/app/info.beyondallreason.bar/data`
+- Linux, AppImage: `~/Documents/Beyond All Reason` (the documents folder of the desktop), or
+  `~/.local/state/Beyond All Reason`
 
-They use the first of these that holds BAR; `replay play` prints it as `data dir`. If a command reports that it
-found none, or the player has several BAR installs and plays in another one, ask the player where BAR is installed
-and pass the folder with `--bar-data-dir` to every command. Note the path in `player.md`.
+They use the first of these, in this order, in which the BAR launcher has run (it holds `launcher-logs/`). If a
+command reports that it found no BAR data dir, BAR was installed into another folder, or the player has several BAR
+installs and plays in another one, ask the player where BAR is installed and pass the folder with `--bar-data-dir` to
+every command. Note the path in `player.md`.
 
-`replay play` needs about 5 GB of memory and 1.5 CPU cores per replay played back at the same time.
+`replay play` needs about 5 GB of memory and 2 CPU cores per replay played back at the same time.
 
 Ask the player before you install anything or download more than a few replays.
 
@@ -52,7 +54,8 @@ Keep it short: a few questions, not a form. You can learn the rest from the game
 ## Workflow for a replay
 
 BAR saves every game as a `.sdfz` file in `demos/` of the data directory. Commands take a path or the name of a file in
-`demos/`.
+`demos/`; `replay play` and `replay report` also take folders, a relative path being relative to `demos/`
+(`leaderboard` is `demos/leaderboard/`), and select replays in them with `--filter-map` and `--filter-player`.
 
 1. **Pick the replay.** Usually the newest in `demos/`, or the one the player names. A replay with a length of 0:00
    (the game crashed or was not ended) is skipped by `replay play`; tell the player instead of analyzing it.
@@ -61,11 +64,12 @@ BAR saves every game as a `.sdfz` file in `demos/` of the data directory. Comman
    name. If several humans could be the player, ask.
 3. **Play it back.** `replay play <replay>...` runs the game in a headless engine at maximum speed (a few minutes per
    game; several replays run in parallel) and writes `<replay name>_events.json` next to the replay, and the engine's
-   output as `<replay name>.log`. A replay whose events file is current is not played again (`--force` does). It
-   downloads a missing engine, game version or map into the data directory, as the
-   BAR lobby does.
+   output as `<replay name>.log`. A replay whose events file is current is not played again; an update of
+   `bar-replay-analytics-go` that changes the events makes them outdated, so they are played again. It downloads a
+   missing engine, game version or map into the data directory, as the BAR lobby does.
 4. **Get the report.** `replay report <replay>...` writes `<replay name>_report.json` next to the replay: the game
-   aggregated for coaching (see "What the report holds"). Start every analysis from the report.
+   aggregated for coaching (see "What the report holds"). Like `replay play`, it skips replays whose report is
+   current. Start every analysis from the report.
 5. **Dig deeper if needed.** The events file holds every unit's creation, completion, death (with position and killer)
    and command. Query it for what the report does not show, e.g. how long factories stood idle, or where within a
    cell of the map grid units died. The file is several megabytes: never read it whole, query it with a short script
@@ -190,7 +194,10 @@ A number means little alone. Compare, and say what you compare with:
    `demos/leaderboard/`; `--map "<mapname>"` (the exact mapname from `replay script`, version included) downloads only
    the games on the player's map, so raise `--days` to find enough of them, and try `--dry-run` first: it logs the
    missing games, each with its player and rating, without downloading them. Then `replay play leaderboard` and
-   `replay report leaderboard` play back and report every game in the folder (only new ones are played). Compare on the same map and game type only, and interval by interval, e.g. metal income or metal
+   `replay report leaderboard` play back and report the games in the folder (only new ones are played and reported).
+   The folder keeps the games of earlier downloads, on other maps too, so add `--filter-map "<map name>"` (part of
+   the mapname, ignoring case, so every version of the map matches) to play back and report only those on the
+   player's map. Compare on the same map and game type only, and interval by interval, e.g. metal income or metal
    extractors at minute 5.
 
 Don't quote "good" numbers from memory: BAR changes its balance often and they differ by map. Take them from the
