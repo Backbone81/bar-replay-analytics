@@ -13,7 +13,7 @@ function widget:GetInfo()
 end
 
 -- Logs a replay played back in spring-headless. Unsynced, so it cannot desync. In any other client, also when
--- watching a replay, it removes itself.
+-- watching a replay, it removes itself (engines before 2026.06.03 cannot tell, see isHeadless).
 --
 -- Writes events/<replay name>_events.json in its own folder (user widgets may write only under LuaUI/Config/ and
 -- LuaUI/Widgets/), one JSON object:
@@ -380,8 +380,23 @@ end
 -- Call-ins
 --------------------------------------------------------------------------------
 
+-- Platform.isHeadless exists since engine 2026.06.10, Engine.isHeadless from 2026.06.03 to 2026.06.09. Older engines
+-- cannot tell, so the widget assumes headless there: the check only guards against an accidentally installed widget,
+-- and bar-replay-analytics-go writes the widget into each playback's write dir.
+local function isHeadless()
+	if Platform.isHeadless ~= nil then
+		return Platform.isHeadless
+	end
+	if Engine.isHeadless ~= nil then
+		return Engine.isHeadless
+	end
+	return true
+end
+
 function widget:Initialize()
-	if not (spIsReplay() and Platform.isHeadless) then
+	if not (spIsReplay() and isHeadless()) then
+		spEcho("Replay Analytics: not a replay in spring-headless, removing myself; replays play in real time,"
+			.. " not at full speed, and no events are written")
 		widgetHandler:RemoveWidget()
 		return
 	end
