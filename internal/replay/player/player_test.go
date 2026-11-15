@@ -210,11 +210,11 @@ var _ = Describe("Player", func() {
 			Expect(player.Run(ctx, replayInfo)).ToNot(Succeed())
 		})
 
-		It("asks the engine to quit when the context is canceled", func(ctx SpecContext) {
+		It("stops the engine when the context is canceled", func(ctx SpecContext) {
 			dataDir := newDataDirWithAssets()
 			player := newPlayer(dataDir)
 			replayInfo := newPreparedReplay(ctx, player, dataDir, "game.sdfz")
-			writeSpringHeadlessBehaviour(replayInfo.FilePath, springHeadlessBehaviour{WaitForSignal: true})
+			writeSpringHeadlessBehaviour(replayInfo.FilePath, springHeadlessBehaviour{WaitUntilStopped: true})
 			cancelableCtx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
@@ -223,7 +223,6 @@ var _ = Describe("Player", func() {
 			cancel()
 
 			Eventually(result).Should(Receive(MatchError(context.Canceled)))
-			Expect(readFile(replaySibling(replayInfo.FilePath, springHeadlessSignalSuffix))).To(Equal("terminated"))
 		})
 	})
 })

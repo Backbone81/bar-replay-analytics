@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/events"
@@ -219,9 +218,9 @@ func (p *Player) runSpringHeadless(ctx context.Context, engineVersion string, fi
 	// The data dir is added read only: the engine writes into its write dir only.
 	command.Env = append(os.Environ(), "SPRING_DATADIR="+p.config.DataDir)
 	command.Cancel = func() error {
-		// Ask the engine to quit first. Windows has no SIGTERM, so the engine is killed after WaitDelay there.
-		return command.Process.Signal(syscall.SIGTERM)
+		return terminate(command.Process)
 	}
+	// The engine is killed if it has not quit WaitDelay after terminate.
 	command.WaitDelay = 5 * time.Second
 	command.Stdout = logFile
 	command.Stderr = logFile

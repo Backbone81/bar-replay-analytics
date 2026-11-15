@@ -95,13 +95,6 @@ func addPackage(dataDir string, md5 string) {
 	writeFile(filepath.Join(utils.PackagesDir(dataDir), md5+".sdp"), "")
 }
 
-// fileMode returns the permission bits of filePath.
-func fileMode(filePath string) os.FileMode {
-	info, err := os.Stat(filePath)
-	Expect(err).NotTo(HaveOccurred())
-	return info.Mode().Perm()
-}
-
 // fileNames returns the names of the entries of dir.
 func fileNames(dir string) []string {
 	entries, err := os.ReadDir(dir)

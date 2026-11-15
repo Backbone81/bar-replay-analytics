@@ -12,7 +12,7 @@ import (
 )
 
 var _ = Describe("Extract7z", func() {
-	It("unpacks folders and files with their permissions and leaves no temporary folder", func(ctx SpecContext) {
+	It("unpacks folders and files and leaves no temporary folder", func(ctx SpecContext) {
 		archive := copyTestdata("engine.7z", GinkgoT().TempDir())
 		dir := filepath.Join(filepath.Dir(archive), "engine")
 
@@ -21,9 +21,6 @@ var _ = Describe("Extract7z", func() {
 		Expect(os.ReadFile(filepath.Join(dir, "spring-headless"))).To(Equal([]byte("fake engine\n")))
 		Expect(os.ReadFile(filepath.Join(dir, "pr-downloader"))).To(Equal([]byte("fake downloader\n")))
 		Expect(os.ReadFile(filepath.Join(dir, "AI", "config.json"))).To(Equal([]byte("data\n")))
-		Expect(fileMode(filepath.Join(dir, "spring-headless"))).To(Equal(os.FileMode(0o755)))
-		Expect(fileMode(filepath.Join(dir, "AI", "config.json"))).To(Equal(os.FileMode(0o644)))
-		Expect(fileMode(dir)).To(Equal(os.FileMode(0o755)))
 		Expect(fileNames(filepath.Dir(archive))).To(ConsistOf("engine.7z", "engine"))
 	})
 

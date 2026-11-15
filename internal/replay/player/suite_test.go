@@ -12,12 +12,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"os/signal"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 
@@ -32,7 +31,7 @@ import (
 )
 
 // The suite's test binary is also the fake engine and the fake pr-downloader, as the tests of os/exec do it: the tests
-// link it into a fake engine folder as spring-headless and pr-downloader, and TestMain tells by the name it was started
+// copy it into a fake engine folder as spring-headless and pr-downloader, and TestMain tells by the name it was started
 // under what it is to be. The fakes read what to do from a behaviour file and write what they were called with to a
 // call file, both next to the replay (spring-headless) or in the data dir (pr-downloader).
 
@@ -58,11 +57,10 @@ const (
 	// testGameTime is the game time of the test replays in seconds.
 	testGameTime = 1607
 
-	// springHeadlessBehaviourSuffix, springHeadlessCallSuffix and springHeadlessSignalSuffix replace a replay's
-	// extension for the fake spring-headless's files next to the replay.
+	// springHeadlessBehaviourSuffix and springHeadlessCallSuffix replace a replay's extension for the fake
+	// spring-headless's files next to the replay.
 	springHeadlessBehaviourSuffix = ".spring-headless-behaviour.json"
 	springHeadlessCallSuffix      = ".spring-headless-call.json"
-	springHeadlessSignalSuffix    = ".spring-headless-signal"
 
 	// prDownloaderBehaviourFile and prDownloaderCallsFile are the fake pr-downloader's files in the data dir. The calls
 	// file has one JSON line per call.
@@ -92,8 +90,8 @@ type springHeadlessBehaviour struct {
 	// WaitForFile is a file it waits for before it exits, for at most 10 s.
 	WaitForFile string `json:"waitForFile"`
 
-	// WaitForSignal makes it wait for SIGTERM and exit with exit code 1 then.
-	WaitForSignal bool `json:"waitForSignal"`
+	// WaitUntilStopped makes it run until it is stopped, for at most 10 s, and fail then.
+	WaitUntilStopped bool `json:"waitUntilStopped"`
 }
 
 // springHeadlessCall is what the fake spring-headless was called with.
@@ -181,13 +179,6 @@ func fakeSpringHeadless() (int, error) {
 		return 0, err
 	}
 
-	// The signal handler is installed before the call is recorded, so a test that waits for the call file can send
-	// the signal right away.
-	signals := make(chan os.Signal, 1)
-	if behaviour.WaitForSignal {
-		signal.Notify(signals, syscall.SIGTERM)
-	}
-
 	call, err := newSpringHeadlessCall(args)
 	if err != nil {
 		return 0, err
@@ -213,12 +204,9 @@ func fakeSpringHeadless() (int, error) {
 			return 0, err
 		}
 	}
-	if behaviour.WaitForSignal {
-		received := <-signals
-		if err := writeFileForFake(replayBase+springHeadlessSignalSuffix, []byte(received.String())); err != nil {
-			return 0, err
-		}
-		return 1, nil
+	if behaviour.WaitUntilStopped {
+		time.Sleep(10 * time.Second)
+		return 0, errors.New("not stopped within 10 s")
 	}
 	return behaviour.ExitCode, nil
 }
@@ -416,11 +404,24 @@ func newDataDirWithAssets() string {
 //
 //nolint:unparam
 func addFakeEngine(dataDir string, engineVersion string) {
-	testBinary, err := os.Executable()
-	Expect(err).NotTo(HaveOccurred())
 	Expect(os.MkdirAll(utils.EngineVersionDir(dataDir, engineVersion), 0o750)).To(Succeed())
-	Expect(os.Symlink(testBinary, utils.SpringHeadlessFilePath(dataDir, engineVersion))).To(Succeed())
-	Expect(os.Symlink(testBinary, utils.PrDownloaderFilePath(dataDir, engineVersion))).To(Succeed())
+	copyTestBinary(utils.SpringHeadlessFilePath(dataDir, engineVersion))
+	copyTestBinary(utils.PrDownloaderFilePath(dataDir, engineVersion))
+}
+
+// copyTestBinary copies the test binary to the executable filePath, with the .exe Windows needs to run it, so it runs
+// as the fake TestMain tells by that name.
+func copyTestBinary(filePath string) {
+	if runtime.GOOS == "windows" {
+		filePath += ".exe"
+	}
+	testBinaryFilePath, err := os.Executable()
+	Expect(err).NotTo(HaveOccurred())
+	testBinary, err := os.Open(testBinaryFilePath)
+	Expect(err).NotTo(HaveOccurred())
+	defer testBinary.Close() //nolint:errcheck
+
+	Expect(utils.WriteFileFrom(filePath, testBinary, 0o755)).To(Succeed())
 }
 
 // addMapFile adds the map archive fileName to the maps/ of dataDir.

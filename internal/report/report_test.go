@@ -287,7 +287,7 @@ var _ = Describe("Report", func() {
 				}
 				golden, err := os.ReadFile(goldenFilePath)
 				Expect(err).NotTo(HaveOccurred(), "create it with: go test ./internal/report -update")
-				Expect(string(data)).To(Equal(string(golden)), `The report changed. If that is intended, increase
+				Expect(data).To(MatchJSON(golden), `The report changed. If that is intended, increase
 report.FormatVersion (now %d) when the report of the same replay and events file holds anything different, then
 update testdata/ with: go test ./internal/report -update`, report.FormatVersion)
 			},

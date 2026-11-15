@@ -194,7 +194,7 @@ var _ = Describe("BatchPlayer", func() {
 		It("stops the playbacks and plays no more replays when the context is canceled", func(ctx SpecContext) {
 			dataDir := newDataDirWithAssets()
 			waiting := writeTestReplay(demosFile(dataDir, "a.sdfz"), testMapName)
-			writeSpringHeadlessBehaviour(waiting, springHeadlessBehaviour{WaitForSignal: true})
+			writeSpringHeadlessBehaviour(waiting, springHeadlessBehaviour{WaitUntilStopped: true})
 			next := writePlayableReplay(dataDir, "b.sdfz", testMapName)
 			cancelableCtx, cancel := context.WithCancel(ctx)
 			defer cancel()
@@ -204,7 +204,6 @@ var _ = Describe("BatchPlayer", func() {
 			cancel()
 
 			Eventually(result).Should(Receive(MatchError(context.Canceled)))
-			Expect(replaySibling(waiting, springHeadlessSignalSuffix)).To(BeAnExistingFile())
 			Expect(springHeadlessCalled(next)).To(BeFalse())
 		})
 	})

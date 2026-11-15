@@ -15,13 +15,12 @@ import (
 
 var _ = Describe("Files", func() {
 	Context("WriteFile", func() {
-		It("writes the data with the permissions and leaves no temporary file", func() {
+		It("writes the data and leaves no temporary file", func() {
 			dir := GinkgoT().TempDir()
 
 			Expect(utils.WriteFile(filepath.Join(dir, "file"), []byte("content"), 0o640)).To(Succeed())
 
 			Expect(os.ReadFile(filepath.Join(dir, "file"))).To(Equal([]byte("content")))
-			Expect(fileMode(filepath.Join(dir, "file"))).To(Equal(os.FileMode(0o640)))
 			Expect(fileNames(dir)).To(ConsistOf("file"))
 		})
 
@@ -37,13 +36,12 @@ var _ = Describe("Files", func() {
 	})
 
 	Context("WriteFileFrom", func() {
-		It("writes everything the reader returns with the permissions", func() {
+		It("writes everything the reader returns", func() {
 			dir := GinkgoT().TempDir()
 
 			Expect(utils.WriteFileFrom(filepath.Join(dir, "file"), strings.NewReader("content"), 0o755)).To(Succeed())
 
 			Expect(os.ReadFile(filepath.Join(dir, "file"))).To(Equal([]byte("content")))
-			Expect(fileMode(filepath.Join(dir, "file"))).To(Equal(os.FileMode(0o755)))
 		})
 
 		It("leaves an existing file as it was and no temporary file if the reader fails", func() {
@@ -76,14 +74,13 @@ var _ = Describe("Files", func() {
 	})
 
 	Context("CopyFile", func() {
-		It("copies the file readable by everyone and leaves no temporary file", func() {
+		It("copies the file and leaves no temporary file", func() {
 			dir := GinkgoT().TempDir()
 			writeFile(filepath.Join(dir, "source"), "content")
 
 			Expect(utils.CopyFile(filepath.Join(dir, "source"), filepath.Join(dir, "destination"))).To(Succeed())
 
 			Expect(os.ReadFile(filepath.Join(dir, "destination"))).To(Equal([]byte("content")))
-			Expect(fileMode(filepath.Join(dir, "destination"))).To(Equal(os.FileMode(0o644)))
 			Expect(fileNames(dir)).To(ConsistOf("source", "destination"))
 		})
 

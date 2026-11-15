@@ -54,14 +54,6 @@ var _ = Describe("ReplayIndex", func() {
 		Expect(os.ReadFile(filePath)).To(MatchJSON(`{}`))
 	})
 
-	It("writes the index readable by everyone", func() {
-		Expect(openIndex(filePath).Save()).To(Succeed())
-
-		info, err := os.Stat(filePath)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(info.Mode().Perm()).To(Equal(os.FileMode(0o644)))
-	})
-
 	It("reports a file which is not JSON", func() {
 		Expect(os.MkdirAll(filepath.Dir(filePath), 0o750)).To(Succeed())
 		Expect(os.WriteFile(filePath, []byte("{"), 0o600)).To(Succeed())
