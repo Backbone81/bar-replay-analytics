@@ -3,6 +3,8 @@ package player
 import (
 	"errors"
 	"log/slog"
+
+	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
 // Config configures a Player and a BatchPlayer. Set it with the Option functions.
@@ -27,7 +29,7 @@ type Config struct {
 	ConcurrentReplays int
 
 	// Filter selects the replays a BatchPlayer plays back. The zero Filter selects all.
-	Filter Filter
+	Filter utils.Filter
 
 	// MaxReplays is how many replays a BatchPlayer plays back at most: the first ones, in file path order, that match
 	// Filter and whose events file is not current. A replay whose playback fails counts too. Zero means no limit.

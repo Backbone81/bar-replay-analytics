@@ -1,4 +1,4 @@
-package player_test
+package utils_test
 
 import (
 	"os"
@@ -8,8 +8,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	replayplayer "github.com/backbone81/bar-replay-analytics-go/internal/replay/player"
 	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
+	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
 var _ = Describe("ReplayInfo", func() {
@@ -17,13 +17,13 @@ var _ = Describe("ReplayInfo", func() {
 		It("reads the header and the start script", func() {
 			filePath := writeTestReplay(filepath.Join(GinkgoT().TempDir(), "game.sdfz"), testMapName)
 
-			replayInfo, err := replayplayer.ReadReplayInfo(filePath)
+			replayInfo, err := utils.ReadReplayInfo(filePath)
 
 			Expect(err).NotTo(HaveOccurred())
 			// The test replays start when they are written, which the header stores in whole seconds.
 			Expect(replayInfo.StartTime).To(BeTemporally("~", time.Now(), time.Minute))
 			Expect(replayInfo.StartTime.Location()).To(Equal(time.UTC))
-			Expect(replayInfo).To(Equal(&replayplayer.ReplayInfo{
+			Expect(replayInfo).To(Equal(&utils.ReplayInfo{
 				FilePath:      filePath,
 				EngineVersion: testEngineVersion,
 				MapName:       testMapName,
@@ -41,7 +41,7 @@ var _ = Describe("ReplayInfo", func() {
 			relativePath, err := filepath.Rel(workingDir, filePath)
 			Expect(err).NotTo(HaveOccurred())
 
-			replayInfo, err := replayplayer.ReadReplayInfo(relativePath)
+			replayInfo, err := utils.ReadReplayInfo(relativePath)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(replayInfo.FilePath).To(Equal(filePath))
@@ -51,39 +51,39 @@ var _ = Describe("ReplayInfo", func() {
 			filePath := filepath.Join(GinkgoT().TempDir(), "crashed.sdfz")
 			writeReplay(filePath, testEngineVersion, testSetupScript(testMapName, testGameType), 0, testGameTime)
 
-			Expect(replayplayer.ReadReplayInfo(filePath)).Error().To(HaveOccurred())
+			Expect(utils.ReadReplayInfo(filePath)).Error().To(HaveOccurred())
 		})
 
 		It("rejects a replay without a game time", func() {
 			filePath := filepath.Join(GinkgoT().TempDir(), "not-ended.sdfz")
 			writeReplay(filePath, testEngineVersion, testSetupScript(testMapName, testGameType), 16, 0)
 
-			Expect(replayplayer.ReadReplayInfo(filePath)).Error().To(HaveOccurred())
+			Expect(utils.ReadReplayInfo(filePath)).Error().To(HaveOccurred())
 		})
 
 		It("rejects a start script without gametype", func() {
 			filePath := filepath.Join(GinkgoT().TempDir(), "game.sdfz")
 			writeReplay(filePath, testEngineVersion, "[game]\n{\n\tmapname="+testMapName+";\n}\n", 16, testGameTime)
 
-			Expect(replayplayer.ReadReplayInfo(filePath)).Error().To(HaveOccurred())
+			Expect(utils.ReadReplayInfo(filePath)).Error().To(HaveOccurred())
 		})
 
 		It("rejects a start script without mapname", func() {
 			filePath := filepath.Join(GinkgoT().TempDir(), "game.sdfz")
 			writeReplay(filePath, testEngineVersion, "[game]\n{\n\tgametype="+testGameType+";\n}\n", 16, testGameTime)
 
-			Expect(replayplayer.ReadReplayInfo(filePath)).Error().To(HaveOccurred())
+			Expect(utils.ReadReplayInfo(filePath)).Error().To(HaveOccurred())
 		})
 
 		It("rejects a file that is no replay", func() {
 			filePath := filepath.Join(GinkgoT().TempDir(), "game.sdfz")
 			writeFile(filePath, "no replay")
 
-			Expect(replayplayer.ReadReplayInfo(filePath)).Error().To(HaveOccurred())
+			Expect(utils.ReadReplayInfo(filePath)).Error().To(HaveOccurred())
 		})
 
 		It("fails for a missing file", func() {
-			Expect(replayplayer.ReadReplayInfo(filepath.Join(GinkgoT().TempDir(), "missing.sdfz"))).Error().
+			Expect(utils.ReadReplayInfo(filepath.Join(GinkgoT().TempDir(), "missing.sdfz"))).Error().
 				To(MatchError(os.ErrNotExist))
 		})
 	})
@@ -93,7 +93,7 @@ var _ = Describe("ReplayInfo", func() {
 			setupScript, err := tdf.Parse(testSetupScript(testMapName, testGameType))
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(replayplayer.GetPlayerNames(setupScript.Section("game"))).
+			Expect(utils.GetPlayerNames(setupScript.Section("game"))).
 				To(HaveExactElements("Alice", "BARb Hard", "SimpleAI"))
 		})
 
@@ -101,21 +101,21 @@ var _ = Describe("ReplayInfo", func() {
 			setupScript, err := tdf.Parse("[game]\n{\n\t[player0]\n\t{\n\t\tname=Alice;\n\t}\n}\n")
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(replayplayer.GetPlayerNames(setupScript.Section("game"))).To(HaveExactElements("Alice"))
+			Expect(utils.GetPlayerNames(setupScript.Section("game"))).To(HaveExactElements("Alice"))
 		})
 
 		It("returns no names for a game without players and AIs", func() {
 			setupScript, err := tdf.Parse("[game]\n{\n\tmapname=" + testMapName + ";\n}\n")
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(replayplayer.GetPlayerNames(setupScript.Section("game"))).To(BeEmpty())
+			Expect(utils.GetPlayerNames(setupScript.Section("game"))).To(BeEmpty())
 		})
 
 		It("rejects a spectator value that is no boolean", func() {
 			setupScript, err := tdf.Parse("[game]\n{\n\t[player3]\n\t{\n\t\tname=Alice;\n\t\tspectator=maybe;\n\t}\n}\n")
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(replayplayer.GetPlayerNames(setupScript.Section("game"))).Error().To(HaveOccurred())
+			Expect(utils.GetPlayerNames(setupScript.Section("game"))).Error().To(HaveOccurred())
 		})
 	})
 })

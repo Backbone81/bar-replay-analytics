@@ -1,6 +1,10 @@
 package player
 
-import "log/slog"
+import (
+	"log/slog"
+
+	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
+)
 
 // Option changes a field of the Config that New and NewBatchPlayer start from (DefaultConfig).
 type Option func(config *Config)
@@ -41,7 +45,7 @@ func WithConcurrentReplays(concurrentReplays int) Option {
 }
 
 // WithFilter sets Config.Filter.
-func WithFilter(filter Filter) Option {
+func WithFilter(filter utils.Filter) Option {
 	return func(config *Config) {
 		config.Filter = filter
 	}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
 	"github.com/backbone81/bar-replay-analytics-go/internal/events"
+	"github.com/backbone81/bar-replay-analytics-go/internal/replay/player/widget"
 	"github.com/backbone81/bar-replay-analytics-go/internal/report"
 	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
 )
@@ -308,6 +309,38 @@ update testdata/ with: go test ./internal/report -update`, report.FormatVersion)
 			Expect(result.FormatVersion).To(Equal(report.FormatVersion))
 			Expect(result.EventsFormatVersion).To(Equal(3))
 		})
+	})
+
+	Context("ValidateReportFile", func() {
+		It("fails without a report file", func() {
+			reportFilePath := filepath.Join(GinkgoT().TempDir(), "game_report.json")
+
+			Expect(report.ValidateReportFile(reportFilePath)).To(MatchError(os.ErrNotExist))
+		})
+
+		DescribeTable("accepts a report of at least the current format versions",
+			func(formatVersion int, eventsFormatVersion int) {
+				reportFilePath := filepath.Join(GinkgoT().TempDir(), "game_report.json")
+				writeFile(reportFilePath, reportFileContent(formatVersion, eventsFormatVersion))
+
+				Expect(report.ValidateReportFile(reportFilePath)).To(Succeed())
+			},
+			Entry("the same versions", report.FormatVersion, widget.FormatVersion),
+			Entry("a newer report version", report.FormatVersion+1, widget.FormatVersion),
+			Entry("a newer events version", report.FormatVersion, widget.FormatVersion+1),
+		)
+
+		DescribeTable("rejects a report that is not current",
+			func(content string) {
+				reportFilePath := filepath.Join(GinkgoT().TempDir(), "game_report.json")
+				writeFile(reportFilePath, content)
+
+				Expect(report.ValidateReportFile(reportFilePath)).ToNot(Succeed())
+			},
+			Entry("of an older report version", reportFileContent(report.FormatVersion-1, widget.FormatVersion)),
+			Entry("of an older events version", reportFileContent(report.FormatVersion, widget.FormatVersion-1)),
+			Entry("cut off", reportFileContent(report.FormatVersion, widget.FormatVersion)[:10]),
+		)
 	})
 })
 

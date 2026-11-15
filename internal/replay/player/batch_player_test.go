@@ -27,53 +27,6 @@ var _ = Describe("BatchPlayer", func() {
 		})
 	})
 
-	Context("ResolvePaths", func() {
-		It("resolves a relative path in the demos folder of the data dir", func() {
-			dataDir := newDataDir()
-			writeFile(demosFile(dataDir, "game.sdfz"), "")
-
-			Expect(newBatchPlayer(dataDir).ResolvePaths([]string{"game.sdfz"})).
-				To(HaveExactElements(demosFile(dataDir, "game.sdfz")))
-		})
-
-		It("uses an absolute path as it is", func() {
-			filePath := filepath.Join(GinkgoT().TempDir(), "game.sdfz")
-			writeFile(filePath, "")
-
-			Expect(newBatchPlayer(newDataDir()).ResolvePaths([]string{filePath})).To(HaveExactElements(filePath))
-		})
-
-		It("resolves a folder to the replay files directly in it", func() {
-			dataDir := newDataDir()
-			writeFile(demosFile(dataDir, "b.sdfz"), "")
-			writeFile(demosFile(dataDir, "a.sdfz"), "")
-			writeFile(demosFile(dataDir, "a.log"), "")
-			writeFile(demosFile(dataDir, filepath.Join("leaderboard", "c.sdfz")), "")
-			Expect(os.Mkdir(demosFile(dataDir, "folder.sdfz"), 0o750)).To(Succeed())
-
-			Expect(newBatchPlayer(dataDir).ResolvePaths([]string{"."})).To(HaveExactElements(
-				demosFile(dataDir, "a.sdfz"),
-				demosFile(dataDir, "b.sdfz"),
-			))
-		})
-
-		It("sorts the replays and returns each once", func() {
-			dataDir := newDataDir()
-			writeFile(demosFile(dataDir, "b.sdfz"), "")
-			writeFile(demosFile(dataDir, "a.sdfz"), "")
-
-			Expect(newBatchPlayer(dataDir).ResolvePaths([]string{"b.sdfz", ".", demosFile(dataDir, "a.sdfz")})).
-				To(HaveExactElements(
-					demosFile(dataDir, "a.sdfz"),
-					demosFile(dataDir, "b.sdfz"),
-				))
-		})
-
-		It("fails for a missing path", func() {
-			Expect(newBatchPlayer(newDataDir()).ResolvePaths([]string{"missing.sdfz"})).Error().To(MatchError(os.ErrNotExist))
-		})
-	})
-
 	Context("IsEventsFileCurrent", func() {
 		It("is false without an events file", func() {
 			replayFilePath := filepath.Join(GinkgoT().TempDir(), "game.sdfz")
@@ -149,7 +102,7 @@ var _ = Describe("BatchPlayer", func() {
 			matching := writePlayableReplay(dataDir, "a.sdfz", testMapName)
 			other := writePlayableReplay(dataDir, "b.sdfz", "Supreme Isthmus v1.8")
 
-			Expect(newBatchPlayer(dataDir, replayplayer.WithFilter(replayplayer.Filter{MapNames: []string{"strata"}})).
+			Expect(newBatchPlayer(dataDir, replayplayer.WithFilter(utils.Filter{MapNames: []string{"strata"}})).
 				Run(ctx, ".")).To(Succeed())
 
 			Expect(springHeadlessCalled(matching)).To(BeTrue())

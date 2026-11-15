@@ -4,14 +4,15 @@ import (
 	"github.com/spf13/cobra"
 
 	replayplayer "github.com/backbone81/bar-replay-analytics-go/internal/replay/player"
+	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
 // The flags of replayPlayCmd.
 var (
 	replayPlayParallel      int
 	replayPlayEngineThreads int
-	replayPlayMaps          []string
-	replayPlayPlayers       []string
+	replayPlayFilterMaps    []string
+	replayPlayFilterPlayers []string
 	replayPlayMaxReplays    int
 )
 
@@ -33,8 +34,9 @@ of the analytics widget built into this program, which increases whenever the ev
 command, such as 'replay play leaderboard', plays only the new replays, and after an update of this program the ones
 with outdated events.
 
---map and --player select the replays to play back, before anything is downloaded; a replay must match both if both
-are given. --max-replays stops after that many replays, in file path order, counting only those that are played.
+--filter-map and --filter-player select the replays to play back, before anything is downloaded; a replay must match
+both if both are given. --max-replays stops after that many replays, in file path order, counting only those that are
+played.
 
 <replay> is a path to a .sdfz file or to a folder; a relative path is relative to the demos/ folder of the BAR data
 directory. A folder stands for the .sdfz files directly in it (not in its subfolders), such as "leaderboard" for
@@ -46,9 +48,9 @@ demos/leaderboard/.`,
 			replayplayer.WithDataDir(barDataDir),
 			replayplayer.WithWorkerThreadCount(replayPlayEngineThreads),
 			replayplayer.WithConcurrentReplays(replayPlayParallel),
-			replayplayer.WithFilter(replayplayer.Filter{
-				MapNames:    replayPlayMaps,
-				PlayerNames: replayPlayPlayers,
+			replayplayer.WithFilter(utils.Filter{
+				MapNames:    replayPlayFilterMaps,
+				PlayerNames: replayPlayFilterPlayers,
 			}),
 			replayplayer.WithMaxReplays(replayPlayMaxReplays),
 		)
@@ -77,15 +79,15 @@ func init() {
 			"the engine's default of one per CPU, which is slower.",
 	)
 	flags.StringArrayVar(
-		&replayPlayMaps,
-		"map",
+		&replayPlayFilterMaps,
+		"filter-map",
 		nil,
 		"Select the replays whose mapname contains this text, ignoring case, so \"argent strata\" selects every "+
 			"version of Argent Strata. Repeat for several maps.",
 	)
 	flags.StringArrayVar(
-		&replayPlayPlayers,
-		"player",
+		&replayPlayFilterPlayers,
+		"filter-player",
 		nil,
 		"Select the replays in which a player or an AI (not a spectator) has this name, ignoring case. Repeat for "+
 			"several players.",

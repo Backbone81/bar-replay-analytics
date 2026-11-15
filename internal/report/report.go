@@ -1,12 +1,16 @@
 package report
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"slices"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
 	"github.com/backbone81/bar-replay-analytics-go/internal/events"
+	"github.com/backbone81/bar-replay-analytics-go/internal/replay/player/widget"
 	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
+	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
 // FormatVersion is the version of the report's format. Increase it whenever the report of the same replay and events
@@ -142,6 +146,73 @@ func validateEventsGame(eventsFile *events.File, metadata Metadata, numPlayers i
 	}
 	if len(eventsFile.Teams) != numPlayers {
 		return fmt.Errorf("got %d teams, want the %d of the setup script", len(eventsFile.Teams), numPlayers)
+	}
+	return nil
+}
+
+// WriteReport prepares the report of the replay filePath (see NewReport) from the replay and the events file of its
+// playback next to it, configured by DefaultConfig changed by options, and writes it as indented JSON to
+// <replay name>_report.json next to the replay, replacing an existing one. Returns an error if the events file is
+// missing, invalid or older than the embedded widget's format version, or if NewReport fails.
+func WriteReport(filePath string, options ...Option) error {
+	eventsFile, err := events.ReadFile(utils.DemoEventsFilePath(filePath))
+	if err != nil {
+		return fmt.Errorf("events file of the replay's playback: %w", err)
+	}
+	if eventsFile.FormatVersion < widget.FormatVersion {
+		return fmt.Errorf("the events file has format version %d, the widget writes %d: play the replay back again",
+			eventsFile.FormatVersion, widget.FormatVersion)
+	}
+
+	replay, err := demo.ReadFile(filePath, demo.ReadUntilEnd)
+	if err != nil {
+		return err
+	}
+
+	setupScript, err := tdf.Parse(replay.SetupScript)
+	if err != nil {
+		return fmt.Errorf("setup script: %w", err)
+	}
+
+	report, err := NewReport(
+		replay,
+		setupScript,
+		eventsFile,
+		options...,
+	)
+	if err != nil {
+		return err
+	}
+
+	data, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		return err
+	}
+	return utils.WriteFile(utils.DemoReportFilePath(filePath), data, 0o644)
+}
+
+// ValidateReportFile returns an error if the report file filePath is missing or unreadable, if its format version is
+// older than FormatVersion, or if it was prepared from an events file older than the embedded widget's format version.
+// Writing such a report again would give the same report; a missing, unreadable or outdated one is written again.
+func ValidateReportFile(filePath string) error {
+	data, err := os.ReadFile(filePath) //nolint:gosec // Reading the file the caller names is the purpose.
+	if err != nil {
+		return err
+	}
+	var versions struct {
+		FormatVersion       int `json:"formatVersion"`
+		EventsFormatVersion int `json:"eventsFormatVersion"`
+	}
+	if err := json.Unmarshal(data, &versions); err != nil {
+		return err
+	}
+	if versions.FormatVersion < FormatVersion {
+		return fmt.Errorf("the report has format version %d, this program writes %d", versions.FormatVersion,
+			FormatVersion)
+	}
+	if versions.EventsFormatVersion < widget.FormatVersion {
+		return fmt.Errorf("the report is of an events file with format version %d, the widget writes %d",
+			versions.EventsFormatVersion, widget.FormatVersion)
 	}
 	return nil
 }

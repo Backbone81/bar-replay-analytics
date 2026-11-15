@@ -3,14 +3,13 @@ package player
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"runtime"
-	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/backbone81/bar-replay-analytics-go/internal/events"
 	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
@@ -77,7 +76,7 @@ func (p *BatchPlayer) Run(ctx context.Context, paths ...string) error {
 	p.skippedCounter.Store(0)
 	p.errCounter.Store(0)
 
-	paths, err := p.ResolvePaths(paths)
+	paths, err := utils.ResolveReplayPaths(p.config.DataDir, paths)
 	if err != nil {
 		return err
 	}
@@ -95,7 +94,7 @@ func (p *BatchPlayer) Run(ctx context.Context, paths ...string) error {
 
 	// The goroutines take the replays from this unbuffered channel, so each one starts the next replay when it is free,
 	// and the replays are selected while the others play.
-	replayInfosChan := make(chan *ReplayInfo)
+	replayInfosChan := make(chan *utils.ReplayInfo)
 
 	var wg sync.WaitGroup
 	for i := range p.config.ConcurrentReplays {
@@ -137,7 +136,7 @@ func (p *BatchPlayer) Run(ctx context.Context, paths ...string) error {
 // feedReplays sends the replays of paths that are selected (see selectReplay) to replayInfosChan, in the order of
 // paths, until all are sent, Config.MaxReplays are sent or ctx is canceled. Replays that cannot be read are logged and
 // counted as errors.
-func (p *BatchPlayer) feedReplays(ctx context.Context, paths []string, replayInfosChan chan<- *ReplayInfo) {
+func (p *BatchPlayer) feedReplays(ctx context.Context, paths []string, replayInfosChan chan<- *utils.ReplayInfo) {
 	var sent int
 	for _, path := range paths {
 		if p.config.MaxReplays > 0 && sent >= p.config.MaxReplays {
@@ -173,8 +172,8 @@ func (p *BatchPlayer) feedReplays(ctx context.Context, paths []string, replayInf
 // selectReplay returns the ReplayInfo of the replay filePath and whether it is to be played back: its events file is
 // not current and Config.Filter matches it. It only reads the replay's header and start script, so nothing is
 // downloaded for a skipped replay.
-func (p *BatchPlayer) selectReplay(filePath string) (*ReplayInfo, bool, error) {
-	replayInfo, err := ReadReplayInfo(filePath)
+func (p *BatchPlayer) selectReplay(filePath string) (*utils.ReplayInfo, bool, error) {
+	replayInfo, err := utils.ReadReplayInfo(filePath)
 	if err != nil {
 		return nil, false, err
 	}
@@ -196,7 +195,7 @@ func (p *BatchPlayer) selectReplay(filePath string) (*ReplayInfo, bool, error) {
 
 // runReplays plays the replays it receives on replayInfosChan back with player until the channel is closed or ctx is
 // canceled. Errors are logged and counted, so one broken replay does not stop the batch.
-func (p *BatchPlayer) runReplays(ctx context.Context, player *Player, replayInfosChan <-chan *ReplayInfo) {
+func (p *BatchPlayer) runReplays(ctx context.Context, player *Player, replayInfosChan <-chan *utils.ReplayInfo) {
 	for replayInfo := range replayInfosChan {
 		if ctx.Err() != nil {
 			return
@@ -226,7 +225,7 @@ func (p *BatchPlayer) runReplays(ctx context.Context, player *Player, replayInfo
 
 // prepareReplay prepares the replay replayInfo describes with player. The timeout covers the downloads of a new
 // engine, map and game, so a stalled download does not block the batch.
-func (p *BatchPlayer) prepareReplay(ctx context.Context, player *Player, replayInfo *ReplayInfo) error {
+func (p *BatchPlayer) prepareReplay(ctx context.Context, player *Player, replayInfo *utils.ReplayInfo) error {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer cancel()
 
@@ -235,7 +234,7 @@ func (p *BatchPlayer) prepareReplay(ctx context.Context, player *Player, replayI
 
 // runReplay plays the replay replayInfo describes back with player. The timeout covers the playback only (the downloads
 // are done by prepareReplay), so it stops an engine that hangs.
-func (p *BatchPlayer) runReplay(ctx context.Context, player *Player, replayInfo *ReplayInfo) error {
+func (p *BatchPlayer) runReplay(ctx context.Context, player *Player, replayInfo *utils.ReplayInfo) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
@@ -245,72 +244,14 @@ func (p *BatchPlayer) runReplay(ctx context.Context, player *Player, replayInfo 
 	return nil
 }
 
-// ResolvePaths returns the replay files paths stand for (see resolvePath), sorted and deduplicated, so a replay named
-// twice, e.g. by its file and its folder, is played once.
-func (p *BatchPlayer) ResolvePaths(paths []string) ([]string, error) {
-	var result []string
-	for _, path := range paths {
-		resolvedPaths, err := p.resolvePath(path)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, resolvedPaths...)
-	}
-	slices.Sort(result)
-	return slices.Compact(result), nil
-}
-
-// resolvePath returns the absolute paths of the replay files path stands for. A relative path is relative to the data
-// dir's demos/ folder, where BAR saves replays, so a bare file name works; an absolute one is used as is. A folder
-// stands for the replay files directly in it.
-func (p *BatchPlayer) resolvePath(path string) ([]string, error) {
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(utils.DemosDir(p.config.DataDir), path)
-	}
-
-	path, err := filepath.Abs(path)
-	if err != nil {
-		return nil, err
-	}
-
-	stat, err := os.Stat(path)
-	if err != nil {
-		return nil, err
-	}
-	if stat.IsDir() {
-		return p.replayFilesInFolder(path)
-	}
-	return []string{path}, nil
-}
-
-// replayFilesInFolder returns the paths of the .sdfz files directly in folder, not in its subfolders, like BAR's replay
-// browser lists them.
-func (p *BatchPlayer) replayFilesInFolder(folder string) ([]string, error) {
-	entries, err := os.ReadDir(folder)
-	if err != nil {
-		return nil, err
-	}
-	var result []string
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		if filepath.Ext(entry.Name()) != ".sdfz" {
-			continue
-		}
-		result = append(result, filepath.Join(folder, entry.Name()))
-	}
-	return result, nil
-}
-
 // IsEventsFileCurrent returns whether the replay replayFilePath has a complete events file next to it with at least
-// the embedded widget's format version (see ValidateEventsFile). Playing such a replay again would write the same
-// events; a missing, incomplete, unreadable or outdated one is written again.
+// the embedded widget's format version (see events.ValidateEventsFile). Playing such a replay again would write the
+// same events; a missing, incomplete, unreadable or outdated one is written again.
 func (p *BatchPlayer) IsEventsFileCurrent(replayFilePath string) bool {
-	return ValidateEventsFile(utils.DemoEventsFilePath(replayFilePath)) == nil
+	return events.ValidateEventsFile(utils.DemoEventsFilePath(replayFilePath)) == nil
 }
 
-func (p *BatchPlayer) replayDate(replayInfo *ReplayInfo) string {
+func (p *BatchPlayer) replayDate(replayInfo *utils.ReplayInfo) string {
 	return replayInfo.StartTime.Format("2006.01.02")
 }
 

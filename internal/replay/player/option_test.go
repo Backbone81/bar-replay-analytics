@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	replayplayer "github.com/backbone81/bar-replay-analytics-go/internal/replay/player"
+	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
 var _ = Describe("Option", func() {
@@ -53,7 +54,7 @@ var _ = Describe("Option", func() {
 	})
 
 	It("WithFilter sets the filter", func() {
-		filter := replayplayer.Filter{
+		filter := utils.Filter{
 			MapNames:    []string{"strata"},
 			PlayerNames: []string{"Alice"},
 		}

@@ -3,15 +3,18 @@ package utils_test
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/binary"
 	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/backbone81/bar-replay-analytics-go/internal/demo"
 	"github.com/backbone81/bar-replay-analytics-go/internal/utils"
 )
 
@@ -33,6 +36,9 @@ const (
 
 	// testRapidRepo is the folder of the rapid repo in rapid/.
 	testRapidRepo = "repos-cdn.beyondallreason.dev"
+
+	// testGameTime is the game time of the test replays in seconds.
+	testGameTime = 1607
 )
 
 func TestUtils(t *testing.T) {
@@ -115,4 +121,57 @@ func copyTestdata(name string, dir string) string {
 	filePath := filepath.Join(dir, name)
 	Expect(utils.CopyFile(filepath.Join("testdata", name), filePath)).To(Succeed())
 	return filePath
+}
+
+// testSetupScript returns a start script with the map mapName and the game gameType, a player, a spectator and two AIs.
+//
+//nolint:unparam
+func testSetupScript(mapName string, gameType string) string {
+	return "[game]\n{\n" +
+		"\tmapname=" + mapName + ";\n" +
+		"\tgametype=" + gameType + ";\n" +
+		"\t[player0]\n\t{\n\t\tname=Alice;\n\t\tspectator=0;\n\t}\n" +
+		"\t[player1]\n\t{\n\t\tname=Watcher;\n\t\tspectator=1;\n\t}\n" +
+		"\t[ai0]\n\t{\n\t\tname=BARb Hard;\n\t\tshortname=BARb;\n\t}\n" +
+		"\t[ai1]\n\t{\n\t\tshortname=SimpleAI;\n\t}\n" +
+		"}\n"
+}
+
+// writeReplay writes a replay file to filePath with engineVersion, setupScript, a stream of demoStreamSize bytes and a
+// game time of gameTime seconds. It has no statistics: ReadReplayInfo reads only the header and the start script.
+//
+//nolint:unparam
+func writeReplay(filePath string, engineVersion string, setupScript string, demoStreamSize int, gameTime int) {
+	header := demo.DemoFileHeader{
+		Version:            demo.DemofileVersion,
+		HeaderSize:         int32(binary.Size(demo.DemoFileHeader{})),
+		ScriptSize:         int32(len(setupScript)),
+		DemoStreamSize:     int32(demoStreamSize),
+		GameTime:           int32(gameTime),
+		UnixTime:           uint64(time.Now().UTC().Unix()),
+		PlayerStatElemSize: int32(binary.Size(demo.PlayerStatistics{})),
+		TeamStatElemSize:   int32(binary.Size(demo.TeamStatistics{})),
+		TeamStatPeriod:     15,
+	}
+	copy(header.Magic[:], demo.DemofileMagic)
+	copy(header.VersionString[:], engineVersion)
+
+	var buffer bytes.Buffer
+	writer := gzip.NewWriter(&buffer)
+	Expect(binary.Write(writer, demo.ByteOrder, header)).To(Succeed())
+	Expect(writer.Write([]byte(setupScript))).Error().NotTo(HaveOccurred())
+	Expect(writer.Write(make([]byte, demoStreamSize))).Error().NotTo(HaveOccurred())
+	Expect(writer.Close()).To(Succeed())
+	writeFile(filePath, buffer.String())
+}
+
+// writeTestReplay writes a playable test replay on mapName to filePath and returns filePath.
+func writeTestReplay(filePath string, mapName string) string {
+	writeReplay(filePath, testEngineVersion, testSetupScript(mapName, testGameType), 16, testGameTime)
+	return filePath
+}
+
+// demosFile returns the path of fileName in the demos/ of dataDir.
+func demosFile(dataDir string, fileName string) string {
+	return filepath.Join(utils.DemosDir(dataDir), fileName)
 }

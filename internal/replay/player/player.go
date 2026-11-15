@@ -48,7 +48,7 @@ func New(options ...Option) (*Player, error) {
 
 // Prepare makes sure the engine, map and game of the replay replayInfo describes (from ReadReplayInfo) are in the data
 // dir, downloading what is missing.
-func (p *Player) Prepare(ctx context.Context, replayInfo *ReplayInfo) error {
+func (p *Player) Prepare(ctx context.Context, replayInfo *utils.ReplayInfo) error {
 	// The map and the game are downloaded with the pr-downloader of the replay's engine, so the engine comes first.
 	if err := p.config.AssetManager.EnsureEngineVersion(ctx, replayInfo.EngineVersion); err != nil {
 		return err
@@ -61,7 +61,7 @@ func (p *Player) Prepare(ctx context.Context, replayInfo *ReplayInfo) error {
 
 // Run plays the replay replayInfo describes back and copies the events file the analytics widget wrote next to the
 // replay. The engine's output goes to <replay name>.log next to the replay. Canceling ctx stops the engine.
-func (p *Player) Run(ctx context.Context, replayInfo *ReplayInfo) error {
+func (p *Player) Run(ctx context.Context, replayInfo *utils.ReplayInfo) error {
 	logger := p.config.Logger.With(
 		"file-path", p.shortReplayPath(replayInfo.FilePath),
 		"date", p.replayDate(replayInfo),
@@ -97,25 +97,10 @@ func (p *Player) Run(ctx context.Context, replayInfo *ReplayInfo) error {
 	eventsFilePath := utils.DemoEventsFilePath(replayInfo.FilePath)
 	eventsFileName := filepath.Base(eventsFilePath)
 	writtenEventsFilePath := filepath.Join(utils.AnalyticsWidgetEventsDir(p.writeDir), eventsFileName)
-	if err := ValidateEventsFile(writtenEventsFilePath); err != nil {
+	if err := events.ValidateEventsFile(writtenEventsFilePath); err != nil {
 		return fmt.Errorf("checking the events file: %w", err)
 	}
 	return utils.CopyFile(writtenEventsFilePath, eventsFilePath)
-}
-
-// ValidateEventsFile returns an error if the events file filePath is missing, incomplete (cut off, or it does not end
-// with the game over) or older than the embedded widget's format version. It reads only the format version and the
-// end (events.ReadFormatVersionFile), which is much faster than reading the whole file.
-func ValidateEventsFile(filePath string) error {
-	file, err := events.ReadFormatVersionFile(filePath)
-	if err != nil {
-		return err
-	}
-	if file.FormatVersion < widget.FormatVersion {
-		return fmt.Errorf("the events file has format version %d, the widget writes %d", file.FormatVersion,
-			widget.FormatVersion)
-	}
-	return nil
 }
 
 // prepareWriteDir fills the new write dir with what the engine needs from it for a playback.
@@ -254,6 +239,6 @@ func (p *Player) shortReplayPath(filePath string) string {
 	return utils.RelativePath(utils.DemosDir(p.config.DataDir), filePath)
 }
 
-func (p *Player) replayDate(replayInfo *ReplayInfo) string {
+func (p *Player) replayDate(replayInfo *utils.ReplayInfo) string {
 	return replayInfo.StartTime.Format("2006.01.02")
 }

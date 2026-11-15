@@ -25,7 +25,7 @@ var _ = Describe("Player", func() {
 		It("downloads nothing if the engine, map and game are in the data dir", func(ctx SpecContext) {
 			dataDir := newDataDirWithAssets()
 			player := newPlayer(dataDir)
-			replayInfo, err := replayplayer.ReadReplayInfo(writeTestReplay(demosFile(dataDir, "game.sdfz"), testMapName))
+			replayInfo, err := utils.ReadReplayInfo(writeTestReplay(demosFile(dataDir, "game.sdfz"), testMapName))
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(player.Prepare(ctx, replayInfo)).To(Succeed())
@@ -36,7 +36,7 @@ var _ = Describe("Player", func() {
 			dataDir := newDataDir()
 			addFakeEngine(dataDir, testEngineVersion)
 			player := newPlayer(dataDir)
-			replayInfo, err := replayplayer.ReadReplayInfo(writeTestReplay(demosFile(dataDir, "game.sdfz"), testMapName))
+			replayInfo, err := utils.ReadReplayInfo(writeTestReplay(demosFile(dataDir, "game.sdfz"), testMapName))
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(player.Prepare(ctx, replayInfo)).To(Succeed())
@@ -51,7 +51,7 @@ var _ = Describe("Player", func() {
 			addFakeEngine(dataDir, testEngineVersion)
 			writePrDownloaderBehaviour(dataDir, prDownloaderBehaviour{ExitCode: 1})
 			player := newPlayer(dataDir)
-			replayInfo, err := replayplayer.ReadReplayInfo(writeTestReplay(demosFile(dataDir, "game.sdfz"), testMapName))
+			replayInfo, err := utils.ReadReplayInfo(writeTestReplay(demosFile(dataDir, "game.sdfz"), testMapName))
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(player.Prepare(ctx, replayInfo)).ToNot(Succeed())
@@ -225,37 +225,5 @@ var _ = Describe("Player", func() {
 			Eventually(result).Should(Receive(MatchError(context.Canceled)))
 			Expect(readFile(replaySibling(replayInfo.FilePath, springHeadlessSignalSuffix))).To(Equal("terminated"))
 		})
-	})
-
-	Context("ValidateEventsFile", func() {
-		It("fails without an events file", func() {
-			eventsFilePath := filepath.Join(GinkgoT().TempDir(), "game_events.json")
-
-			Expect(replayplayer.ValidateEventsFile(eventsFilePath)).To(MatchError(os.ErrNotExist))
-		})
-
-		DescribeTable("accepts a complete events file of at least the widget's format version",
-			func(formatVersion int) {
-				eventsFilePath := filepath.Join(GinkgoT().TempDir(), "game_events.json")
-				writeFile(eventsFilePath, eventsFileContent(formatVersion, events.EndReasonGameOver))
-
-				Expect(replayplayer.ValidateEventsFile(eventsFilePath)).To(Succeed())
-			},
-			Entry("the same version", widget.FormatVersion),
-			Entry("a newer version", widget.FormatVersion+1),
-		)
-
-		DescribeTable("rejects an events file that is not complete and current",
-			func(eventsFile string) {
-				eventsFilePath := filepath.Join(GinkgoT().TempDir(), "game_events.json")
-				writeFile(eventsFilePath, eventsFile)
-
-				Expect(replayplayer.ValidateEventsFile(eventsFilePath)).ToNot(Succeed())
-			},
-			Entry("without an end", eventsFileContent(widget.FormatVersion, "")),
-			Entry("of a game that did not end", eventsFileContent(widget.FormatVersion, events.EndReasonStalled)),
-			Entry("cut off", currentEventsFileContent()[:10]),
-			Entry("of an older format version", eventsFileContent(widget.FormatVersion-1, events.EndReasonGameOver)),
-		)
 	})
 })

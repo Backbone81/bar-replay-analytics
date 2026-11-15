@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/backbone81/bar-replay-analytics-go/internal/replay/player/widget"
 )
 
 // File is the content of an events file.
@@ -100,6 +102,21 @@ func ReadFormatVersionFile(filePath string) (*File, error) {
 	}
 	defer file.Close() //nolint:errcheck
 	return ReadFormatVersion(file)
+}
+
+// ValidateEventsFile returns an error if the events file filePath is missing, incomplete (cut off, or it does not end
+// with the game over) or older than the embedded widget's format version. It reads only the format version and the
+// end (ReadFormatVersionFile), which is much faster than reading the whole file.
+func ValidateEventsFile(filePath string) error {
+	file, err := ReadFormatVersionFile(filePath)
+	if err != nil {
+		return err
+	}
+	if file.FormatVersion < widget.FormatVersion {
+		return fmt.Errorf("the events file has format version %d, the widget writes %d", file.FormatVersion,
+			widget.FormatVersion)
+	}
+	return nil
 }
 
 // ValidateEnd returns an error if the file is incomplete (it has no End) or the game did not end.

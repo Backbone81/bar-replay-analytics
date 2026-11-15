@@ -1,4 +1,4 @@
-package player
+package utils
 
 import (
 	"errors"
@@ -10,8 +10,7 @@ import (
 	"github.com/backbone81/bar-replay-analytics-go/internal/tdf"
 )
 
-// ReplayInfo is what ReadReplayInfo found out about a replay and what Player.Prepare and Player.Run needs to play it
-// back.
+// ReplayInfo is what ReadReplayInfo found out about a replay.
 type ReplayInfo struct {
 	// FilePath is the absolute path of the replay file.
 	FilePath string
@@ -38,7 +37,7 @@ type ReplayInfo struct {
 
 // ReadReplayInfo reads the header and the start script of the replay filePath. It fails for a replay without a
 // recorded stream (the game crashed), which the engine cannot play back, and for one without a game time (0:00 in the
-// lobby: the engine crashed or the game was not ended), whose stream can hold hours of game.
+// lobby: the engine crashed or the game was not ended).
 func ReadReplayInfo(filePath string) (*ReplayInfo, error) {
 	filePath, err := filepath.Abs(filePath)
 	if err != nil {
@@ -49,6 +48,7 @@ func ReadReplayInfo(filePath string) (*ReplayInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if demoFile.FileHeader.DemoStreamSize <= 0 {
 		return nil, errors.New("the demo does not have a positive stream size")
 	}
@@ -60,14 +60,17 @@ func ReadReplayInfo(filePath string) (*ReplayInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	gameType, ok := setupScript.Value(`game\gametype`)
 	if !ok {
 		return nil, errors.New("the setup script has no game\\gametype")
 	}
+
 	mapName, ok := setupScript.Value(`game\mapname`)
 	if !ok {
 		return nil, errors.New("the setup script has no game\\mapname")
 	}
+
 	playerNames, err := GetPlayerNames(setupScript.Section("game"))
 	if err != nil {
 		return nil, err
@@ -114,6 +117,7 @@ func isSpectator(section *tdf.Section) (bool, error) {
 	if !ok {
 		return false, nil
 	}
+
 	spectator, err := value.AsBool()
 	if err != nil {
 		return false, fmt.Errorf("spectator: %w", err)

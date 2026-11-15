@@ -1,6 +1,7 @@
 package events_test
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -8,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/backbone81/bar-replay-analytics-go/internal/events"
+	"github.com/backbone81/bar-replay-analytics-go/internal/replay/player/widget"
 )
 
 var _ = Describe("File", func() {
@@ -145,6 +147,38 @@ var _ = Describe("File", func() {
 		It("returns an error for a missing file", func() {
 			Expect(events.ReadFormatVersionFile(filepath.Join("testdata", "missing.json"))).Error().To(HaveOccurred())
 		})
+	})
+
+	Context("ValidateEventsFile", func() {
+		It("fails without an events file", func() {
+			eventsFilePath := filepath.Join(GinkgoT().TempDir(), "game_events.json")
+
+			Expect(events.ValidateEventsFile(eventsFilePath)).To(MatchError(os.ErrNotExist))
+		})
+
+		DescribeTable("accepts a complete events file of at least the widget's format version",
+			func(formatVersion int) {
+				eventsFilePath := filepath.Join(GinkgoT().TempDir(), "game_events.json")
+				writeFile(eventsFilePath, eventsFileContent(formatVersion, events.EndReasonGameOver))
+
+				Expect(events.ValidateEventsFile(eventsFilePath)).To(Succeed())
+			},
+			Entry("the same version", widget.FormatVersion),
+			Entry("a newer version", widget.FormatVersion+1),
+		)
+
+		DescribeTable("rejects an events file that is not complete and current",
+			func(eventsFile string) {
+				eventsFilePath := filepath.Join(GinkgoT().TempDir(), "game_events.json")
+				writeFile(eventsFilePath, eventsFile)
+
+				Expect(events.ValidateEventsFile(eventsFilePath)).ToNot(Succeed())
+			},
+			Entry("without an end", eventsFileContent(widget.FormatVersion, "")),
+			Entry("of a game that did not end", eventsFileContent(widget.FormatVersion, events.EndReasonStalled)),
+			Entry("cut off", eventsFileContent(widget.FormatVersion, events.EndReasonGameOver)[:10]),
+			Entry("of an older format version", eventsFileContent(widget.FormatVersion-1, events.EndReasonGameOver)),
+		)
 	})
 
 	Context("ReadFile", func() {

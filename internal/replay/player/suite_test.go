@@ -455,7 +455,7 @@ func addPackage(dataDir string, md5 string) {
 
 // testSetupScript returns a start script with the map mapName and the game gameType, a player, a spectator and two AIs.
 //
-//nolint:unparam
+
 func testSetupScript(mapName string, gameType string) string {
 	return "[game]\n{\n" +
 		"\tmapname=" + mapName + ";\n" +
@@ -621,8 +621,8 @@ func newPreparedReplay(
 	player *replayplayer.Player,
 	dataDir string,
 	fileName string, //nolint:unparam
-) *replayplayer.ReplayInfo {
-	replayInfo, err := replayplayer.ReadReplayInfo(writeTestReplay(demosFile(dataDir, fileName), testMapName))
+) *utils.ReplayInfo {
+	replayInfo, err := utils.ReadReplayInfo(writeTestReplay(demosFile(dataDir, fileName), testMapName))
 	Expect(err).NotTo(HaveOccurred())
 	Expect(player.Prepare(ctx, replayInfo)).To(Succeed())
 	return replayInfo
@@ -632,7 +632,7 @@ func newPreparedReplay(
 func runPlayerInBackground(
 	ctx context.Context,
 	player *replayplayer.Player,
-	replayInfo *replayplayer.ReplayInfo,
+	replayInfo *utils.ReplayInfo,
 ) <-chan error {
 	result := make(chan error, 1)
 	go func() {

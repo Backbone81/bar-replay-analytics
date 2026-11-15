@@ -83,7 +83,7 @@ Good to know:
   of the analytics widget's current format version (`formatVersion` in the file), so `replay play leaderboard` after
   a download plays only the new games, and after an update of the tool the ones its widget would log differently.
   `--force` plays them all again. Each report records its own `formatVersion` and the `eventsFormatVersion` it was
-  made from; reports take seconds, so `replay report leaderboard` simply writes them all again.
+  made from; `replay report` likewise skips a replay whose report has the current versions of both.
 - **Games that crashed or did not end** (length 0:00 in the lobby) are skipped: their replay can run for hours.
 - **Downloaded replays go to `demos/leaderboard/`**, so they don't crowd the replay list in the BAR lobby. Running
   `download-top` again fetches only what is new; `--dry-run` logs the missing games of the players of the active

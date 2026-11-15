@@ -1,8 +1,10 @@
-package player
+package utils
 
-import "strings"
+import (
+	"strings"
+)
 
-// Filter selects the replays a BatchPlayer plays back. A replay matches if it matches every field that is not empty,
+// Filter selects a replay which matches the filter. A replay matches if it matches every field that is not empty,
 // and it matches a field if it matches one of the field's values. The zero Filter matches every replay.
 type Filter struct {
 	// MapNames match a replay whose map name contains one of them, ignoring case, so "argent strata" matches every

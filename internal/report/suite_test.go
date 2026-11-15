@@ -1,7 +1,10 @@
 package report_test
 
 import (
+	"encoding/json"
 	"flag"
+	"os"
+	"path/filepath"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -224,4 +227,20 @@ func parseScript(text string) *tdf.Section {
 	script, err := tdf.Parse(text)
 	Expect(err).NotTo(HaveOccurred())
 	return script
+}
+
+// writeFile writes content to filePath, creating its folder.
+func writeFile(filePath string, content string) {
+	Expect(os.MkdirAll(filepath.Dir(filePath), 0o750)).To(Succeed())
+	Expect(os.WriteFile(filePath, []byte(content), 0o600)).To(Succeed())
+}
+
+// reportFileContent returns a report file with formatVersion and eventsFormatVersion.
+func reportFileContent(formatVersion int, eventsFormatVersion int) string {
+	data, err := json.Marshal(map[string]any{
+		"formatVersion":       formatVersion,
+		"eventsFormatVersion": eventsFormatVersion,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	return string(data)
 }
