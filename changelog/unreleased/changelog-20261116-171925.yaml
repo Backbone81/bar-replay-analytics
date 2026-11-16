@@ -1,0 +1,5 @@
+description: |
+  Playbacks no longer fail after 10 minutes: long games with thousands of units take longer even at full speed. The
+  analytics widget now logs when it is active and a heartbeat every minute, and a playback is stopped only when it
+  does not become active within 5 minutes or its heartbeat is missing for 3 minutes. The widget also quits when the
+  game speed could not be raised, as the replay would play in real time.

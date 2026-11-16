@@ -26,7 +26,12 @@ end
 -- it is incomplete: the engine crashed or was stopped. "formatVersion" is FORMAT_VERSION.
 --
 -- To play at full speed it switches to full view, raises the speed limit (the start position phase otherwise plays
--- in real time), skips to the end once the game runs, and quits the engine at game over or when the replay stalls.
+-- in real time), skips to the end once the game runs, and quits the engine at game over, when the replay stalls or
+-- when the speed was not raised.
+--
+-- Its log lines tell bar-replay-analytics that the playback is alive: "Replay Analytics: active" once logging has
+-- started, then "Replay Analytics: alive (...)" every HEARTBEAT_SECONDS. The tool stops a playback in which they do
+-- not come (widget/log_lines.go has them), so keep them as they are.
 
 --------------------------------------------------------------------------------
 -- Configuration
@@ -35,6 +40,13 @@ end
 -- Quit when the game frame has not advanced for this long: the replay has ended (or, before frame 1, never starts).
 local STALL_QUIT_SECONDS = 20
 local PREGAME_QUIT_SECONDS = 300 -- loading and the start position phase take longer
+
+-- Quit when the wanted speed factor is still 1 this long after setspeed (wall time): the replay would play in real
+-- time. The server answers within a second.
+local SPEED_CHECK_SECONDS = 30
+
+-- Log the heartbeat this often (wall time).
+local HEARTBEAT_SECONDS = 60
 
 -- The version of the events file's format, written as "formatVersion". Increase it whenever the events this widget
 -- writes change (an event, field or value added, removed or computed differently), so that bar-replay-analytics
@@ -51,6 +63,7 @@ local spGetAIInfo = Spring.GetAIInfo
 local spGetFactoryCommandCount = Spring.GetFactoryCommandCount
 local spGetGaiaTeamID = Spring.GetGaiaTeamID
 local spGetGameFrame = Spring.GetGameFrame
+local spGetGameSpeed = Spring.GetGameSpeed
 local spGetPlayerInfo = Spring.GetPlayerInfo
 local spGetSideData = Spring.GetSideData
 local spGetTeamInfo = Spring.GetTeamInfo
@@ -85,7 +98,8 @@ local pendingCommands = {} -- the "unitCommand" events not written yet, oldest f
 
 local lastFrame = -1
 local lastFrameTimer -- when the frame last advanced; nil until Initialize
-local isSpeedRaised = false
+local lastHeartbeatTimer -- when the heartbeat was last logged; nil until Initialize
+local speedCommandTimer -- when setspeed was sent; nil until the first Update
 local isSkipSent = false
 local isQuitting = false
 
@@ -376,6 +390,28 @@ local function quit(reason)
 	spSendCommands("quitforce")
 end
 
+-- Logs the heartbeat every HEARTBEAT_SECONDS. Called from Update, which runs before the game starts too and, at full
+-- speed, after at most 1000 / MinDrawFPS ms (default 500) of sim frames.
+local function logHeartbeat()
+	local timer = spGetTimer()
+	if spDiffTimers(timer, lastHeartbeatTimer) < HEARTBEAT_SECONDS then
+		return
+	end
+	lastHeartbeatTimer = timer
+	spEcho(stringFormat("Replay Analytics: alive (frame %d)", spGetGameFrame()))
+end
+
+-- Quits if the wanted speed factor is still 1 SPEED_CHECK_SECONDS after setspeed was sent. The server clamps setspeed
+-- to the setmaxspeed limit, so either command failing leaves it there.
+local function checkSpeedRaised()
+	if spDiffTimers(spGetTimer(), speedCommandTimer) < SPEED_CHECK_SECONDS then
+		return
+	end
+	if spGetGameSpeed() <= 1 then
+		quit("speed not raised")
+	end
+end
+
 --------------------------------------------------------------------------------
 -- Call-ins
 --------------------------------------------------------------------------------
@@ -414,6 +450,8 @@ function widget:Initialize()
 	collectTeamIDs()
 	spSendCommands("specfullview 1")
 	lastFrameTimer = spGetTimer()
+	lastHeartbeatTimer = lastFrameTimer
+	spEcho("Replay Analytics: active")
 end
 
 function widget:Shutdown()
@@ -424,11 +462,13 @@ function widget:Update()
 	if isQuitting or not lastFrameTimer then
 		return
 	end
+	logHeartbeat()
 	-- A server command the local player may send; the speed limit also applies before the game starts.
-	if not isSpeedRaised then
-		isSpeedRaised = true
+	if not speedCommandTimer then
+		speedCommandTimer = spGetTimer()
 		spSendCommands("setmaxspeed 1000", "setspeed 1000")
 	end
+	checkSpeedRaised()
 	local frame = spGetGameFrame()
 	if frame ~= lastFrame then
 		lastFrame = frame

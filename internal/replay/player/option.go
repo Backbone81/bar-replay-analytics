@@ -2,6 +2,7 @@ package player
 
 import (
 	"log/slog"
+	"time"
 
 	"github.com/backbone81/bar-replay-analytics/internal/utils"
 )
@@ -55,6 +56,20 @@ func WithFilter(filter utils.Filter) Option {
 func WithMaxReplays(maxReplays int) Option {
 	return func(config *Config) {
 		config.MaxReplays = maxReplays
+	}
+}
+
+// WithWidgetStartTimeout sets Config.WidgetStartTimeout.
+func WithWidgetStartTimeout(widgetStartTimeout time.Duration) Option {
+	return func(config *Config) {
+		config.WidgetStartTimeout = widgetStartTimeout
+	}
+}
+
+// WithWidgetHeartbeatTimeout sets Config.WidgetHeartbeatTimeout.
+func WithWidgetHeartbeatTimeout(widgetHeartbeatTimeout time.Duration) Option {
+	return func(config *Config) {
+		config.WidgetHeartbeatTimeout = widgetHeartbeatTimeout
 	}
 }
 

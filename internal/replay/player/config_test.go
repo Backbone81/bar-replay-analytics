@@ -52,5 +52,19 @@ var _ = Describe("Config", func() {
 
 			Expect(config.Validate()).ToNot(Succeed())
 		})
+
+		It("requires a positive widget start timeout", func() {
+			config := validConfig()
+			config.WidgetStartTimeout = 0
+
+			Expect(config.Validate()).ToNot(Succeed())
+		})
+
+		It("requires a positive widget heartbeat timeout", func() {
+			config := validConfig()
+			config.WidgetHeartbeatTimeout = 0
+
+			Expect(config.Validate()).ToNot(Succeed())
+		})
 	})
 })

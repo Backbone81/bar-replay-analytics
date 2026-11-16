@@ -3,6 +3,7 @@ package player
 import (
 	"errors"
 	"log/slog"
+	"time"
 
 	"github.com/backbone81/bar-replay-analytics/internal/utils"
 )
@@ -34,6 +35,14 @@ type Config struct {
 	// MaxReplays is how many replays a BatchPlayer plays back at most: the first ones, in file path order, that match
 	// Filter and whose events file is not current. A replay whose playback fails counts too. Zero means no limit.
 	MaxReplays int
+
+	// WidgetStartTimeout is how long a playback may take until the analytics widget logs that it is active (see
+	// Watchdog). It covers starting the engine and loading the map and the game, 12 to 35 s in November 2026.
+	WidgetStartTimeout time.Duration
+
+	// WidgetHeartbeatTimeout is how long a playback may go without the analytics widget's heartbeat, which it logs
+	// once per minute (see Watchdog).
+	WidgetHeartbeatTimeout time.Duration
 }
 
 // DefaultConfig is the Config the Options are applied to. AssetManager has no default, so it must be set.
@@ -43,6 +52,9 @@ var DefaultConfig = Config{
 	DataDir:           "data",
 	WorkerThreadCount: 2,
 	ConcurrentReplays: 1,
+
+	WidgetStartTimeout:     5 * time.Minute,
+	WidgetHeartbeatTimeout: 3 * time.Minute,
 }
 
 // Validate returns an error if the Config cannot be used.
@@ -61,6 +73,12 @@ func (c Config) Validate() error {
 	}
 	if c.MaxReplays < 0 {
 		return errors.New("the maximum number of replays must not be negative")
+	}
+	if c.WidgetStartTimeout <= 0 {
+		return errors.New("the widget start timeout must be positive")
+	}
+	if c.WidgetHeartbeatTimeout <= 0 {
+		return errors.New("the widget heartbeat timeout must be positive")
 	}
 
 	return nil

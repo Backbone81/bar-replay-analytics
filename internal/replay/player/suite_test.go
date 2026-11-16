@@ -92,6 +92,13 @@ type springHeadlessBehaviour struct {
 
 	// WaitUntilStopped makes it run until it is stopped, for at most 10 s, and fail then.
 	WaitUntilStopped bool `json:"waitUntilStopped"`
+
+	// Heartbeats is how many heartbeat lines of the analytics widget (widget.HeartbeatLogLine) it writes to stdout
+	// after Output, one every HeartbeatInterval.
+	Heartbeats int `json:"heartbeats"`
+
+	// HeartbeatInterval is the time between its heartbeat lines.
+	HeartbeatInterval time.Duration `json:"heartbeatInterval"`
 }
 
 // springHeadlessCall is what the fake spring-headless was called with.
@@ -146,6 +153,11 @@ func TestMain(m *testing.M) {
 	case "pr-downloader":
 		os.Exit(runFakePrDownloader())
 	}
+	// With -race, the fakes would sleep 1 s before they exit (atexit_sleep_ms), longer than the Watchdog timeouts of the
+	// tests. They inherit the environment.
+	if err := os.Setenv("GORACE", "atexit_sleep_ms=0"); err != nil {
+		panic(err)
+	}
 	os.Exit(m.Run())
 }
 
@@ -189,6 +201,7 @@ func fakeSpringHeadless() (int, error) {
 
 	//nolint:forbidigo
 	fmt.Print(behaviour.Output)
+	writeHeartbeats(behaviour.Heartbeats, behaviour.HeartbeatInterval)
 	if behaviour.EventsFile != "" {
 		// The widget writes the events file relative to the working directory, which is the write dir.
 		eventsFilePath := filepath.Join(
@@ -209,6 +222,15 @@ func fakeSpringHeadless() (int, error) {
 		return 0, errors.New("not stopped within 10 s")
 	}
 	return behaviour.ExitCode, nil
+}
+
+// writeHeartbeats writes count heartbeat lines of the analytics widget to stdout, one every interval.
+func writeHeartbeats(count int, interval time.Duration) {
+	for frame := range count {
+		time.Sleep(interval)
+		//nolint:forbidigo
+		fmt.Printf("[f=%07d] %s (frame %d)\n", frame, widget.HeartbeatLogLine, frame)
+	}
 }
 
 // newSpringHeadlessCall returns the call of the fake spring-headless with args.
@@ -640,6 +662,32 @@ func runPlayerInBackground(
 		result <- player.Run(ctx, replayInfo)
 	}()
 	return result
+}
+
+// watchInBackground runs watchdog.Watch in a goroutine on a context derived from ctx and returns that context, which
+// the Watchdog cancels when the analytics widget gives no sign of life. It ends with ctx.
+func watchInBackground(ctx context.Context, watchdog *replayplayer.Watchdog) context.Context {
+	watchedCtx, cancel := context.WithCancelCause(ctx)
+	go watchdog.Watch(watchedCtx, cancel)
+	return watchedCtx
+}
+
+// causeRecorder records the causes its Cancel is called with, for a Watchdog to cancel.
+type causeRecorder chan error
+
+// newCauseRecorder returns a causeRecorder that holds up to 10 causes.
+func newCauseRecorder() causeRecorder {
+	return make(causeRecorder, 10)
+}
+
+// Cancel records cause. It is a context.CancelCauseFunc.
+func (r causeRecorder) Cancel(cause error) {
+	r <- cause
+}
+
+// writeLine writes line and a line end to watchdog, which takes all of it.
+func writeLine(watchdog *replayplayer.Watchdog, line string) {
+	Expect(watchdog.Write([]byte(line + "\n"))).To(Equal(len(line) + 1))
 }
 
 // newBatchPlayer returns a BatchPlayer for dataDir with options.

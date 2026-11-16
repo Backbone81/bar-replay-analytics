@@ -16,7 +16,7 @@ import (
 // expectedLuaFilesHash is the hash of the template's .lua files (see luaFilesHash) when the widget was last checked.
 // When the widget changes, the test fails: decide whether the events it writes changed (then increase FORMAT_VERSION
 // in the widget), then set expectedLuaFilesHash to the hash the test prints.
-const expectedLuaFilesHash = "c57d781ab68fc82dfb10e9f2814d42cc1836fc5ab1721eb15267e1694c6bb0c5"
+const expectedLuaFilesHash = "9b7097ad752246c914a13a11d664520966e93a0489b84ac2f2699ad7ebf9c680"
 
 var _ = Describe("FormatVersion", func() {
 	It("was reconsidered when the widget changed", func() {

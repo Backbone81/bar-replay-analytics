@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -224,5 +225,50 @@ var _ = Describe("Player", func() {
 
 			Eventually(result).Should(Receive(MatchError(context.Canceled)))
 		})
+
+		It("stops the engine when the analytics widget does not become active", func(ctx SpecContext) {
+			dataDir := newDataDirWithAssets()
+			player := newPlayer(dataDir, replayplayer.WithWidgetStartTimeout(200*time.Millisecond))
+			replayInfo := newPreparedReplay(ctx, player, dataDir, "game.sdfz")
+			writeSpringHeadlessBehaviour(replayInfo.FilePath, springHeadlessBehaviour{
+				Output:           "[f=-000001] Loading widget from user:  Replay Analytics\n",
+				WaitUntilStopped: true,
+			})
+
+			Expect(player.Run(ctx, replayInfo)).To(MatchError(replayplayer.ErrAnalyticsWidgetNotActive))
+		})
+
+		It("stops the engine when the analytics widget's heartbeat stops", func(ctx SpecContext) {
+			dataDir := newDataDirWithAssets()
+			player := newPlayer(dataDir, replayplayer.WithWidgetHeartbeatTimeout(200*time.Millisecond))
+			replayInfo := newPreparedReplay(ctx, player, dataDir, "game.sdfz")
+			writeSpringHeadlessBehaviour(replayInfo.FilePath, springHeadlessBehaviour{
+				Output:            "[f=-000001] " + widget.ActiveLogLine + "\n",
+				Heartbeats:        2,
+				HeartbeatInterval: 50 * time.Millisecond,
+				WaitUntilStopped:  true,
+			})
+
+			Expect(player.Run(ctx, replayInfo)).To(MatchError(replayplayer.ErrAnalyticsWidgetHeartbeatMissing))
+		})
+
+		It("lets a playback run longer than the timeouts while the analytics widget's heartbeat comes",
+			func(ctx SpecContext) {
+				dataDir := newDataDirWithAssets()
+				player := newPlayer(dataDir,
+					replayplayer.WithWidgetStartTimeout(200*time.Millisecond),
+					replayplayer.WithWidgetHeartbeatTimeout(200*time.Millisecond),
+				)
+				replayInfo := newPreparedReplay(ctx, player, dataDir, "game.sdfz")
+				writeSpringHeadlessBehaviour(replayInfo.FilePath, springHeadlessBehaviour{
+					Output:            "[f=-000001] " + widget.ActiveLogLine + "\n",
+					Heartbeats:        16,
+					HeartbeatInterval: 50 * time.Millisecond,
+					EventsFile:        currentEventsFileContent(),
+				})
+
+				Expect(player.Run(ctx, replayInfo)).To(Succeed())
+				Expect(readFile(utils.DemoEventsFilePath(replayInfo.FilePath))).To(Equal(currentEventsFileContent()))
+			})
 	})
 })

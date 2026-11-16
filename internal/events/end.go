@@ -15,6 +15,10 @@ const (
 
 	// EndReasonShutdown means the widget was shut down before the game ended.
 	EndReasonShutdown EndReason = "shutdown"
+
+	// EndReasonSpeedNotRaised means the wanted speed factor (Spring.GetGameSpeed) was not raised above 1, so the replay
+	// would have played in real time.
+	EndReasonSpeedNotRaised EndReason = "speed not raised"
 )
 
 // End is when and why the widget stopped logging.

@@ -210,7 +210,7 @@ func (p *BatchPlayer) runReplays(ctx context.Context, player *Player, replayInfo
 			p.errCounter.Add(1)
 			continue
 		}
-		if err := p.runReplay(ctx, player, replayInfo); err != nil {
+		if err := player.Run(ctx, replayInfo); err != nil {
 			p.config.Logger.Error("Replay failed",
 				"file-path", p.shortReplayPath(replayInfo.FilePath),
 				"date", p.replayDate(replayInfo),
@@ -230,18 +230,6 @@ func (p *BatchPlayer) prepareReplay(ctx context.Context, player *Player, replayI
 	defer cancel()
 
 	return player.Prepare(ctx, replayInfo)
-}
-
-// runReplay plays the replay replayInfo describes back with player. The timeout covers the playback only (the downloads
-// are done by prepareReplay), so it stops an engine that hangs.
-func (p *BatchPlayer) runReplay(ctx context.Context, player *Player, replayInfo *utils.ReplayInfo) error {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
-	defer cancel()
-
-	if err := player.Run(ctx, replayInfo); err != nil {
-		return err
-	}
-	return nil
 }
 
 // IsEventsFileCurrent returns whether the replay replayFilePath has a complete events file next to it with at least

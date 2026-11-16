@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/backbone81/bar-replay-analytics/internal/events"
@@ -191,7 +193,8 @@ func (p *Player) prepareWriteDirWidgetConfig() error {
 }
 
 // runSpringHeadless plays the replay filePath with the engine engineVersion. The engine's output replaces <replay
-// name>.log next to the replay, which the error names if the engine fails.
+// name>.log next to the replay, which the error names if the engine fails. A Watchdog stops the engine when the
+// analytics widget gives no sign of life; there is no fixed time limit, as big games take long at full speed too.
 func (p *Player) runSpringHeadless(ctx context.Context, engineVersion string, filePath string) error {
 	//nolint:gosec // This file does not contain sensitive data
 	logFile, err := os.OpenFile(
@@ -203,6 +206,18 @@ func (p *Player) runSpringHeadless(ctx context.Context, engineVersion string, fi
 		return err
 	}
 	defer logFile.Close() //nolint:errcheck
+
+	// The defers run in reverse: cancel ends Watch, then Wait waits for it, so no goroutine outlives the playback.
+	var watchdogWaitGroup sync.WaitGroup
+	defer watchdogWaitGroup.Wait()
+
+	ctx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
+
+	watchdog := NewWatchdog(p.config.WidgetStartTimeout, p.config.WidgetHeartbeatTimeout)
+	watchdogWaitGroup.Go(func() {
+		watchdog.Watch(ctx, cancel)
+	})
 
 	//nolint:gosec // The user does not control the command input.
 	command := exec.CommandContext(ctx, utils.SpringHeadlessFilePath(p.config.DataDir, engineVersion),
@@ -222,13 +237,14 @@ func (p *Player) runSpringHeadless(ctx context.Context, engineVersion string, fi
 	}
 	// The engine is killed if it has not quit WaitDelay after terminate.
 	command.WaitDelay = 5 * time.Second
-	command.Stdout = logFile
-	command.Stderr = logFile
+	output := io.MultiWriter(logFile, watchdog)
+	command.Stdout = output
+	command.Stderr = output
 
 	if err := command.Run(); err != nil {
 		return errors.Join(
 			fmt.Errorf("running the replay (see %s): %w", utils.DemoLogFilePath(filePath), err),
-			ctx.Err(),
+			context.Cause(ctx),
 		)
 	}
 	return nil

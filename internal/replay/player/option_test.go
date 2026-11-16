@@ -2,6 +2,7 @@ package player_test
 
 import (
 	"log/slog"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -71,6 +72,22 @@ var _ = Describe("Option", func() {
 		replayplayer.WithMaxReplays(5)(&config)
 
 		Expect(config.MaxReplays).To(Equal(5))
+	})
+
+	It("WithWidgetStartTimeout sets the widget start timeout", func() {
+		var config replayplayer.Config
+
+		replayplayer.WithWidgetStartTimeout(2 * time.Minute)(&config)
+
+		Expect(config.WidgetStartTimeout).To(Equal(2 * time.Minute))
+	})
+
+	It("WithWidgetHeartbeatTimeout sets the widget heartbeat timeout", func() {
+		var config replayplayer.Config
+
+		replayplayer.WithWidgetHeartbeatTimeout(time.Minute)(&config)
+
+		Expect(config.WidgetHeartbeatTimeout).To(Equal(time.Minute))
 	})
 
 	It("WithConfig replaces the whole config", func() {
